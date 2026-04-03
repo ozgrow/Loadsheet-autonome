@@ -97,6 +97,7 @@ function showLogin() {
 function showApp() {
   document.getElementById("loginScreen").style.display = "none";
   document.getElementById("appScreen").style.display = "block";
+  if (typeof initApp === "function") initApp();
 }
 
 // --- Countdown timer on button ---
@@ -120,6 +121,10 @@ function startCooldownTimer(btn) {
 
 // --- Login form handler ---
 async function initAuth() {
+  // Show version on login screen
+  var verEl = document.getElementById("loginVersion");
+  if (verEl && typeof APP_VERSION !== "undefined") verEl.textContent = "v" + APP_VERSION;
+
   if (isLoggedIn()) {
     showApp();
     return;

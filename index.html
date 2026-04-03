@@ -19,6 +19,7 @@
         <input type="password" id="loginPass" required autocomplete="current-password" placeholder="Mot de passe" autofocus>
         <div id="loginError" class="login-error"></div>
         <button type="submit" id="loginBtn" class="btn btn-primary" style="width:100%;margin-top:10px;">Se connecter</button>
+        <div style="text-align:center;margin-top:15px;color:#a0aec0;font-size:0.75em;" id="loginVersion"></div>
     </form>
 </div>
 
@@ -27,6 +28,7 @@
 <div class="container">
     <div style="display:flex;justify-content:space-between;align-items:center;">
         <h1>Loadsheet Autonome</h1>
+        <span id="appVersion" style="font-size:0.75em;color:#a0aec0;"></span>
         <button class="btn btn-secondary" onclick="logout()" style="font-size:0.8em;">Déconnexion</button>
     </div>
 
@@ -64,7 +66,7 @@
 </div>
 </div>
 
-<script src="static/js/auth.js"></script>
 <script src="static/js/app.js"></script>
+<script src="static/js/auth.js"></script>
 </body>
 </html>
