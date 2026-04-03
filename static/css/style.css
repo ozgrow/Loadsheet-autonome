@@ -83,6 +83,16 @@ td input[type="number"] { width: 80px; }
 
 .actions { margin: 15px 0; display: flex; gap: 10px; flex-wrap: wrap; }
 
+/* ---- Live recap bar ---- */
+.live-recap {
+    background: #1a3a5c; color: #fff; border-radius: 8px; padding: 10px 20px;
+    margin-bottom: 10px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+    font-size: 0.9em; font-weight: 600;
+}
+.live-recap .recap-item { display: flex; align-items: center; gap: 4px; }
+.live-recap .recap-value { color: #90cdf4; font-size: 1.1em; }
+.live-recap .recap-dgr { color: #fc8181; }
+
 /* ---- Generate section ---- */
 .generate-section {
     background: #fff; border-radius: 8px; padding: 20px; margin-top: 15px;
@@ -133,6 +143,9 @@ td input[type="number"] { width: 80px; }
     th, td { padding: 5px 4px; font-size: 0.8em; }
     td input, td select { font-size: 0.85em; padding: 4px; }
     td input[type="number"] { width: 55px; }
+
+    /* Live recap */
+    .live-recap { flex-direction: column; gap: 6px; padding: 10px 14px; font-size: 0.85em; }
 
     /* Buttons: stack full width */
     .actions { flex-direction: column; }

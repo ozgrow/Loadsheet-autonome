@@ -1,5 +1,5 @@
 // --- Version ---
-var APP_VERSION = "1.5.0";
+var APP_VERSION = "1.6.0";
 
 // --- Storage ---
 var STORAGE_KEY = "loadsheet_manifests";
@@ -56,7 +56,7 @@ function addUld() {
             '<label>ULD N\u00b0 :</label>' +
             '<input type="text" class="uld-number" placeholder="Num\u00e9ro ULD" style="width:180px">' +
             '<label style="margin-left:16px;">Poids (kg) :</label>' +
-            '<input type="number" class="uld-weight" placeholder="Optionnel" style="width:100px" min="0" step="0.1">' +
+            '<input type="number" class="uld-weight" placeholder="Optionnel" style="width:100px" min="0" step="0.1" oninput="updateRecap()">' +
             '<button class="btn btn-danger" onclick="removeUld(' + i + ')">Supprimer ULD</button>' +
         '</div>' +
         '<table><thead><tr>' +
@@ -80,17 +80,17 @@ function addRow(uldIndex) {
     }
     var tr = document.createElement('tr');
     tr.innerHTML =
-        '<td><input type="text" class="lta-input" value="' + defaultLta + '" placeholder="LTA"></td>' +
+        '<td><input type="text" class="lta-input" value="' + defaultLta + '" placeholder="LTA" oninput="updateRecap()"></td>' +
         '<td><input type="text" class="dossier-input" placeholder="Dossier"></td>' +
         '<td><input type="number" class="colis-input" min="0" value="0" onchange="updateTotals(' + uldIndex + ')" oninput="updateTotals(' + uldIndex + ')"></td>' +
-        '<td><select class="dgr-input"><option value="N">N</option><option value="O">O</option></select></td>' +
+        '<td><select class="dgr-input" onchange="updateRecap()"><option value="N">N</option><option value="O">O</option></select></td>' +
         '<td><input type="text" class="comment-input" placeholder="Commentaire"></td>' +
         '<td><button class="btn btn-danger" onclick="removeRow(this,' + uldIndex + ')">x</button></td>';
     tbody.appendChild(tr);
 }
 
 function removeRow(btn, i) { btn.closest('tr').remove(); updateTotals(i); }
-function removeUld(i) { var el = document.getElementById('uld-' + i); if (el) el.remove(); }
+function removeUld(i) { var el = document.getElementById('uld-' + i); if (el) el.remove(); updateRecap(); }
 
 function updateTotals(i) {
     var block = document.getElementById('uld-' + i);
@@ -98,6 +98,31 @@ function updateTotals(i) {
     var total = 0;
     block.querySelectorAll('.colis-input').forEach(function(inp) { total += parseInt(inp.value) || 0; });
     block.querySelector('.total-colis').textContent = total;
+    updateRecap();
+}
+
+function updateRecap() {
+    var blocks = document.querySelectorAll('.uld-block');
+    var nbUld = blocks.length;
+    var totalColis = 0;
+    var totalWeight = 0;
+    var hasWeight = false;
+    var ltaSet = {};
+    var hasDgr = false;
+    blocks.forEach(function(block) {
+        block.querySelectorAll('.colis-input').forEach(function(inp) { totalColis += parseInt(inp.value) || 0; });
+        var w = parseFloat(block.querySelector('.uld-weight') ? block.querySelector('.uld-weight').value : '');
+        if (!isNaN(w) && w > 0) { totalWeight += w; hasWeight = true; }
+        block.querySelectorAll('.lta-input').forEach(function(inp) { if (inp.value.trim()) ltaSet[inp.value.trim()] = true; });
+        block.querySelectorAll('.dgr-input').forEach(function(sel) { if (sel.value === 'O') hasDgr = true; });
+    });
+    var ltas = Object.keys(ltaSet);
+    var html = '<span class="recap-item">ULD : <span class="recap-value">' + nbUld + '</span></span>';
+    html += '<span class="recap-item">Colis : <span class="recap-value">' + totalColis + '</span></span>';
+    if (hasWeight) html += '<span class="recap-item">Poids : <span class="recap-value">' + totalWeight + ' kg</span></span>';
+    html += '<span class="recap-item">LTA : <span class="recap-value">' + (ltas.length > 0 ? ltas.join(', ') : '-') + '</span></span>';
+    if (hasDgr) html += '<span class="recap-item recap-dgr">DGR : OUI</span>';
+    document.getElementById('liveRecap').innerHTML = html;
 }
 
 function showGenerateSection() {
@@ -214,7 +239,7 @@ function loadManifest(id) {
             '<div class="uld-header"><label>ULD N\u00b0 :</label>' +
             '<input type="text" class="uld-number" placeholder="Num\u00e9ro ULD" style="width:180px" value="' + (uldData.uldNumber || uldData.pmcNumber || '') + '">' +
             '<label style="margin-left:16px;">Poids (kg) :</label>' +
-            '<input type="number" class="uld-weight" placeholder="Optionnel" style="width:100px" min="0" step="0.1" value="' + (uldData.weight || '') + '">' +
+            '<input type="number" class="uld-weight" placeholder="Optionnel" style="width:100px" min="0" step="0.1" oninput="updateRecap()" value="' + (uldData.weight || '') + '">' +
             '<button class="btn btn-danger" onclick="removeUld(' + i + ')">Supprimer ULD</button></div>' +
             '<table><thead><tr><th style="width:140px">LTA</th><th>Dossier</th><th style="width:100px">Nb Colis</th><th style="width:80px">DGR</th><th>Commentaire</th><th style="width:50px"></th></tr></thead><tbody class="uld-rows"></tbody></table>' +
             '<div class="uld-totals">Total colis : <span class="total-colis">0</span></div>' +
@@ -224,16 +249,21 @@ function loadManifest(id) {
         uldData.rows.forEach(function(r) {
             var tr = document.createElement('tr');
             tr.innerHTML =
-                '<td><input type="text" class="lta-input" value="' + (r.lta || '') + '"></td>' +
+                '<td><input type="text" class="lta-input" value="' + (r.lta || '') + '" oninput="updateRecap()"></td>' +
                 '<td><input type="text" class="dossier-input" value="' + (r.dossier || '') + '"></td>' +
                 '<td><input type="number" class="colis-input" min="0" value="' + (r.colis || 0) + '" onchange="updateTotals(' + i + ')" oninput="updateTotals(' + i + ')"></td>' +
-                '<td><select class="dgr-input"><option value="N"' + (r.dgr === 'N' ? ' selected' : '') + '>N</option><option value="O"' + (r.dgr === 'O' ? ' selected' : '') + '>O</option></select></td>' +
+                '<td><select class="dgr-input" onchange="updateRecap()"><option value="N"' + (r.dgr === 'N' ? ' selected' : '') + '>N</option><option value="O"' + (r.dgr === 'O' ? ' selected' : '') + '>O</option></select></td>' +
                 '<td><input type="text" class="comment-input" value="' + (r.comment || '') + '"></td>' +
                 '<td><button class="btn btn-danger" onclick="removeRow(this,' + i + ')">x</button></td>';
             tbody.appendChild(tr);
         });
         updateTotals(i);
     });
+    updateRecap();
+    // Si le manifeste avait des destinataires, afficher la section envoi
+    if (data.recipients || data.cc) {
+        document.getElementById('generateSection').style.display = 'block';
+    }
 }
 
 function refreshSavedList() {
