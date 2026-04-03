@@ -42,56 +42,56 @@
         <label for="loginPass">Mot de passe</label>
         <input type="password" id="loginPass" required autocomplete="current-password" placeholder="Mot de passe" autofocus>
         <div id="loginError" class="login-error"></div>
-        <button type="submit" id="loginBtn" class="btn btn-primary" style="width:100%;margin-top:10px;">Se connecter</button>
-        <div style="text-align:center;margin-top:15px;color:#a0aec0;font-size:0.75em;" id="loginVersion"></div>
+        <button type="submit" id="loginBtn" class="btn btn-primary btn-full">Se connecter</button>
+        <div class="version-label" id="loginVersion"></div>
     </form>
 </div>
 
 <!-- APP SCREEN -->
 <div id="appScreen">
 <div class="container">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <div>
-            <h1 style="margin-bottom:2px;">Loadsheet</h1>
-            <small style="color:#718096;">ATH - Air Terminal Handling - Paris Roissy</small>
+    <div class="app-topbar">
+        <div class="app-topbar-title">
+            <h1>Loadsheet</h1>
+            <small class="text-muted">ATH - Air Terminal Handling - Paris Roissy</small>
         </div>
-        <div style="display:flex;align-items:center;gap:12px;">
-            <span id="appVersion" style="font-size:0.75em;color:#a0aec0;"></span>
-            <button class="btn btn-primary" onclick="newManifest()" style="font-size:0.8em;">Nouveau manifeste</button>
-            <button class="btn btn-secondary" onclick="logout()" style="font-size:0.8em;">Deconnexion</button>
+        <div class="app-topbar-actions">
+            <span id="appVersion" class="version-label"></span>
+            <button class="btn btn-primary btn-sm" onclick="newManifest()">Nouveau manifeste</button>
+            <button class="btn btn-secondary btn-sm" onclick="logout()">Deconnexion</button>
         </div>
     </div>
 
     <!-- Manifest Header -->
     <div class="manifest-header">
-        <div style="display:flex;align-items:flex-start;gap:15px;flex-wrap:wrap;width:100%;">
-            <div>
-                <span style="color:#718096">Manifeste :</span>
+        <div class="manifest-fields">
+            <div class="manifest-id-row">
+                <span class="text-muted">Manifeste :</span>
                 <span class="manifest-id" id="manifestId"></span>
                 <span class="status status-draft" id="manifestStatus">Brouillon</span>
             </div>
-            <div style="flex:1;min-width:150px;">
-                <label style="color:#718096;font-size:0.85em;display:block;">Client :</label>
-                <input type="text" id="clientName" placeholder="Nom du client" style="padding:6px 10px;border:1px solid #cbd5e0;border-radius:4px;font-size:0.95em;width:100%;max-width:250px;">
+            <div class="field-group">
+                <label class="field-label">Client :</label>
+                <input type="text" id="clientName" class="field-input" placeholder="Nom du client">
             </div>
-            <div style="min-width:120px;">
-                <label style="color:#718096;font-size:0.85em;display:block;">Agent * :</label>
-                <input type="text" id="agentName" placeholder="Nom agent" required style="padding:6px 10px;border:1px solid #cbd5e0;border-radius:4px;font-size:0.95em;width:100%;max-width:180px;">
+            <div class="field-group field-agent">
+                <label class="field-label">Agent * :</label>
+                <input type="text" id="agentName" class="field-input" placeholder="Nom agent" required>
             </div>
-            <div style="min-width:80px;">
-                <label style="color:#718096;font-size:0.85em;display:block;">Dest * :</label>
-                <input type="text" id="destAirport" placeholder="CDG" required maxlength="3" style="padding:6px 10px;border:1px solid #cbd5e0;border-radius:4px;font-size:0.95em;width:80px;text-transform:uppercase;">
+            <div class="field-group field-dest">
+                <label class="field-label">Dest * :</label>
+                <input type="text" id="destAirport" class="field-input field-input-short" placeholder="CDG" required maxlength="3">
             </div>
         </div>
     </div>
 
     <!-- Saved Manifests -->
     <div id="savedManifestsSection" class="saved-section">
-        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleSavedManifests()">
-            <h3 style="margin:0;">Manifestes enregistres (<span id="savedCount">0</span>)</h3>
-            <span id="savedToggle" style="font-size:0.8em;color:#718096;">Afficher</span>
+        <div class="saved-header" onclick="toggleSavedManifests()">
+            <h3>Manifestes enregistres (<span id="savedCount">0</span>)</h3>
+            <span id="savedToggle" class="text-muted btn-sm">Afficher</span>
         </div>
-        <div id="savedManifestsList" style="display:none;margin-top:10px;"></div>
+        <div id="savedManifestsList" class="saved-list"></div>
     </div>
 
     <!-- ULD Container -->
@@ -110,7 +110,7 @@
         <label for="recipients">Destinataires (A) :</label>
         <input type="text" id="recipients" placeholder="email1@example.com, email2@example.com">
         <label for="cc">CC :</label>
-        <input type="text" id="cc" placeholder="CC supplementaires (le CC par defaut est configure cote serveur)">
+        <input type="text" id="cc" placeholder="CC supplementaires (CC par defaut cote serveur)">
         <div class="actions">
             <button class="btn btn-success" onclick="generatePdf()">Generer le PDF</button>
             <button class="btn btn-primary" id="sendEmailBtn" onclick="sendEmail()">Envoyer par email</button>
