@@ -79,8 +79,17 @@ function isLoggedIn() {
   }
 }
 
-function setSession() {
-  sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({ expiry: Date.now() + SESSION_DURATION_MS }));
+function setSession(jwtToken) {
+  var data = { expiry: Date.now() + SESSION_DURATION_MS };
+  if (jwtToken) data.jwt = jwtToken;
+  sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(data));
+}
+
+function getJwt() {
+  try {
+    var data = JSON.parse(sessionStorage.getItem(AUTH_SESSION_KEY));
+    return data && data.jwt ? data.jwt : null;
+  } catch (e) { return null; }
 }
 
 function logout() {
@@ -156,7 +165,20 @@ async function initAuth() {
     const hash = await sha256(password);
 
     if (hash === VALID_PASSWORD_HASH) {
-      setSession();
+      // Also get JWT from backend for API calls
+      var jwtToken = null;
+      try {
+        var res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: "loadsheet", password: password })
+        });
+        if (res.ok) {
+          var d = await res.json();
+          jwtToken = d.token;
+        }
+      } catch (e) { /* backend not available, OK for local dev */ }
+      setSession(jwtToken);
       showApp();
     } else {
       errEl.textContent = "Mot de passe incorrect.";

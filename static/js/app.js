@@ -1,5 +1,5 @@
 // --- Version ---
-var APP_VERSION = "1.3.0";
+var APP_VERSION = "1.4.0";
 
 // --- Storage ---
 var STORAGE_KEY = "loadsheet_manifests";
@@ -412,4 +412,81 @@ function generatePdf() {
 
     var url = URL.createObjectURL(doc.output('blob'));
     window.open(url, '_blank');
+}
+
+// ============================================
+// EMAIL SENDING
+// ============================================
+async function sendEmail() {
+    if (!validateRequired()) return;
+    var data = collectData();
+    if (data.ulds.length === 0) { alert('Rien a envoyer.'); return; }
+    if (!data.recipients) { alert('Veuillez renseigner au moins un destinataire.'); return; }
+
+    var jwt = typeof getJwt === 'function' ? getJwt() : null;
+    if (!jwt) { alert('Session expiree. Veuillez vous reconnecter.'); logout(); return; }
+
+    var btn = document.getElementById('sendEmailBtn');
+    btn.disabled = true;
+    btn.textContent = 'Envoi en cours...';
+
+    // Build HTML email body
+    var allLtas = getAllLtas(data).join(', ') || '-';
+    var grandTotal = data.ulds.reduce(function(s, u) { return s + u.totalColis; }, 0);
+
+    var html = '<div style="font-family:Arial,sans-serif;max-width:700px;">';
+    html += '<h2 style="color:#1a3a5c;">Loadsheet - ' + data.manifestId + '</h2>';
+    html += '<p><strong>Client :</strong> ' + (data.client || '-') + ' | <strong>Dest :</strong> ' + data.destAirport + ' | <strong>Agent :</strong> ' + data.agent + '</p>';
+    html += '<p><strong>Date :</strong> ' + data.date + ' | <strong>LTA :</strong> ' + allLtas + '</p>';
+    html += '<hr style="border-color:#1a3a5c;">';
+
+    // Summary table
+    html += '<h3 style="color:#1a3a5c;">Recapitulatif (' + data.ulds.length + ' ULD - ' + grandTotal + ' colis)</h3>';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:14px;">';
+    html += '<tr style="background:#1a3a5c;color:#fff;"><th style="padding:8px;text-align:left;">ULD</th><th>LTA(s)</th><th>Nb Colis</th><th>DGR</th></tr>';
+    data.ulds.forEach(function(u, idx) {
+        var ltaSet = {};
+        u.rows.forEach(function(r) { if (r.lta) ltaSet[r.lta] = true; });
+        var bg = idx % 2 === 0 ? '#f5f7fa' : '#fff';
+        var hasDgr = u.rows.some(function(r) { return r.dgr === 'O'; });
+        html += '<tr style="background:' + bg + ';"><td style="padding:6px 8px;">' + u.uldNumber + '</td><td>' + Object.keys(ltaSet).join(', ') + '</td><td style="text-align:center;">' + u.totalColis + '</td><td style="text-align:center;' + (hasDgr ? 'color:red;font-weight:bold;' : '') + '">' + (hasDgr ? 'OUI' : 'NON') + '</td></tr>';
+    });
+    html += '<tr style="background:#e2e8f0;font-weight:bold;"><td style="padding:6px 8px;">TOTAL</td><td></td><td style="text-align:center;">' + grandTotal + '</td><td></td></tr>';
+    html += '</table>';
+
+    // Detail per ULD
+    data.ulds.forEach(function(u) {
+        html += '<h3 style="color:#1a3a5c;margin-top:20px;">ULD : ' + u.uldNumber + '</h3>';
+        html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+        html += '<tr style="background:#1a3a5c;color:#fff;"><th style="padding:6px;">LTA</th><th>Dossier</th><th>Colis</th><th>DGR</th><th>Commentaire</th></tr>';
+        u.rows.forEach(function(r, idx) {
+            var bg = idx % 2 === 0 ? '#f5f7fa' : '#fff';
+            html += '<tr style="background:' + bg + ';"><td style="padding:4px 6px;">' + r.lta + '</td><td>' + r.dossier + '</td><td style="text-align:center;">' + r.colis + '</td><td style="text-align:center;' + (r.dgr === 'O' ? 'color:red;font-weight:bold;' : '') + '">' + r.dgr + '</td><td>' + r.comment + '</td></tr>';
+        });
+        html += '<tr style="background:#e2e8f0;font-weight:bold;"><td></td><td>TOTAL</td><td style="text-align:center;">' + u.totalColis + '</td><td></td><td></td></tr>';
+        html += '</table>';
+    });
+
+    html += '<hr style="border-color:#1a3a5c;margin-top:20px;"><p style="font-size:11px;color:#718096;">ATH - Air Terminal Handling - Paris Roissy | v' + APP_VERSION + '</p></div>';
+
+    var subject = 'Loadsheet ' + data.manifestId + ' - ' + data.destAirport + (data.client ? ' - ' + data.client : '');
+
+    try {
+        var res = await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt },
+            body: JSON.stringify({ recipients: data.recipients, cc: data.cc, subject: subject, htmlBody: html })
+        });
+        var result = await res.json();
+        if (res.ok) {
+            alert('Email envoye avec succes !');
+        } else {
+            alert('Erreur: ' + (result.error || 'Echec envoi'));
+        }
+    } catch (err) {
+        alert('Erreur reseau: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Envoyer par email';
+    }
 }
