@@ -1,9 +1,9 @@
 // --- Version ---
-var APP_VERSION = "1.4.1";
+var APP_VERSION = "1.4.2";
 
 // --- Storage ---
 var STORAGE_KEY = "loadsheet_manifests";
-var MAX_SAVED = 20;
+var MAX_SAVED = 50;
 
 // --- State ---
 var manifestId = '';
