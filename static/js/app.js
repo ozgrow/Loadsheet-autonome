@@ -1,5 +1,5 @@
 // --- Version ---
-var APP_VERSION = "1.4.4";
+var APP_VERSION = "1.5.0";
 
 // --- Storage ---
 var STORAGE_KEY = "loadsheet_manifests";
@@ -55,6 +55,8 @@ function addUld() {
         '<div class="uld-header">' +
             '<label>ULD N\u00b0 :</label>' +
             '<input type="text" class="uld-number" placeholder="Num\u00e9ro ULD" style="width:180px">' +
+            '<label style="margin-left:16px;">Poids (kg) :</label>' +
+            '<input type="number" class="uld-weight" placeholder="Optionnel" style="width:100px" min="0" step="0.1">' +
             '<button class="btn btn-danger" onclick="removeUld(' + i + ')">Supprimer ULD</button>' +
         '</div>' +
         '<table><thead><tr>' +
@@ -118,6 +120,7 @@ function collectData() {
     var ulds = [];
     document.querySelectorAll('.uld-block').forEach(function(block) {
         var uldNumber = block.querySelector('.uld-number').value || 'N/A';
+        var uldWeightVal = block.querySelector('.uld-weight') ? parseFloat(block.querySelector('.uld-weight').value) : NaN;
         var rows = [];
         block.querySelectorAll('.uld-rows tr').forEach(function(tr) {
             rows.push({
@@ -129,7 +132,9 @@ function collectData() {
             });
         });
         var totalColis = rows.reduce(function(s, r) { return s + r.colis; }, 0);
-        ulds.push({ uldNumber: uldNumber, rows: rows, totalColis: totalColis });
+        var uldEntry = { uldNumber: uldNumber, rows: rows, totalColis: totalColis };
+        if (!isNaN(uldWeightVal) && uldWeightVal > 0) uldEntry.weight = uldWeightVal;
+        ulds.push(uldEntry);
     });
     return {
         manifestId: manifestId,
@@ -208,6 +213,8 @@ function loadManifest(id) {
         div.innerHTML =
             '<div class="uld-header"><label>ULD N\u00b0 :</label>' +
             '<input type="text" class="uld-number" placeholder="Num\u00e9ro ULD" style="width:180px" value="' + (uldData.uldNumber || uldData.pmcNumber || '') + '">' +
+            '<label style="margin-left:16px;">Poids (kg) :</label>' +
+            '<input type="number" class="uld-weight" placeholder="Optionnel" style="width:100px" min="0" step="0.1" value="' + (uldData.weight || '') + '">' +
             '<button class="btn btn-danger" onclick="removeUld(' + i + ')">Supprimer ULD</button></div>' +
             '<table><thead><tr><th style="width:140px">LTA</th><th>Dossier</th><th style="width:100px">Nb Colis</th><th style="width:80px">DGR</th><th>Commentaire</th><th style="width:50px"></th></tr></thead><tbody class="uld-rows"></tbody></table>' +
             '<div class="uld-totals">Total colis : <span class="total-colis">0</span></div>' +
@@ -342,15 +349,24 @@ function buildPdf(data) {
 
     // PAGE 1 : Recap
     var startY = drawHeader('Recapitulatif Manifeste');
-    var summaryHead = [['ULD', 'LTA(s)', 'Nb Colis', 'DGR']];
+    var hasAnyWeight = data.ulds.some(function(u) { return u.weight > 0; });
+    var summaryHead = hasAnyWeight ? [['ULD', 'LTA(s)', 'Nb Colis', 'Poids (kg)', 'DGR']] : [['ULD', 'LTA(s)', 'Nb Colis', 'DGR']];
     var summaryBody = data.ulds.map(function(u) {
         var ltaSet = {};
         u.rows.forEach(function(r) { if (r.lta) ltaSet[r.lta] = true; });
         var hasDgr = u.rows.some(function(r) { return r.dgr === 'O'; }) ? 'OUI' : 'NON';
+        if (hasAnyWeight) {
+            return [u.uldNumber, Object.keys(ltaSet).join(', '), String(u.totalColis), u.weight ? String(u.weight) : '-', hasDgr];
+        }
         return [u.uldNumber, Object.keys(ltaSet).join(', '), String(u.totalColis), hasDgr];
     });
     var grandTotal = data.ulds.reduce(function(s, p) { return s + p.totalColis; }, 0);
-    summaryBody.push(['TOTAL', '', String(grandTotal), '']);
+    var grandWeight = data.ulds.reduce(function(s, u) { return s + (u.weight || 0); }, 0);
+    if (hasAnyWeight) {
+        summaryBody.push(['TOTAL', '', String(grandTotal), String(grandWeight), '']);
+    } else {
+        summaryBody.push(['TOTAL', '', String(grandTotal), '']);
+    }
 
     doc.autoTable({
         startY: startY,
@@ -373,8 +389,9 @@ function buildPdf(data) {
 
         var ltaSet = {};
         u.rows.forEach(function(r) { if (r.lta) ltaSet[r.lta] = true; });
+        var infoBoxH = u.weight > 0 ? 16 : 10;
         doc.setFillColor(240, 244, 248);
-        doc.roundedRect(margin, y, pageW - margin * 2, 10, 2, 2, 'F');
+        doc.roundedRect(margin, y, pageW - margin * 2, infoBoxH, 2, 2, 'F');
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
         doc.setTextColor(26, 58, 92);
@@ -382,7 +399,15 @@ function buildPdf(data) {
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(51, 51, 51);
         doc.text(Object.keys(ltaSet).join(', ') || 'N/A', margin + 42, y + 7);
-        y += 14;
+        if (u.weight > 0) {
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(26, 58, 92);
+            doc.text('Poids :', margin + 4, y + 13);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(51, 51, 51);
+            doc.text(String(u.weight) + ' kg', margin + 22, y + 13);
+        }
+        y += infoBoxH + 4;
 
         var detailHead = [['LTA', 'Dossier', 'Nb Colis', 'DGR', 'Commentaire']];
         var detailBody = u.rows.map(function(r) { return [r.lta, r.dossier, String(r.colis), r.dgr, r.comment]; });
@@ -451,21 +476,35 @@ async function sendEmail() {
 
     // Summary table
     html += '<h3 style="color:#1a3a5c;">Recapitulatif (' + data.ulds.length + ' ULD - ' + grandTotal + ' colis)</h3>';
+    var emailHasWeight = data.ulds.some(function(u) { return u.weight > 0; });
     html += '<table style="width:100%;border-collapse:collapse;font-size:14px;">';
-    html += '<tr style="background:#1a3a5c;color:#fff;"><th style="padding:8px;text-align:left;">ULD</th><th>LTA(s)</th><th>Nb Colis</th><th>DGR</th></tr>';
+    if (emailHasWeight) {
+        html += '<tr style="background:#1a3a5c;color:#fff;"><th style="padding:8px;text-align:left;">ULD</th><th>LTA(s)</th><th>Nb Colis</th><th>Poids (kg)</th><th>DGR</th></tr>';
+    } else {
+        html += '<tr style="background:#1a3a5c;color:#fff;"><th style="padding:8px;text-align:left;">ULD</th><th>LTA(s)</th><th>Nb Colis</th><th>DGR</th></tr>';
+    }
     data.ulds.forEach(function(u, idx) {
         var ltaSet = {};
         u.rows.forEach(function(r) { if (r.lta) ltaSet[r.lta] = true; });
         var bg = idx % 2 === 0 ? '#f5f7fa' : '#fff';
         var hasDgr = u.rows.some(function(r) { return r.dgr === 'O'; });
-        html += '<tr style="background:' + bg + ';"><td style="padding:6px 8px;">' + u.uldNumber + '</td><td>' + Object.keys(ltaSet).join(', ') + '</td><td style="text-align:center;">' + u.totalColis + '</td><td style="text-align:center;' + (hasDgr ? 'color:red;font-weight:bold;' : '') + '">' + (hasDgr ? 'OUI' : 'NON') + '</td></tr>';
+        html += '<tr style="background:' + bg + ';"><td style="padding:6px 8px;">' + u.uldNumber + '</td><td>' + Object.keys(ltaSet).join(', ') + '</td><td style="text-align:center;">' + u.totalColis + '</td>';
+        if (emailHasWeight) html += '<td style="text-align:center;">' + (u.weight ? u.weight : '-') + '</td>';
+        html += '<td style="text-align:center;' + (hasDgr ? 'color:red;font-weight:bold;' : '') + '">' + (hasDgr ? 'OUI' : 'NON') + '</td></tr>';
     });
-    html += '<tr style="background:#e2e8f0;font-weight:bold;"><td style="padding:6px 8px;">TOTAL</td><td></td><td style="text-align:center;">' + grandTotal + '</td><td></td></tr>';
+    var emailGrandWeight = data.ulds.reduce(function(s, u) { return s + (u.weight || 0); }, 0);
+    if (emailHasWeight) {
+        html += '<tr style="background:#e2e8f0;font-weight:bold;"><td style="padding:6px 8px;">TOTAL</td><td></td><td style="text-align:center;">' + grandTotal + '</td><td style="text-align:center;">' + emailGrandWeight + '</td><td></td></tr>';
+    } else {
+        html += '<tr style="background:#e2e8f0;font-weight:bold;"><td style="padding:6px 8px;">TOTAL</td><td></td><td style="text-align:center;">' + grandTotal + '</td><td></td></tr>';
+    }
     html += '</table>';
 
     // Detail per ULD
     data.ulds.forEach(function(u) {
-        html += '<h3 style="color:#1a3a5c;margin-top:20px;">ULD : ' + u.uldNumber + '</h3>';
+        var uldTitle = 'ULD : ' + u.uldNumber;
+        if (u.weight > 0) uldTitle += ' — ' + u.weight + ' kg';
+        html += '<h3 style="color:#1a3a5c;margin-top:20px;">' + uldTitle + '</h3>';
         html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
         html += '<tr style="background:#1a3a5c;color:#fff;"><th style="padding:6px;">LTA</th><th>Dossier</th><th>Colis</th><th>DGR</th><th>Commentaire</th></tr>';
         u.rows.forEach(function(r, idx) {
