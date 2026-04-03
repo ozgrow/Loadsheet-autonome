@@ -9,8 +9,28 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="login-screen">
+    <form id="loginForm" class="login-box">
+        <div class="login-logo">LOADSHEET</div>
+        <h2>Connexion</h2>
+        <label for="loginUser">Identifiant</label>
+        <input type="text" id="loginUser" required autocomplete="username" placeholder="Identifiant">
+        <label for="loginPass">Mot de passe</label>
+        <input type="password" id="loginPass" required autocomplete="current-password" placeholder="Mot de passe">
+        <div id="loginError" class="login-error"></div>
+        <button type="submit" id="loginBtn" class="btn btn-primary" style="width:100%;margin-top:10px;">Se connecter</button>
+    </form>
+</div>
+
+<!-- APP SCREEN -->
+<div id="appScreen" style="display:none">
 <div class="container">
-    <h1>Loadsheet Autonome</h1>
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h1>Loadsheet Autonome</h1>
+        <button class="btn btn-secondary" onclick="logout()" style="font-size:0.8em;">Déconnexion</button>
+    </div>
 
     <!-- Manifest Header -->
     <div class="manifest-header">
@@ -44,7 +64,9 @@
         </div>
     </div>
 </div>
+</div>
 
+<script src="static/js/auth.js"></script>
 <script src="static/js/app.js"></script>
 </body>
 </html>

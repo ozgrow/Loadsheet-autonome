@@ -144,3 +144,64 @@ td input[type="number"] { width: 80px; }
     text-align: right;
     padding: 6px 10px;
 }
+
+/* Login Screen */
+.login-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, #1a3a5c 0%, #2c5282 100%);
+    z-index: 1000;
+}
+
+.login-box {
+    background: #fff;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    width: 100%;
+    max-width: 380px;
+}
+
+.login-box h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.login-box label {
+    font-weight: 600;
+    display: block;
+    margin-bottom: 4px;
+    margin-top: 12px;
+}
+
+.login-box input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    font-size: 1em;
+}
+
+.login-logo {
+    text-align: center;
+    background: #2c5282;
+    color: #fff;
+    padding: 10px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 1.2em;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+}
+
+.login-error {
+    color: #e53e3e;
+    font-size: 0.9em;
+    margin-top: 8px;
+    text-align: center;
+    min-height: 1.2em;
+}

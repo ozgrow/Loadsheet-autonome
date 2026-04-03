@@ -1,11 +1,6 @@
-__pycache__/
-*.py[cod]
-*.egg-info/
-dist/
-build/
+node_modules/
 .env
-.venv/
-venv/
 *.log
 .idea/
 .vscode/
+api/local.settings.json
