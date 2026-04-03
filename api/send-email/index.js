@@ -51,13 +51,23 @@ module.exports = async function (context, req) {
   var ccList = body.cc ? body.cc.split(",").map(function(e) { return e.trim(); }).filter(Boolean).join(", ") : "";
 
   try {
-    var info = await transporter.sendMail({
+    var mailOptions = {
       from: fromAddr,
       to: toList,
       cc: ccList || undefined,
       subject: body.subject,
       html: body.htmlBody
-    });
+    };
+
+    if (body.pdfBase64 && body.pdfFilename) {
+      mailOptions.attachments = [{
+        filename: body.pdfFilename,
+        content: Buffer.from(body.pdfBase64, 'base64'),
+        contentType: 'application/pdf'
+      }];
+    }
+
+    var info = await transporter.sendMail(mailOptions);
 
     context.res = {
       status: 200,

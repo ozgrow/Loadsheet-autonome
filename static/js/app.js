@@ -276,13 +276,8 @@ function drawAthLogo(doc, x, y) {
     }
 }
 
-function generatePdf() {
-    if (!validateRequired()) return;
-
+function buildPdf(data) {
     var jsPDF = window.jspdf.jsPDF;
-    var data = collectData();
-    if (data.ulds.length === 0) { alert('Veuillez ajouter au moins une ULD.'); return; }
-
     var doc = new jsPDF('p', 'mm', 'a4');
     var pageW = doc.internal.pageSize.getWidth();
     var pageH = doc.internal.pageSize.getHeight();
@@ -406,6 +401,16 @@ function generatePdf() {
         drawFooter(idx + 2);
     });
 
+    return doc;
+}
+
+function generatePdf() {
+    if (!validateRequired()) return;
+    var data = collectData();
+    if (data.ulds.length === 0) { alert('Veuillez ajouter au moins une ULD.'); return; }
+
+    var doc = buildPdf(data);
+
     document.getElementById('manifestStatus').textContent = 'Genere';
     document.getElementById('manifestStatus').className = 'status status-generated';
     saveManifest();
@@ -471,11 +476,16 @@ async function sendEmail() {
 
     var subject = 'Loadsheet ' + data.manifestId + ' - ' + data.destAirport + (data.client ? ' - ' + data.client : '');
 
+    // Generate PDF and convert to base64
+    var pdfDoc = buildPdf(data);
+    var pdfBase64 = pdfDoc.output('datauristring').split(',')[1];
+    var pdfFilename = 'Loadsheet_' + data.manifestId + '_' + data.destAirport + '.pdf';
+
     try {
         var res = await fetch('/api/send-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-auth-token': jwt },
-            body: JSON.stringify({ recipients: data.recipients, cc: data.cc, subject: subject, htmlBody: html, _token: jwt })
+            body: JSON.stringify({ recipients: data.recipients, cc: data.cc, subject: subject, htmlBody: html, _token: jwt, pdfBase64: pdfBase64, pdfFilename: pdfFilename })
         });
         var result = await res.json();
         if (res.ok) {
