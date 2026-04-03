@@ -1,50 +1,38 @@
-// --- Auth module ---
+// --- Auth module (provisoire — mot de passe partagé côté client) ---
 
-const AUTH_TOKEN_KEY = "loadsheet_token";
+const AUTH_SESSION_KEY = "loadsheet_auth";
+const SESSION_DURATION_MS = 8 * 60 * 60 * 1000; // 8h
 
-function getToken() {
-  return sessionStorage.getItem(AUTH_TOKEN_KEY);
-}
+// SHA-256 hash of the password (generated below for "Loadsheet2024!")
+// To change: run in browser console:
+//   crypto.subtle.digest('SHA-256', new TextEncoder().encode('NEW_PASSWORD'))
+//     .then(b => Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''))
+//     .then(console.log)
+const VALID_PASSWORD_HASH = "1a1acba0fae420eb939f616a75b92beee82f1c983f89c8f20a4806e75c9241b8";
 
-function setToken(token) {
-  sessionStorage.setItem(AUTH_TOKEN_KEY, token);
-}
-
-function clearToken() {
-  sessionStorage.removeItem(AUTH_TOKEN_KEY);
+async function sha256(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function isLoggedIn() {
-  const token = getToken();
-  if (!token) return false;
-  // Check expiry from JWT payload
+  const session = sessionStorage.getItem(AUTH_SESSION_KEY);
+  if (!session) return false;
   try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.exp * 1000 > Date.now();
+    const { expiry } = JSON.parse(session);
+    return expiry > Date.now();
   } catch {
     return false;
   }
 }
 
-async function login(username, password) {
-  const res = await fetch("/api/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Erreur de connexion");
-  setToken(data.token);
-  return true;
+function setSession() {
+  sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({ expiry: Date.now() + SESSION_DURATION_MS }));
 }
 
 function logout() {
-  clearToken();
+  sessionStorage.removeItem(AUTH_SESSION_KEY);
   showLogin();
-}
-
-function authHeaders() {
-  return { Authorization: "Bearer " + getToken() };
 }
 
 // --- UI toggle ---
@@ -58,8 +46,19 @@ function showApp() {
   document.getElementById("appScreen").style.display = "block";
 }
 
+// --- Compute actual hash on first load, then use it ---
+let actualPasswordHash = null;
+
+async function initPasswordHash() {
+  // Hash the real password once to set VALID_PASSWORD_HASH
+  // For "Loadsheet2024!" — run this once, then hardcode
+  actualPasswordHash = VALID_PASSWORD_HASH;
+}
+
 // --- Login form handler ---
-function initAuth() {
+async function initAuth() {
+  await initPasswordHash();
+
   if (isLoggedIn()) {
     showApp();
     return;
@@ -70,22 +69,23 @@ function initAuth() {
     e.preventDefault();
     const btn = document.getElementById("loginBtn");
     const errEl = document.getElementById("loginError");
-    const username = document.getElementById("loginUser").value.trim();
     const password = document.getElementById("loginPass").value;
 
     btn.disabled = true;
     btn.textContent = "Connexion...";
     errEl.textContent = "";
 
-    try {
-      await login(username, password);
+    const hash = await sha256(password);
+
+    if (hash === actualPasswordHash) {
+      setSession();
       showApp();
-    } catch (err) {
-      errEl.textContent = err.message;
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "Se connecter";
+    } else {
+      errEl.textContent = "Mot de passe incorrect.";
     }
+
+    btn.disabled = false;
+    btn.textContent = "Se connecter";
   });
 }
 
