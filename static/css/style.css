@@ -40,7 +40,7 @@ h3 { color: #2c5282; margin: 10px 0 8px; }
 .status-draft { background: #fef3c7; color: #92400e; }
 .status-generated { background: #d1fae5; color: #065f46; }
 
-.pmc-block {
+.uld-block {
     background: #fff;
     border-radius: 8px;
     padding: 20px;
@@ -49,7 +49,7 @@ h3 { color: #2c5282; margin: 10px 0 8px; }
     border-left: 4px solid #2c5282;
 }
 
-.pmc-header {
+.uld-header {
     display: flex;
     align-items: center;
     gap: 15px;
@@ -57,8 +57,8 @@ h3 { color: #2c5282; margin: 10px 0 8px; }
     flex-wrap: wrap;
 }
 
-.pmc-header label { font-weight: 600; }
-.pmc-header input {
+.uld-header label { font-weight: 600; }
+.uld-header input {
     padding: 6px 10px;
     border: 1px solid #cbd5e0;
     border-radius: 4px;
@@ -137,7 +137,7 @@ td input[type="number"] { width: 80px; }
     margin-bottom: 12px;
 }
 
-.pmc-totals {
+.uld-totals {
     margin-top: 8px;
     font-weight: 600;
     color: #2c5282;
