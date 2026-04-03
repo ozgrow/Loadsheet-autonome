@@ -1,73 +1,65 @@
-const jwt = require("jsonwebtoken");
-const { EmailClient } = require("@azure/communication-email");
+var jwt = require("jsonwebtoken");
+var nodemailer = require("nodemailer");
 
 function verifyToken(req) {
-  const auth = req.headers["authorization"] || "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  var auth = req.headers["authorization"] || "";
+  var token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
   if (!token) return null;
-  try {
-    return jwt.verify(token, process.env.JWT_SECRET);
-  } catch {
-    return null;
-  }
+  try { return jwt.verify(token, process.env.JWT_SECRET); }
+  catch (e) { return null; }
 }
 
 module.exports = async function (context, req) {
-  // Auth check
-  const user = verifyToken(req);
+  var user = verifyToken(req);
   if (!user) {
-    context.res = { status: 401, body: { error: "Non autorisé. Veuillez vous connecter." } };
+    context.res = { status: 401, body: { error: "Non autorise." } };
     return;
   }
 
-  const { recipients, cc, subject, htmlBody } = req.body || {};
-
-  if (!recipients || !subject || !htmlBody) {
+  var body = req.body || {};
+  if (!body.recipients || !body.subject || !body.htmlBody) {
     context.res = { status: 400, body: { error: "Champs requis : recipients, subject, htmlBody." } };
     return;
   }
 
-  const connectionString = process.env.ACS_CONNECTION_STRING;
-  const senderAddress = process.env.ACS_SENDER_ADDRESS;
+  var host = process.env.SMTP_HOST;
+  var port = parseInt(process.env.SMTP_PORT) || 587;
+  var smtpUser = process.env.SMTP_USER;
+  var smtpPass = process.env.SMTP_PASS;
+  var fromAddr = process.env.SMTP_FROM;
 
-  if (!connectionString || !senderAddress) {
-    context.res = { status: 500, body: { error: "Configuration ACS manquante." } };
+  if (!host || !smtpUser || !smtpPass || !fromAddr) {
+    context.res = { status: 500, body: { error: "Configuration SMTP manquante." } };
     return;
   }
 
-  // Build recipient list
-  const toRecipients = recipients
-    .split(",")
-    .map((e) => e.trim())
-    .filter(Boolean)
-    .map((address) => ({ address }));
+  var transporter = nodemailer.createTransport({
+    host: host,
+    port: port,
+    secure: false,
+    requireTLS: true,
+    auth: { user: smtpUser, pass: smtpPass }
+  });
 
-  const ccRecipients = cc
-    ? cc.split(",").map((e) => e.trim()).filter(Boolean).map((address) => ({ address }))
-    : [];
+  var toList = body.recipients.split(",").map(function(e) { return e.trim(); }).filter(Boolean).join(", ");
+  var ccList = body.cc ? body.cc.split(",").map(function(e) { return e.trim(); }).filter(Boolean).join(", ") : "";
 
   try {
-    const client = new EmailClient(connectionString);
-
-    const message = {
-      senderAddress,
-      content: { subject, html: htmlBody },
-      recipients: {
-        to: toRecipients,
-        ...(ccRecipients.length > 0 && { cc: ccRecipients }),
-      },
-    };
-
-    const poller = await client.beginSend(message);
-    const result = await poller.pollUntilDone();
+    var info = await transporter.sendMail({
+      from: fromAddr,
+      to: toList,
+      cc: ccList || undefined,
+      subject: body.subject,
+      html: body.htmlBody
+    });
 
     context.res = {
       status: 200,
       headers: { "Content-Type": "application/json" },
-      body: { success: true, messageId: result.id },
+      body: { success: true, messageId: info.messageId }
     };
   } catch (err) {
-    context.log.error("ACS send error:", err.message);
-    context.res = { status: 500, body: { error: "Erreur lors de l'envoi de l'email." } };
+    context.log.error("SMTP error:", err.message);
+    context.res = { status: 500, body: { error: "Erreur envoi email: " + err.message } };
   }
 };
