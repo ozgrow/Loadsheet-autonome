@@ -235,3 +235,55 @@ td input[type="number"] { width: 80px; }
 .saved-item-meta { font-size: 0.8em; color: #718096; }
 
 .saved-item-actions { display: flex; gap: 6px; }
+
+/* ==========================================
+   MOBILE ONLY — max 768px
+   ========================================== */
+@media (max-width: 768px) {
+    body { padding: 8px; }
+
+    h1 { font-size: 1.2em; }
+
+    .container { max-width: 100%; }
+
+    /* Header bar */
+    .manifest-header { padding: 12px; gap: 10px; }
+    .manifest-header .manifest-id { font-size: 1em; }
+
+    /* Manifest header fields stack vertically */
+    .manifest-header > div { flex-direction: column !important; gap: 8px !important; }
+    .manifest-header input { max-width: 100% !important; width: 100% !important; }
+
+    /* ULD blocks */
+    .uld-block { padding: 12px 10px; }
+    .uld-header { gap: 8px; }
+    .uld-header input { width: 100% !important; }
+
+    /* Table: horizontal scroll */
+    .uld-block table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+    .uld-block thead { display: table; width: 100%; table-layout: fixed; }
+    .uld-block tbody { display: table; width: 100%; table-layout: fixed; }
+    .uld-block tr { display: table-row; }
+    .uld-block th, .uld-block td { padding: 5px 4px; font-size: 0.82em; }
+    td input, td select { font-size: 0.85em; padding: 4px 5px; }
+    td input[type="number"] { width: 60px; }
+
+    /* Buttons: full width stack */
+    .actions { flex-direction: column; }
+    .actions .btn { width: 100%; text-align: center; padding: 12px 16px; font-size: 1em; }
+
+    /* Generate section */
+    .generate-section { padding: 12px; }
+
+    /* Saved manifests */
+    .saved-section { padding: 10px 12px; }
+    .saved-item { flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px 8px; }
+    .saved-item-actions { width: 100%; justify-content: flex-end; }
+
+    /* Login */
+    .login-box { padding: 24px 20px; margin: 10px; }
+
+    /* Top bar buttons */
+    #appScreen > .container > div:first-child { flex-direction: column !important; gap: 8px !important; text-align: center; }
+    #appScreen > .container > div:first-child > div { justify-content: center; flex-wrap: wrap; }
+}
