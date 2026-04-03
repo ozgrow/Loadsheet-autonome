@@ -1,9 +1,14 @@
 """Point d'entrée principal de Loadsheet-autonome."""
 
+from flask import Flask, render_template
 
-def main():
-    print("Loadsheet-autonome - Gestion de chargement logistique")
+app = Flask(__name__, template_folder="../templates", static_folder="../static")
+
+
+@app.route("/")
+def index():
+    return render_template("index.html")
 
 
 if __name__ == "__main__":
-    main()
+    app.run(debug=True, port=5000)

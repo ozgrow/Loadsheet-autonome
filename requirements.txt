@@ -1,1 +1,1 @@
-# Dépendances du projet
+flask>=3.0

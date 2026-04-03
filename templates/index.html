@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loadsheet Autonome</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <h1>Loadsheet Autonome</h1>
+
+    <!-- Manifest Header -->
+    <div class="manifest-header">
+        <div>
+            <span style="color:#718096">Manifeste :</span>
+            <span class="manifest-id" id="manifestId"></span>
+        </div>
+        <span class="status status-draft" id="manifestStatus">Brouillon</span>
+    </div>
+
+    <!-- PMC Container -->
+    <div id="pmcContainer"></div>
+
+    <!-- Actions -->
+    <div class="actions">
+        <button class="btn btn-primary" onclick="addPmc()">+ Ajouter une PMC</button>
+        <button class="btn btn-success" onclick="showGenerateSection()">Générer Loadsheet</button>
+    </div>
+
+    <!-- Generate Section -->
+    <div class="generate-section" id="generateSection">
+        <h2>Envoi de la Loadsheet</h2>
+        <label for="recipients">Destinataires (À) :</label>
+        <input type="text" id="recipients" placeholder="email1@example.com, email2@example.com">
+
+        <label for="cc">CC :</label>
+        <input type="text" id="cc" value="valere.simonet@gmail.com">
+
+        <div class="actions">
+            <button class="btn btn-success" onclick="generatePdf()">Générer le PDF</button>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
