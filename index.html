@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loadsheet Autonome</title>
+    <title>Loadsheet - ATH Paris Roissy</title>
     <link rel="stylesheet" href="/static/css/style.css">
-    <!-- Styles critiques inline au cas où le CSS externe ne charge pas -->
     <style>
         #loginScreen {
             display: flex; justify-content: center; align-items: center;
@@ -20,7 +19,9 @@
         .login-box h2 { text-align: center; margin-bottom: 20px; color: #1a3a5c; }
         .login-box label { font-weight: 600; display: block; margin-bottom: 4px; margin-top: 12px; }
         .login-box input { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 1em; box-sizing: border-box; }
-        .login-logo { text-align: center; background: #2c5282; color: #fff; padding: 10px; border-radius: 6px; font-weight: bold; font-size: 1.2em; letter-spacing: 2px; margin-bottom: 20px; }
+        .login-logo { text-align: center; padding: 10px; margin-bottom: 20px; }
+        .login-logo span { font-size: 1.4em; font-weight: bold; color: #1a3a5c; letter-spacing: 2px; }
+        .login-logo small { display: block; font-size: 0.7em; color: #718096; margin-top: 4px; }
         .login-error { color: #e53e3e; font-size: 0.9em; margin-top: 8px; text-align: center; min-height: 1.2em; }
         .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9em; font-weight: 600; }
         .btn-primary { background: #2c5282; color: #fff; }
@@ -30,10 +31,13 @@
 </head>
 <body>
 
-<!-- LOGIN SCREEN (visible par defaut) -->
+<!-- LOGIN SCREEN -->
 <div id="loginScreen">
     <form id="loginForm" class="login-box">
-        <div class="login-logo">LOADSHEET</div>
+        <div class="login-logo">
+            <span>ATH LOADSHEET</span>
+            <small>Air Terminal Handling - Paris Roissy</small>
+        </div>
         <h2>Acces securise</h2>
         <label for="loginPass">Mot de passe</label>
         <input type="password" id="loginPass" required autocomplete="current-password" placeholder="Mot de passe" autofocus>
@@ -46,8 +50,11 @@
 <!-- APP SCREEN -->
 <div id="appScreen">
 <div class="container">
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-        <h1>Loadsheet Autonome</h1>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div>
+            <h1 style="margin-bottom:2px;">Loadsheet</h1>
+            <small style="color:#718096;">ATH - Air Terminal Handling - Paris Roissy</small>
+        </div>
         <div style="display:flex;align-items:center;gap:12px;">
             <span id="appVersion" style="font-size:0.75em;color:#a0aec0;"></span>
             <button class="btn btn-secondary" onclick="logout()" style="font-size:0.8em;">Deconnexion</button>
@@ -56,11 +63,26 @@
 
     <!-- Manifest Header -->
     <div class="manifest-header">
-        <div>
-            <span style="color:#718096">Manifeste :</span>
-            <span class="manifest-id" id="manifestId"></span>
+        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;width:100%;">
+            <div>
+                <span style="color:#718096">Manifeste :</span>
+                <span class="manifest-id" id="manifestId"></span>
+            </div>
+            <div style="flex:1;min-width:200px;">
+                <label style="color:#718096;font-size:0.85em;display:block;">Client :</label>
+                <input type="text" id="clientName" placeholder="Nom du client" style="padding:6px 10px;border:1px solid #cbd5e0;border-radius:4px;font-size:1em;width:100%;max-width:300px;">
+            </div>
+            <span class="status status-draft" id="manifestStatus">Brouillon</span>
         </div>
-        <span class="status status-draft" id="manifestStatus">Brouillon</span>
+    </div>
+
+    <!-- Saved Manifests -->
+    <div id="savedManifestsSection" class="saved-section">
+        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleSavedManifests()">
+            <h3 style="margin:0;">Manifestes enregistres (<span id="savedCount">0</span>)</h3>
+            <span id="savedToggle" style="font-size:0.8em;color:#718096;">Afficher</span>
+        </div>
+        <div id="savedManifestsList" style="display:none;margin-top:10px;"></div>
     </div>
 
     <!-- PMC Container -->
@@ -70,6 +92,7 @@
     <div class="actions">
         <button class="btn btn-primary" onclick="addPmc()">+ Ajouter une PMC</button>
         <button class="btn btn-success" onclick="showGenerateSection()">Generer Loadsheet</button>
+        <button class="btn btn-secondary" onclick="saveManifest()">Sauvegarder</button>
     </div>
 
     <!-- Generate Section -->

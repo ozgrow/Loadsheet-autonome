@@ -205,3 +205,33 @@ td input[type="number"] { width: 80px; }
     text-align: center;
     min-height: 1.2em;
 }
+
+/* Saved manifests */
+.saved-section {
+    background: #fff;
+    border-radius: 8px;
+    padding: 15px 20px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-left: 4px solid #718096;
+}
+
+.saved-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.saved-item:hover { background: #f7fafc; }
+
+.saved-item-info { flex: 1; }
+
+.saved-item-id { font-weight: 600; color: #2c5282; }
+
+.saved-item-meta { font-size: 0.8em; color: #718096; }
+
+.saved-item-actions { display: flex; gap: 6px; }
