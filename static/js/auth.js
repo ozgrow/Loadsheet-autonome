@@ -1,10 +1,14 @@
 // --- Auth module (provisoire — mot de passe partagé côté client) ---
 
 const AUTH_SESSION_KEY = "loadsheet_auth";
+const RATE_LIMIT_KEY = "loadsheet_rl";
 const SESSION_DURATION_MS = 8 * 60 * 60 * 1000; // 8h
+const COOLDOWN_MS = 5000; // 5s entre chaque tentative
+const MAX_ATTEMPTS_PER_HOUR = 100;
+const HOUR_MS = 60 * 60 * 1000;
 
-// SHA-256 hash of the password (generated below for "Loadsheet2024!")
-// To change: run in browser console:
+// SHA-256 hash du mot de passe "Loadsheet2024!"
+// Pour changer : console navigateur →
 //   crypto.subtle.digest('SHA-256', new TextEncoder().encode('NEW_PASSWORD'))
 //     .then(b => Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''))
 //     .then(console.log)
@@ -15,6 +19,55 @@ async function sha256(text) {
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// --- Rate limiting (localStorage pour persister entre onglets/refreshs) ---
+function getRateLimit() {
+  try {
+    const data = JSON.parse(localStorage.getItem(RATE_LIMIT_KEY));
+    if (!data) return { attempts: [], lastAttempt: 0 };
+    return data;
+  } catch {
+    return { attempts: [], lastAttempt: 0 };
+  }
+}
+
+function saveRateLimit(rl) {
+  localStorage.setItem(RATE_LIMIT_KEY, JSON.stringify(rl));
+}
+
+function checkRateLimit() {
+  const now = Date.now();
+  const rl = getRateLimit();
+
+  // Cooldown 5s depuis la dernière tentative
+  const sinceLastAttempt = now - rl.lastAttempt;
+  if (sinceLastAttempt < COOLDOWN_MS) {
+    const wait = Math.ceil((COOLDOWN_MS - sinceLastAttempt) / 1000);
+    return { allowed: false, message: `Patientez ${wait}s avant de réessayer.` };
+  }
+
+  // Max 100 tentatives par heure glissante
+  const oneHourAgo = now - HOUR_MS;
+  const recentAttempts = rl.attempts.filter((t) => t > oneHourAgo);
+  if (recentAttempts.length >= MAX_ATTEMPTS_PER_HOUR) {
+    const oldestRecent = Math.min(...recentAttempts);
+    const unlocksIn = Math.ceil((oldestRecent + HOUR_MS - now) / 60000);
+    return { allowed: false, message: `Trop de tentatives. Réessayez dans ~${unlocksIn} min.` };
+  }
+
+  return { allowed: true };
+}
+
+function recordAttempt() {
+  const now = Date.now();
+  const rl = getRateLimit();
+  const oneHourAgo = now - HOUR_MS;
+  rl.attempts = rl.attempts.filter((t) => t > oneHourAgo);
+  rl.attempts.push(now);
+  rl.lastAttempt = now;
+  saveRateLimit(rl);
+}
+
+// --- Session ---
 function isLoggedIn() {
   const session = sessionStorage.getItem(AUTH_SESSION_KEY);
   if (!session) return false;
@@ -46,46 +99,64 @@ function showApp() {
   document.getElementById("appScreen").style.display = "block";
 }
 
-// --- Compute actual hash on first load, then use it ---
-let actualPasswordHash = null;
+// --- Countdown timer on button ---
+function startCooldownTimer(btn) {
+  const rl = getRateLimit();
+  const remaining = COOLDOWN_MS - (Date.now() - rl.lastAttempt);
+  if (remaining <= 0) return;
 
-async function initPasswordHash() {
-  // Hash the real password once to set VALID_PASSWORD_HASH
-  // For "Loadsheet2024!" — run this once, then hardcode
-  actualPasswordHash = VALID_PASSWORD_HASH;
+  btn.disabled = true;
+  const interval = setInterval(() => {
+    const left = COOLDOWN_MS - (Date.now() - rl.lastAttempt);
+    if (left <= 0) {
+      clearInterval(interval);
+      btn.disabled = false;
+      btn.textContent = "Se connecter";
+      return;
+    }
+    btn.textContent = `Patientez ${Math.ceil(left / 1000)}s...`;
+  }, 250);
 }
 
 // --- Login form handler ---
 async function initAuth() {
-  await initPasswordHash();
-
   if (isLoggedIn()) {
     showApp();
     return;
   }
   showLogin();
 
+  const btn = document.getElementById("loginBtn");
+  // Restore cooldown state on page load
+  startCooldownTimer(btn);
+
   document.getElementById("loginForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const btn = document.getElementById("loginBtn");
     const errEl = document.getElementById("loginError");
     const password = document.getElementById("loginPass").value;
 
+    // Rate limit check
+    const rl = checkRateLimit();
+    if (!rl.allowed) {
+      errEl.textContent = rl.message;
+      return;
+    }
+
     btn.disabled = true;
-    btn.textContent = "Connexion...";
+    btn.textContent = "Vérification...";
     errEl.textContent = "";
+
+    recordAttempt();
 
     const hash = await sha256(password);
 
-    if (hash === actualPasswordHash) {
+    if (hash === VALID_PASSWORD_HASH) {
       setSession();
       showApp();
     } else {
       errEl.textContent = "Mot de passe incorrect.";
+      startCooldownTimer(btn);
     }
-
-    btn.disabled = false;
-    btn.textContent = "Se connecter";
   });
 }
 
