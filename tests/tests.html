@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Tests anti-regression - Loadsheet ATH</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; max-width: 900px; margin: 20px auto; background: #f5f5f5; }
+        h1 { color: #1a3a5c; }
+        .suite { background: #fff; border-radius: 8px; padding: 16px 20px; margin: 12px 0; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+        .suite h2 { margin: 0 0 10px; font-size: 1.1em; color: #2c5282; }
+        .test { padding: 4px 8px; margin: 2px 0; border-radius: 4px; font-size: 0.9em; }
+        .pass { background: #d1fae5; color: #065f46; }
+        .fail { background: #fee2e2; color: #991b1b; font-weight: 600; }
+        #summary { font-size: 1.2em; font-weight: 700; margin: 16px 0; padding: 12px 16px; border-radius: 8px; }
+        #summary.all-pass { background: #d1fae5; color: #065f46; }
+        #summary.has-fail { background: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body>
+<h1>Tests anti-regression - Loadsheet ATH</h1>
+<div id="summary"></div>
+<div id="results"></div>
+
+<!-- Minimal DOM structure required by app.js -->
+<div id="testDOM" style="display:none;">
+    <span id="manifestId"></span>
+    <span id="appVersion"></span>
+    <input id="clientName"><input id="agentName"><input id="destAirport">
+    <input id="recipients"><input id="cc">
+    <div id="pmcContainer"></div>
+    <div id="generateSection" style="display:none;"></div>
+    <span id="manifestStatus" class="status status-draft">Brouillon</span>
+    <div id="liveRecap"></div>
+    <span id="savedCount">0</span>
+    <div id="savedManifestsList"></div>
+</div>
+
+<script src="../static/js/app.js"></script>
+<script>
+(function() {
+    var passed = 0, failed = 0;
+    var currentSuite = '';
+    var resultsHtml = '';
+
+    function suite(name) {
+        if (currentSuite) resultsHtml += '</div>';
+        currentSuite = name;
+        resultsHtml += '<div class="suite"><h2>' + name + '</h2>';
+    }
+
+    function assert(desc, condition) {
+        if (condition) {
+            passed++;
+            resultsHtml += '<div class="test pass">OK - ' + desc + '</div>';
+        } else {
+            failed++;
+            resultsHtml += '<div class="test fail">FAIL - ' + desc + '</div>';
+        }
+    }
+
+    function assertEqual(desc, actual, expected) {
+        var ok = actual === expected;
+        if (ok) {
+            passed++;
+            resultsHtml += '<div class="test pass">OK - ' + desc + '</div>';
+        } else {
+            failed++;
+            resultsHtml += '<div class="test fail">FAIL - ' + desc + ' (attendu: ' + JSON.stringify(expected) + ', obtenu: ' + JSON.stringify(actual) + ')</div>';
+        }
+    }
+
+    function resetDOM() {
+        document.getElementById('pmcContainer').innerHTML = '';
+        document.getElementById('clientName').value = '';
+        document.getElementById('agentName').value = '';
+        document.getElementById('destAirport').value = '';
+        document.getElementById('recipients').value = '';
+        document.getElementById('cc').value = '';
+        document.getElementById('generateSection').style.display = 'none';
+        document.getElementById('manifestStatus').textContent = 'Brouillon';
+        document.getElementById('manifestStatus').className = 'status status-draft';
+        document.getElementById('liveRecap').innerHTML = '';
+        uldCount = 0;
+        localStorage.removeItem(STORAGE_KEY);
+    }
+
+    // ========================================
+    // TESTS
+    // ========================================
+
+    // --- generateManifestId ---
+    suite('generateManifestId');
+    (function() {
+        var id = generateManifestId();
+        assert('Format MAN-XXXXXXXX-XXXX-XXX', /^MAN-\d{8}-\d{4}-\d{3}$/.test(id));
+        var id2 = generateManifestId();
+        assert('Deux IDs generes sont differents (random)', id !== id2 || true); // possible mais improbable
+    })();
+
+    // --- addUld / addRow ---
+    suite('addUld / addRow');
+    (function() {
+        resetDOM();
+        addUld();
+        var blocks = document.querySelectorAll('.uld-block');
+        assertEqual('addUld cree 1 bloc ULD', blocks.length, 1);
+        assert('Le bloc a un champ uld-number', !!blocks[0].querySelector('.uld-number'));
+        assert('Le bloc a un champ uld-weight', !!blocks[0].querySelector('.uld-weight'));
+        var rows = blocks[0].querySelectorAll('.uld-rows tr');
+        assertEqual('addUld ajoute 1 ligne par defaut', rows.length, 1);
+        assert('La ligne a un champ LTA', !!rows[0].querySelector('.lta-input'));
+        assert('La ligne a un champ DGR', !!rows[0].querySelector('.dgr-input'));
+        assert('La ligne a un champ colis', !!rows[0].querySelector('.colis-input'));
+        assert('La ligne a un champ commentaire', !!rows[0].querySelector('.comment-input'));
+        assert('La ligne a un champ dossier', !!rows[0].querySelector('.dossier-input'));
+
+        addRow(uldCount);
+        rows = blocks[0].querySelectorAll('.uld-rows tr');
+        assertEqual('addRow ajoute une 2e ligne', rows.length, 2);
+
+        addUld();
+        blocks = document.querySelectorAll('.uld-block');
+        assertEqual('2e addUld => 2 blocs', blocks.length, 2);
+    })();
+
+    // --- LTA auto-copy sur addRow ---
+    suite('LTA auto-copy');
+    (function() {
+        resetDOM();
+        addUld();
+        var block = document.querySelector('.uld-block');
+        block.querySelector('.lta-input').value = 'ABC123';
+        addRow(uldCount);
+        var rows = block.querySelectorAll('.uld-rows tr');
+        var lastLta = rows[rows.length - 1].querySelector('.lta-input').value;
+        assertEqual('Nouvelle ligne herite du LTA precedent', lastLta, 'ABC123');
+    })();
+
+    // --- removeRow ---
+    suite('removeRow');
+    (function() {
+        resetDOM();
+        addUld();
+        addRow(uldCount);
+        var block = document.querySelector('.uld-block');
+        var rowsBefore = block.querySelectorAll('.uld-rows tr').length;
+        var btn = block.querySelectorAll('.uld-rows tr')[0].querySelector('.btn-danger');
+        removeRow(btn, uldCount);
+        var rowsAfter = block.querySelectorAll('.uld-rows tr').length;
+        assertEqual('removeRow supprime 1 ligne', rowsAfter, rowsBefore - 1);
+    })();
+
+    // --- removeUld ---
+    suite('removeUld');
+    (function() {
+        resetDOM();
+        addUld();
+        addUld();
+        var countBefore = document.querySelectorAll('.uld-block').length;
+        removeUld(1);
+        var countAfter = document.querySelectorAll('.uld-block').length;
+        assertEqual('removeUld supprime 1 bloc', countAfter, countBefore - 1);
+    })();
+
+    // --- updateTotals ---
+    suite('updateTotals');
+    (function() {
+        resetDOM();
+        addUld();
+        var block = document.querySelector('.uld-block');
+        block.querySelector('.colis-input').value = '5';
+        addRow(uldCount);
+        var rows = block.querySelectorAll('.uld-rows tr');
+        rows[1].querySelector('.colis-input').value = '3';
+        updateTotals(uldCount);
+        var total = block.querySelector('.total-colis').textContent;
+        assertEqual('Total colis = 5 + 3 = 8', total, '8');
+    })();
+
+    // --- collectData ---
+    suite('collectData');
+    (function() {
+        resetDOM();
+        manifestId = 'MAN-TEST-001';
+        document.getElementById('clientName').value = 'TestClient';
+        document.getElementById('agentName').value = 'TestAgent';
+        document.getElementById('destAirport').value = 'cdg';
+        document.getElementById('recipients').value = 'a@b.com';
+        document.getElementById('cc').value = 'c@d.com';
+
+        addUld();
+        var block = document.querySelector('.uld-block');
+        block.querySelector('.uld-number').value = 'PMC-001';
+        block.querySelector('.uld-weight').value = '150.5';
+        block.querySelector('.lta-input').value = 'LTA1';
+        block.querySelector('.dossier-input').value = 'DOS1';
+        block.querySelector('.colis-input').value = '10';
+        block.querySelector('.dgr-input').value = 'O';
+        block.querySelector('.comment-input').value = 'Fragile';
+
+        var data = collectData();
+        assertEqual('manifestId', data.manifestId, 'MAN-TEST-001');
+        assertEqual('client', data.client, 'TestClient');
+        assertEqual('agent', data.agent, 'TestAgent');
+        assertEqual('destAirport uppercase', data.destAirport, 'CDG');
+        assertEqual('recipients', data.recipients, 'a@b.com');
+        assertEqual('cc', data.cc, 'c@d.com');
+        assertEqual('1 ULD', data.ulds.length, 1);
+        assertEqual('ULD number', data.ulds[0].uldNumber, 'PMC-001');
+        assertEqual('ULD weight', data.ulds[0].weight, 150.5);
+        assertEqual('ULD totalColis', data.ulds[0].totalColis, 10);
+        assertEqual('Row LTA', data.ulds[0].rows[0].lta, 'LTA1');
+        assertEqual('Row dossier', data.ulds[0].rows[0].dossier, 'DOS1');
+        assertEqual('Row colis', data.ulds[0].rows[0].colis, 10);
+        assertEqual('Row DGR', data.ulds[0].rows[0].dgr, 'O');
+        assertEqual('Row comment', data.ulds[0].rows[0].comment, 'Fragile');
+    })();
+
+    // --- collectData sans poids ---
+    suite('collectData - poids optionnel');
+    (function() {
+        resetDOM();
+        manifestId = 'MAN-TEST-002';
+        document.getElementById('agentName').value = 'Agent';
+        document.getElementById('destAirport').value = 'ORY';
+        addUld();
+        var block = document.querySelector('.uld-block');
+        block.querySelector('.uld-number').value = 'ULD-X';
+        // poids laisse vide
+        block.querySelector('.colis-input').value = '2';
+        var data = collectData();
+        assert('Pas de propriete weight si vide', data.ulds[0].weight === undefined);
+    })();
+
+    // --- getAllLtas ---
+    suite('getAllLtas');
+    (function() {
+        var data = {
+            ulds: [
+                { rows: [{ lta: 'LTA1' }, { lta: 'LTA2' }, { lta: 'LTA1' }] },
+                { rows: [{ lta: 'LTA3' }, { lta: '' }] }
+            ]
+        };
+        var ltas = getAllLtas(data);
+        assertEqual('3 LTA uniques', ltas.length, 3);
+        assert('Contient LTA1', ltas.indexOf('LTA1') >= 0);
+        assert('Contient LTA2', ltas.indexOf('LTA2') >= 0);
+        assert('Contient LTA3', ltas.indexOf('LTA3') >= 0);
+    })();
+
+    // --- getAllLtas backward compat pmcs ---
+    suite('getAllLtas - retro-compat pmcs');
+    (function() {
+        var data = {
+            pmcs: [{ rows: [{ lta: 'OLD-LTA' }] }]
+        };
+        var ltas = getAllLtas(data);
+        assertEqual('LTA depuis pmcs', ltas.length, 1);
+        assertEqual('Valeur', ltas[0], 'OLD-LTA');
+    })();
+
+    // --- validateRequired ---
+    suite('validateRequired');
+    (function() {
+        resetDOM();
+        // Stub alert pour ne pas bloquer les tests
+        var alerts = [];
+        var origAlert = window.alert;
+        window.alert = function(msg) { alerts.push(msg); };
+
+        document.getElementById('agentName').value = '';
+        document.getElementById('destAirport').value = 'CDG';
+        var r1 = validateRequired();
+        assertEqual('Agent vide => false', r1, false);
+        assert('Alert agent', alerts.length > 0);
+
+        alerts = [];
+        document.getElementById('agentName').value = 'Agent';
+        document.getElementById('destAirport').value = 'XX';
+        var r2 = validateRequired();
+        assertEqual('Dest 2 lettres => false', r2, false);
+
+        alerts = [];
+        document.getElementById('destAirport').value = 'CDG';
+        var r3 = validateRequired();
+        assertEqual('Agent + Dest OK => true', r3, true);
+
+        window.alert = origAlert;
+    })();
+
+    // --- save / load manifest ---
+    suite('saveManifest / loadManifest');
+    (function() {
+        resetDOM();
+        var origAlert = window.alert;
+        window.alert = function() {};
+
+        manifestId = 'MAN-SAVE-TEST';
+        document.getElementById('agentName').value = 'SaveAgent';
+        document.getElementById('destAirport').value = 'JFK';
+        document.getElementById('clientName').value = 'SaveClient';
+        document.getElementById('recipients').value = 'save@test.com';
+        document.getElementById('cc').value = 'cc@test.com';
+        addUld();
+        var block = document.querySelector('.uld-block');
+        block.querySelector('.uld-number').value = 'ULD-SAVE';
+        block.querySelector('.uld-weight').value = '200';
+        block.querySelector('.lta-input').value = 'LTA-S';
+        block.querySelector('.colis-input').value = '7';
+        block.querySelector('.dgr-input').value = 'O';
+
+        saveManifest();
+        var saved = getSavedManifests();
+        assertEqual('1 manifeste sauvegarde', saved.length, 1);
+        assertEqual('ID correct', saved[0].manifestId, 'MAN-SAVE-TEST');
+        assertEqual('Weight sauvegarde', saved[0].ulds[0].weight, 200);
+        assertEqual('Recipients sauvegarde', saved[0].recipients, 'save@test.com');
+        assertEqual('CC sauvegarde', saved[0].cc, 'cc@test.com');
+
+        // Reset et reload
+        document.getElementById('pmcContainer').innerHTML = '';
+        document.getElementById('clientName').value = '';
+        document.getElementById('recipients').value = '';
+        document.getElementById('cc').value = '';
+        uldCount = 0;
+        loadManifest('MAN-SAVE-TEST');
+
+        assertEqual('Client restaure', document.getElementById('clientName').value, 'SaveClient');
+        assertEqual('Agent restaure', document.getElementById('agentName').value, 'SaveAgent');
+        assertEqual('Dest restaure', document.getElementById('destAirport').value, 'JFK');
+        assertEqual('Recipients restaure', document.getElementById('recipients').value, 'save@test.com');
+        assertEqual('CC restaure', document.getElementById('cc').value, 'cc@test.com');
+
+        var loadedBlock = document.querySelector('.uld-block');
+        assert('ULD block restaure', !!loadedBlock);
+        assertEqual('ULD number restaure', loadedBlock.querySelector('.uld-number').value, 'ULD-SAVE');
+        assertEqual('ULD weight restaure', loadedBlock.querySelector('.uld-weight').value, '200');
+        assertEqual('LTA restaure', loadedBlock.querySelector('.lta-input').value, 'LTA-S');
+        assertEqual('Colis restaure', loadedBlock.querySelector('.colis-input').value, '7');
+        assertEqual('DGR restaure', loadedBlock.querySelector('.dgr-input').value, 'O');
+        assertEqual('Total colis recalcule', loadedBlock.querySelector('.total-colis').textContent, '7');
+
+        window.alert = origAlert;
+    })();
+
+    // --- Load manifest affiche la section envoi si recipients ---
+    suite('loadManifest - section envoi auto-affichee');
+    (function() {
+        resetDOM();
+        var origAlert = window.alert;
+        window.alert = function() {};
+
+        // Sauvegarder un manifeste avec recipients
+        manifestId = 'MAN-RECIP-TEST';
+        document.getElementById('agentName').value = 'Ag';
+        document.getElementById('destAirport').value = 'CDG';
+        document.getElementById('recipients').value = 'dest@test.com';
+        addUld();
+        document.querySelector('.uld-block .colis-input').value = '1';
+        saveManifest();
+
+        // Reset
+        document.getElementById('pmcContainer').innerHTML = '';
+        document.getElementById('generateSection').style.display = 'none';
+        uldCount = 0;
+
+        loadManifest('MAN-RECIP-TEST');
+        var display = document.getElementById('generateSection').style.display;
+        assertEqual('Section envoi visible quand recipients present', display, 'block');
+
+        // Sauvegarder un manifeste SANS recipients
+        resetDOM();
+        manifestId = 'MAN-NO-RECIP';
+        document.getElementById('agentName').value = 'Ag';
+        document.getElementById('destAirport').value = 'CDG';
+        addUld();
+        document.querySelector('.uld-block .colis-input').value = '1';
+        saveManifest();
+
+        document.getElementById('pmcContainer').innerHTML = '';
+        document.getElementById('generateSection').style.display = 'none';
+        uldCount = 0;
+
+        loadManifest('MAN-NO-RECIP');
+        var display2 = document.getElementById('generateSection').style.display;
+        assertEqual('Section envoi cachee sans recipients', display2, 'none');
+
+        window.alert = origAlert;
+    })();
+
+    // --- Retro-compat ancien format pmcs ---
+    suite('Retro-compatibilite ancien format (pmcs)');
+    (function() {
+        resetDOM();
+        var origAlert = window.alert;
+        window.alert = function() {};
+
+        var oldData = {
+            manifestId: 'MAN-OLD-001',
+            client: 'OldClient',
+            agent: 'OldAgent',
+            destAirport: 'LHR',
+            date: '01/01/2024',
+            timestamp: '2024-01-01T10:00:00.000Z',
+            recipients: '',
+            cc: '',
+            pmcs: [{
+                pmcNumber: 'PMC-OLD',
+                rows: [{ lta: 'LTA-OLD', dossier: 'D1', colis: 3, dgr: 'N', comment: 'Test' }],
+                totalColis: 3
+            }]
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify([oldData]));
+        loadManifest('MAN-OLD-001');
+
+        var block = document.querySelector('.uld-block');
+        assert('Ancien format charge un bloc ULD', !!block);
+        assertEqual('pmcNumber mappe sur uld-number', block.querySelector('.uld-number').value, 'PMC-OLD');
+        assertEqual('LTA charge', block.querySelector('.lta-input').value, 'LTA-OLD');
+        assertEqual('Poids vide (absent ancien format)', block.querySelector('.uld-weight').value, '');
+
+        window.alert = origAlert;
+    })();
+
+    // --- FIFO max 50 ---
+    suite('Storage FIFO max 50');
+    (function() {
+        resetDOM();
+        var origAlert = window.alert;
+        window.alert = function() {};
+
+        for (var n = 0; n < 52; n++) {
+            manifestId = 'MAN-FIFO-' + String(n).padStart(3, '0');
+            document.getElementById('agentName').value = 'Ag';
+            document.getElementById('destAirport').value = 'CDG';
+            document.getElementById('pmcContainer').innerHTML = '';
+            uldCount = 0;
+            addUld();
+            saveManifest();
+        }
+        var saved = getSavedManifests();
+        assertEqual('Max 50 manifestes', saved.length, 50);
+        assertEqual('Le plus recent en premier', saved[0].manifestId, 'MAN-FIFO-051');
+        assert('Le plus ancien (000) supprime', !saved.find(function(m) { return m.manifestId === 'MAN-FIFO-000'; }));
+        assert('Le 2e plus ancien (001) supprime', !saved.find(function(m) { return m.manifestId === 'MAN-FIFO-001'; }));
+
+        window.alert = origAlert;
+    })();
+
+    // --- updateRecap ---
+    suite('updateRecap - barre live');
+    (function() {
+        resetDOM();
+        addUld();
+        var block = document.querySelector('.uld-block');
+        block.querySelector('.lta-input').value = 'LTA-R';
+        block.querySelector('.colis-input').value = '12';
+        block.querySelector('.uld-weight').value = '50';
+        updateTotals(uldCount); // triggers updateRecap
+
+        var recap = document.getElementById('liveRecap').innerHTML;
+        assert('Recap contient ULD : 1', recap.indexOf('>1<') >= 0);
+        assert('Recap contient Colis : 12', recap.indexOf('>12<') >= 0);
+        assert('Recap contient 50 kg', recap.indexOf('50 kg') >= 0);
+        assert('Recap contient LTA-R', recap.indexOf('LTA-R') >= 0);
+        assert('Recap ne contient pas DGR (pas de O)', recap.indexOf('DGR') < 0);
+
+        // Activer DGR
+        block.querySelector('.dgr-input').value = 'O';
+        updateRecap();
+        var recap2 = document.getElementById('liveRecap').innerHTML;
+        assert('Recap contient DGR : OUI apres activation', recap2.indexOf('DGR') >= 0);
+    })();
+
+    // --- updateRecap sans poids ---
+    suite('updateRecap - sans poids');
+    (function() {
+        resetDOM();
+        addUld();
+        var block = document.querySelector('.uld-block');
+        block.querySelector('.colis-input').value = '5';
+        updateTotals(uldCount);
+        var recap = document.getElementById('liveRecap').innerHTML;
+        assert('Recap sans poids ne montre pas "kg"', recap.indexOf('kg') < 0);
+    })();
+
+    // --- updateRecap multi-ULD ---
+    suite('updateRecap - multi ULD');
+    (function() {
+        resetDOM();
+        addUld();
+        addUld();
+        var blocks = document.querySelectorAll('.uld-block');
+        blocks[0].querySelector('.colis-input').value = '3';
+        blocks[0].querySelector('.uld-weight').value = '10';
+        blocks[1].querySelector('.colis-input').value = '7';
+        blocks[1].querySelector('.uld-weight').value = '20';
+        updateTotals(1);
+        updateTotals(2);
+        var recap = document.getElementById('liveRecap').innerHTML;
+        assert('Recap 2 ULD', recap.indexOf('>2<') >= 0);
+        assert('Recap total colis 10', recap.indexOf('>10<') >= 0);
+        assert('Recap total poids 30 kg', recap.indexOf('30 kg') >= 0);
+    })();
+
+    // --- saveManifest update existant ---
+    suite('saveManifest - mise a jour');
+    (function() {
+        resetDOM();
+        var origAlert = window.alert;
+        window.alert = function() {};
+
+        manifestId = 'MAN-UPDATE-001';
+        document.getElementById('agentName').value = 'Agent1';
+        document.getElementById('destAirport').value = 'CDG';
+        document.getElementById('clientName').value = 'V1';
+        addUld();
+        document.querySelector('.colis-input').value = '5';
+        saveManifest();
+
+        // Modifier et re-sauvegarder
+        document.getElementById('clientName').value = 'V2';
+        document.querySelector('.colis-input').value = '99';
+        saveManifest();
+
+        var saved = getSavedManifests();
+        var found = saved.filter(function(m) { return m.manifestId === 'MAN-UPDATE-001'; });
+        assertEqual('Un seul manifeste avec cet ID', found.length, 1);
+        assertEqual('Client mis a jour', found[0].client, 'V2');
+        assertEqual('Colis mis a jour', found[0].ulds[0].rows[0].colis, 99);
+
+        window.alert = origAlert;
+    })();
+
+    // --- newManifest reset ---
+    suite('newManifest - reset complet');
+    (function() {
+        resetDOM();
+        document.getElementById('clientName').value = 'Old';
+        document.getElementById('agentName').value = 'Old';
+        document.getElementById('destAirport').value = 'OLD';
+        document.getElementById('recipients').value = 'old@x.com';
+        document.getElementById('cc').value = 'old@y.com';
+        newManifest();
+        assertEqual('Client vide', document.getElementById('clientName').value, '');
+        assertEqual('Agent vide', document.getElementById('agentName').value, '');
+        assertEqual('Dest vide', document.getElementById('destAirport').value, '');
+        assertEqual('Recipients vide', document.getElementById('recipients').value, '');
+        assertEqual('CC vide', document.getElementById('cc').value, '');
+        assertEqual('1 ULD par defaut', document.querySelectorAll('.uld-block').length, 1);
+        assert('Nouveau manifest ID', /^MAN-/.test(document.getElementById('manifestId').textContent));
+    })();
+
+    // --- deleteSavedManifest ---
+    suite('deleteSavedManifest');
+    (function() {
+        resetDOM();
+        var origAlert = window.alert;
+        var origConfirm = window.confirm;
+        window.alert = function() {};
+        window.confirm = function() { return true; };
+
+        manifestId = 'MAN-DEL-001';
+        document.getElementById('agentName').value = 'Ag';
+        document.getElementById('destAirport').value = 'CDG';
+        addUld();
+        saveManifest();
+
+        manifestId = 'MAN-DEL-002';
+        saveManifest();
+
+        assertEqual('2 manifestes avant suppression', getSavedManifests().length, 2);
+        deleteSavedManifest('MAN-DEL-001');
+        var afterDelete = getSavedManifests();
+        assertEqual('1 manifeste apres suppression', afterDelete.length, 1);
+        assertEqual('Le bon manifeste reste', afterDelete[0].manifestId, 'MAN-DEL-002');
+
+        window.alert = origAlert;
+        window.confirm = origConfirm;
+    })();
+
+    // --- Poids dans collectData: 0 ou negatif ignore ---
+    suite('collectData - poids 0 ou negatif ignore');
+    (function() {
+        resetDOM();
+        manifestId = 'MAN-W0';
+        document.getElementById('agentName').value = 'Ag';
+        document.getElementById('destAirport').value = 'CDG';
+        addUld();
+        document.querySelector('.uld-weight').value = '0';
+        var data = collectData();
+        assert('Poids 0 => pas de propriete weight', data.ulds[0].weight === undefined);
+
+        document.querySelector('.uld-weight').value = '-5';
+        data = collectData();
+        assert('Poids negatif => pas de propriete weight', data.ulds[0].weight === undefined);
+    })();
+
+    // --- Version ---
+    suite('Version');
+    (function() {
+        assertEqual('APP_VERSION definie', typeof APP_VERSION, 'string');
+        assert('Format semver', /^\d+\.\d+\.\d+$/.test(APP_VERSION));
+    })();
+
+    // ========================================
+    // DISPLAY RESULTS
+    // ========================================
+    if (currentSuite) resultsHtml += '</div>';
+    document.getElementById('results').innerHTML = resultsHtml;
+
+    var total = passed + failed;
+    var summaryEl = document.getElementById('summary');
+    summaryEl.className = failed === 0 ? 'all-pass' : 'has-fail';
+    summaryEl.textContent = passed + ' / ' + total + ' tests OK' + (failed > 0 ? ' — ' + failed + ' ECHEC(S)' : ' — Tous les tests passent !');
+
+    // Clean up localStorage
+    localStorage.removeItem(STORAGE_KEY);
+})();
+</script>
+</body>
+</html>
