@@ -1,24 +1,21 @@
 # Loadsheet-autonome
 
 Outil de gestion de chargement autonome pour la logistique.
+Déployé en Azure Static Web App (HTML/CSS/JS pur).
 
 ## Structure du projet
 
 ```
-src/           # Code source principal
-tests/         # Tests unitaires et d'intégration
-data/          # Données de référence (gabarits, limites, etc.)
-docs/          # Documentation
+index.html                  # Page principale
+static/css/style.css        # Styles
+static/js/app.js            # Logique applicative + génération PDF
+staticwebapp.config.json    # Config Azure Static Web App
 ```
 
-## Installation
+## Développement local
+
+Ouvrir `index.html` dans un navigateur, ou utiliser un serveur local :
 
 ```bash
-pip install -r requirements.txt
-```
-
-## Utilisation
-
-```bash
-python -m src.main
+npx serve .
 ```
