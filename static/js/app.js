@@ -474,8 +474,8 @@ async function sendEmail() {
     try {
         var res = await fetch('/api/send-email', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt },
-            body: JSON.stringify({ recipients: data.recipients, cc: data.cc, subject: subject, htmlBody: html })
+            headers: { 'Content-Type': 'application/json', 'x-auth-token': jwt },
+            body: JSON.stringify({ recipients: data.recipients, cc: data.cc, subject: subject, htmlBody: html, _token: jwt })
         });
         var result = await res.json();
         if (res.ok) {

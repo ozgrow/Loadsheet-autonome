@@ -2,8 +2,14 @@ var jwt = require("jsonwebtoken");
 var nodemailer = require("nodemailer");
 
 function verifyToken(req) {
-  var auth = req.headers["authorization"] || "";
-  var token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  // Azure SWA strips Authorization header, so check x-auth-token and body too
+  var token = req.headers["x-auth-token"]
+    || (req.body && req.body._token)
+    || null;
+  if (!token) {
+    var auth = req.headers["authorization"] || "";
+    token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  }
   if (!token) return null;
   try { return jwt.verify(token, process.env.JWT_SECRET); }
   catch (e) { return null; }
