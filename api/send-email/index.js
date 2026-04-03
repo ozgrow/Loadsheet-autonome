@@ -48,7 +48,15 @@ module.exports = async function (context, req) {
   });
 
   var toList = body.recipients.split(",").map(function(e) { return e.trim(); }).filter(Boolean).join(", ");
-  var ccList = body.cc ? body.cc.split(",").map(function(e) { return e.trim(); }).filter(Boolean).join(", ") : "";
+  // Merge CC from request + env var
+  var ccParts = [];
+  if (body.cc) ccParts = body.cc.split(",").map(function(e) { return e.trim(); }).filter(Boolean);
+  if (process.env.SMTP_CC_DEFAULT) {
+    process.env.SMTP_CC_DEFAULT.split(",").map(function(e) { return e.trim(); }).filter(Boolean).forEach(function(addr) {
+      if (ccParts.indexOf(addr) === -1) ccParts.push(addr);
+    });
+  }
+  var ccList = ccParts.join(", ");
 
   try {
     var mailOptions = {

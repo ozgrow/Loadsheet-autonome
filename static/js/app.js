@@ -1,5 +1,5 @@
 // --- Version ---
-var APP_VERSION = "1.4.0";
+var APP_VERSION = "1.4.1";
 
 // --- Storage ---
 var STORAGE_KEY = "loadsheet_manifests";
@@ -34,6 +34,8 @@ function newManifest() {
     document.getElementById('clientName').value = '';
     document.getElementById('agentName').value = '';
     document.getElementById('destAirport').value = '';
+    document.getElementById('recipients').value = '';
+    document.getElementById('cc').value = '';
     document.getElementById('pmcContainer').innerHTML = '';
     document.getElementById('generateSection').style.display = 'none';
     document.getElementById('manifestStatus').textContent = 'Brouillon';
@@ -188,6 +190,8 @@ function loadManifest(id) {
     document.getElementById('clientName').value = data.client || '';
     document.getElementById('agentName').value = data.agent || '';
     document.getElementById('destAirport').value = data.destAirport || '';
+    document.getElementById('recipients').value = data.recipients || '';
+    document.getElementById('cc').value = data.cc || '';
     document.getElementById('pmcContainer').innerHTML = '';
     document.getElementById('generateSection').style.display = 'none';
     document.getElementById('manifestStatus').textContent = 'Brouillon';
@@ -474,7 +478,8 @@ async function sendEmail() {
 
     html += '<hr style="border-color:#1a3a5c;margin-top:20px;"><p style="font-size:11px;color:#718096;">ATH - Air Terminal Handling - Paris Roissy | v' + APP_VERSION + '</p></div>';
 
-    var subject = 'Loadsheet ' + data.manifestId + ' - ' + data.destAirport + (data.client ? ' - ' + data.client : '');
+    var allLtasSubject = getAllLtas(data).join('/') || '-';
+    var subject = 'Loadsheet ' + allLtasSubject + ' - ' + data.destAirport + ' - ' + data.manifestId + (data.client ? ' - ' + data.client : '');
 
     // Generate PDF and convert to base64
     var pdfDoc = buildPdf(data);
