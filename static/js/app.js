@@ -1,5 +1,5 @@
 // --- Version ---
-var APP_VERSION = "1.7.0";
+var APP_VERSION = "1.7.1";
 
 // --- Storage ---
 var STORAGE_KEY = "loadsheet_manifests";
@@ -15,6 +15,12 @@ var uldCount = 0;
 function esc(str) {
     if (str === null || str === undefined) return '';
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// --- JS string escape (pour onclick/oninput avec donnees dynamiques) ---
+function escJs(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"').replace(/\n/g,'\\n').replace(/\r/g,'\\r');
 }
 
 // ============================================
@@ -166,7 +172,7 @@ function addRow(uldIndex) {
     }
     var tr = document.createElement('tr');
     tr.innerHTML =
-        '<td><input type="text" class="lta-input" value="' + defaultLta + '" placeholder="LTA" oninput="updateRecap()"></td>' +
+        '<td><input type="text" class="lta-input" value="' + esc(defaultLta) + '" placeholder="LTA" oninput="updateRecap()"></td>' +
         '<td><input type="text" class="dossier-input" placeholder="Dossier"></td>' +
         '<td><input type="number" class="colis-input" min="0" value="0" onchange="updateTotals(' + uldIndex + ')" oninput="updateTotals(' + uldIndex + ')"></td>' +
         '<td><select class="dgr-input" onchange="updateRecap()"><option value="N">N</option><option value="O">O</option></select></td>' +
@@ -206,7 +212,7 @@ function updateRecap() {
     var html = '<span class="recap-item">ULD : <span class="recap-value">' + nbUld + '</span></span>';
     html += '<span class="recap-item">Colis : <span class="recap-value">' + totalColis + '</span></span>';
     if (hasWeight) html += '<span class="recap-item">Poids : <span class="recap-value">' + totalWeight + ' kg</span></span>';
-    html += '<span class="recap-item">LTA : <span class="recap-value">' + (ltas.length > 0 ? ltas.join(', ') : '-') + '</span></span>';
+    html += '<span class="recap-item">LTA : <span class="recap-value">' + (ltas.length > 0 ? esc(ltas.join(', ')) : '-') + '</span></span>';
     if (hasDgr) html += '<span class="recap-item recap-dgr">DGR : OUI</span>';
     document.getElementById('liveRecap').innerHTML = html;
 }
@@ -385,15 +391,16 @@ async function refreshSavedList() {
         var dateStr = m.timestamp ? new Date(m.timestamp).toLocaleString('fr-FR') : m.date || '';
         var dest = m.destAirport || '';
         var safeId = esc(m.manifestId);
+        var jsId = escJs(m.manifestId);
         html += '<div class="saved-item">' +
-            '<div class="saved-item-info" onclick="loadManifest(\'' + safeId + '\')">' +
+            '<div class="saved-item-info" onclick="loadManifest(\'' + jsId + '\')">' +
                 '<div class="saved-item-id">' + safeId + (dest ? ' \u2192 ' + esc(dest) : '') + '</div>' +
                 '<div class="saved-item-meta">' + esc(m.client || '-') + ' | ' + nbUld + ' ULD | ' + totalColis + ' colis | LTA: ' + esc(ltas) + '</div>' +
                 '<div class="saved-item-meta">' + esc(dateStr) + '</div>' +
             '</div>' +
             '<div class="saved-item-actions">' +
-                '<button class="btn btn-primary" style="font-size:0.75em;padding:4px 8px;" onclick="loadManifest(\'' + safeId + '\')">Ouvrir</button>' +
-                '<button class="btn btn-danger" onclick="event.stopPropagation();deleteSavedManifest(\'' + safeId + '\')">Suppr.</button>' +
+                '<button class="btn btn-primary" style="font-size:0.75em;padding:4px 8px;" onclick="loadManifest(\'' + jsId + '\')">Ouvrir</button>' +
+                '<button class="btn btn-danger" onclick="event.stopPropagation();deleteSavedManifest(\'' + jsId + '\')">Suppr.</button>' +
             '</div></div>';
     });
     list.innerHTML = html;

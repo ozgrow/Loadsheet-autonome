@@ -636,6 +636,17 @@
         assertEqual('Payload img', esc('<img src=x onerror="alert(1)">'), '&lt;img src=x onerror=&quot;alert(1)&quot;&gt;');
     })();
 
+    // --- Fonction escJs() ---
+    suite('SECU - Fonction escJs() echappement JS');
+    (function() {
+        assertEqual("Echappe '", escJs("test'XSS"), "test\\'XSS");
+        assertEqual('Echappe "', escJs('test"XSS'), 'test\\"XSS');
+        assertEqual('Echappe \\', escJs('test\\XSS'), 'test\\\\XSS');
+        assertEqual('Echappe newline', escJs('test\nXSS'), 'test\\nXSS');
+        assertEqual('Null => vide', escJs(null), '');
+        assertEqual('Payload onclick', escJs("MAN'); alert('XSS'); ('"), "MAN\\'); alert(\\'XSS\\'); (\\'");
+    })();
+
     // --- XSS via innerHTML dans loadManifest ---
     suite('SECU - XSS via localStorage (loadManifest)');
     await (async function() {
