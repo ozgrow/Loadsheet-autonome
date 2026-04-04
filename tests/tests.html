@@ -624,7 +624,7 @@ localStorage.removeItem('loadsheet_manifests');
         assertEqual('Null => vide', esc(null), '');
         assertEqual('Undefined => vide', esc(undefined), '');
         assertEqual('Nombre converti en string', esc(123), '123');
-        assertEqual('Payload complet', esc('"><script>window._xss++</script>'), '&quot;&gt;&lt;script&gt;window._xss++&lt;/script&gt;');
+        assertEqual('Payload complet', esc('"><scr' + 'ipt>window._xss++<\/script>'), '&quot;&gt;&lt;script&gt;window._xss++&lt;\/script&gt;');
         assertEqual('Payload img', esc('<img src=x onerror="window._xss++">'), '&lt;img src=x onerror=&quot;window._xss++&quot;&gt;');
     })();
 
@@ -659,7 +659,7 @@ localStorage.removeItem('loadsheet_manifests');
         window._xss = 0;
 
         var xssPayloads = [
-            '"><script>window._xss++</script>',
+            '"><scr' + 'ipt>window._xss++<\/script>',
             '"><img src=x onerror="window._xss++">',
             '<svg onload=window._xss++>',
             "'+window._xss+++'",
@@ -717,7 +717,7 @@ localStorage.removeItem('loadsheet_manifests');
 
         var malicious = {
             manifestId: '"><img src=x onerror="window._xss++">',
-            client: '<script>window._xss++</script>',
+            client: '<scr' + 'ipt>window._xss++<\/script>',
             agent: 'Agent',
             destAirport: '<b>XSS</b>',
             date: '01/01/2025',
