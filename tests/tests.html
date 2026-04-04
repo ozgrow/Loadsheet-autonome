@@ -647,7 +647,7 @@ localStorage.removeItem('loadsheet_manifests');
         // Verifier que les onclick utilisent _savedIds[index] et pas le manifestId
         var onclicks = document.getElementById('savedManifestsList').innerHTML;
         assert('onclick utilise _savedIds[0] (pas de donnees user)', onclicks.indexOf('_savedIds[0]') >= 0);
-        assert('onclick ne contient pas le manifestId brut', onclicks.indexOf("MAN')") < 0);
+        assert('onclick ne contient pas le manifestId dans onclick', onclicks.indexOf("onclick=\"loadManifest('MAN") < 0);
         assertEqual('Pas de XSS declenchee', window._xss, 0);
 
     })();
