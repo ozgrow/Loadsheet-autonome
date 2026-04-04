@@ -1,5 +1,5 @@
 // --- Version ---
-var APP_VERSION = "1.6.0";
+var APP_VERSION = "1.6.1";
 
 // --- Storage ---
 var STORAGE_KEY = "loadsheet_manifests";
@@ -8,6 +8,12 @@ var MAX_SAVED = 50;
 // --- State ---
 var manifestId = '';
 var uldCount = 0;
+
+// --- HTML escape (anti-XSS) ---
+function esc(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 
 // --- Manifest ID generation ---
 function generateManifestId() {
@@ -229,7 +235,9 @@ function loadManifest(id) {
     uldCount = 0;
 
     var uldList = data.ulds || data.pmcs || [];
+    if (!Array.isArray(uldList)) uldList = [];
     uldList.forEach(function(uldData) {
+        if (!uldData || !Array.isArray(uldData.rows)) return;
         uldCount++;
         var i = uldCount;
         var div = document.createElement('div');
@@ -237,9 +245,9 @@ function loadManifest(id) {
         div.id = 'uld-' + i;
         div.innerHTML =
             '<div class="uld-header"><label>ULD N\u00b0 :</label>' +
-            '<input type="text" class="uld-number" placeholder="Num\u00e9ro ULD" style="width:180px" value="' + (uldData.uldNumber || uldData.pmcNumber || '') + '">' +
+            '<input type="text" class="uld-number" placeholder="Num\u00e9ro ULD" style="width:180px" value="' + esc(uldData.uldNumber || uldData.pmcNumber || '') + '">' +
             '<label style="margin-left:16px;">Poids (kg) :</label>' +
-            '<input type="number" class="uld-weight" placeholder="Optionnel" style="width:100px" min="0" step="0.1" oninput="updateRecap()" value="' + (uldData.weight || '') + '">' +
+            '<input type="number" class="uld-weight" placeholder="Optionnel" style="width:100px" min="0" step="0.1" oninput="updateRecap()" value="' + esc(uldData.weight || '') + '">' +
             '<button class="btn btn-danger" onclick="removeUld(' + i + ')">Supprimer ULD</button></div>' +
             '<table><thead><tr><th style="width:140px">LTA</th><th>Dossier</th><th style="width:100px">Nb Colis</th><th style="width:80px">DGR</th><th>Commentaire</th><th style="width:50px"></th></tr></thead><tbody class="uld-rows"></tbody></table>' +
             '<div class="uld-totals">Total colis : <span class="total-colis">0</span></div>' +
@@ -249,11 +257,11 @@ function loadManifest(id) {
         uldData.rows.forEach(function(r) {
             var tr = document.createElement('tr');
             tr.innerHTML =
-                '<td><input type="text" class="lta-input" value="' + (r.lta || '') + '" oninput="updateRecap()"></td>' +
-                '<td><input type="text" class="dossier-input" value="' + (r.dossier || '') + '"></td>' +
-                '<td><input type="number" class="colis-input" min="0" value="' + (r.colis || 0) + '" onchange="updateTotals(' + i + ')" oninput="updateTotals(' + i + ')"></td>' +
+                '<td><input type="text" class="lta-input" value="' + esc(r.lta || '') + '" oninput="updateRecap()"></td>' +
+                '<td><input type="text" class="dossier-input" value="' + esc(r.dossier || '') + '"></td>' +
+                '<td><input type="number" class="colis-input" min="0" value="' + (parseInt(r.colis) || 0) + '" onchange="updateTotals(' + i + ')" oninput="updateTotals(' + i + ')"></td>' +
                 '<td><select class="dgr-input" onchange="updateRecap()"><option value="N"' + (r.dgr === 'N' ? ' selected' : '') + '>N</option><option value="O"' + (r.dgr === 'O' ? ' selected' : '') + '>O</option></select></td>' +
-                '<td><input type="text" class="comment-input" value="' + (r.comment || '') + '"></td>' +
+                '<td><input type="text" class="comment-input" value="' + esc(r.comment || '') + '"></td>' +
                 '<td><button class="btn btn-danger" onclick="removeRow(this,' + i + ')">x</button></td>';
             tbody.appendChild(tr);
         });
@@ -282,15 +290,16 @@ function refreshSavedList() {
         var ltas = getAllLtas(m).join(', ') || '-';
         var dateStr = m.timestamp ? new Date(m.timestamp).toLocaleString('fr-FR') : m.date || '';
         var dest = m.destAirport || '';
+        var safeId = esc(m.manifestId);
         html += '<div class="saved-item">' +
-            '<div class="saved-item-info" onclick="loadManifest(\'' + m.manifestId + '\')">' +
-                '<div class="saved-item-id">' + m.manifestId + (dest ? ' \u2192 ' + dest : '') + '</div>' +
-                '<div class="saved-item-meta">' + (m.client || '-') + ' | ' + nbUld + ' ULD | ' + totalColis + ' colis | LTA: ' + ltas + '</div>' +
-                '<div class="saved-item-meta">' + dateStr + '</div>' +
+            '<div class="saved-item-info" onclick="loadManifest(\'' + safeId + '\')">' +
+                '<div class="saved-item-id">' + safeId + (dest ? ' \u2192 ' + esc(dest) : '') + '</div>' +
+                '<div class="saved-item-meta">' + esc(m.client || '-') + ' | ' + nbUld + ' ULD | ' + totalColis + ' colis | LTA: ' + esc(ltas) + '</div>' +
+                '<div class="saved-item-meta">' + esc(dateStr) + '</div>' +
             '</div>' +
             '<div class="saved-item-actions">' +
-                '<button class="btn btn-primary" style="font-size:0.75em;padding:4px 8px;" onclick="loadManifest(\'' + m.manifestId + '\')">Ouvrir</button>' +
-                '<button class="btn btn-danger" onclick="event.stopPropagation();deleteSavedManifest(\'' + m.manifestId + '\')">Suppr.</button>' +
+                '<button class="btn btn-primary" style="font-size:0.75em;padding:4px 8px;" onclick="loadManifest(\'' + safeId + '\')">Ouvrir</button>' +
+                '<button class="btn btn-danger" onclick="event.stopPropagation();deleteSavedManifest(\'' + safeId + '\')">Suppr.</button>' +
             '</div></div>';
     });
     list.innerHTML = html;
@@ -499,9 +508,9 @@ async function sendEmail() {
     var grandTotal = data.ulds.reduce(function(s, u) { return s + u.totalColis; }, 0);
 
     var html = '<div style="font-family:Arial,sans-serif;max-width:700px;">';
-    html += '<h2 style="color:#1a3a5c;">Loadsheet - ' + data.manifestId + '</h2>';
-    html += '<p><strong>Client :</strong> ' + (data.client || '-') + ' | <strong>Dest :</strong> ' + data.destAirport + ' | <strong>Agent :</strong> ' + data.agent + '</p>';
-    html += '<p><strong>Date :</strong> ' + data.date + ' | <strong>LTA :</strong> ' + allLtas + '</p>';
+    html += '<h2 style="color:#1a3a5c;">Loadsheet - ' + esc(data.manifestId) + '</h2>';
+    html += '<p><strong>Client :</strong> ' + esc(data.client || '-') + ' | <strong>Dest :</strong> ' + esc(data.destAirport) + ' | <strong>Agent :</strong> ' + esc(data.agent) + '</p>';
+    html += '<p><strong>Date :</strong> ' + esc(data.date) + ' | <strong>LTA :</strong> ' + esc(allLtas) + '</p>';
     html += '<hr style="border-color:#1a3a5c;">';
 
     // Summary table
@@ -518,7 +527,7 @@ async function sendEmail() {
         u.rows.forEach(function(r) { if (r.lta) ltaSet[r.lta] = true; });
         var bg = idx % 2 === 0 ? '#f5f7fa' : '#fff';
         var hasDgr = u.rows.some(function(r) { return r.dgr === 'O'; });
-        html += '<tr style="background:' + bg + ';"><td style="padding:6px 8px;">' + u.uldNumber + '</td><td>' + Object.keys(ltaSet).join(', ') + '</td><td style="text-align:center;">' + u.totalColis + '</td>';
+        html += '<tr style="background:' + bg + ';"><td style="padding:6px 8px;">' + esc(u.uldNumber) + '</td><td>' + esc(Object.keys(ltaSet).join(', ')) + '</td><td style="text-align:center;">' + u.totalColis + '</td>';
         if (emailHasWeight) html += '<td style="text-align:center;">' + (u.weight ? u.weight : '-') + '</td>';
         html += '<td style="text-align:center;' + (hasDgr ? 'color:red;font-weight:bold;' : '') + '">' + (hasDgr ? 'OUI' : 'NON') + '</td></tr>';
     });
@@ -532,14 +541,14 @@ async function sendEmail() {
 
     // Detail per ULD
     data.ulds.forEach(function(u) {
-        var uldTitle = 'ULD : ' + u.uldNumber;
+        var uldTitle = 'ULD : ' + esc(u.uldNumber);
         if (u.weight > 0) uldTitle += ' — ' + u.weight + ' kg';
         html += '<h3 style="color:#1a3a5c;margin-top:20px;">' + uldTitle + '</h3>';
         html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
         html += '<tr style="background:#1a3a5c;color:#fff;"><th style="padding:6px;">LTA</th><th>Dossier</th><th>Colis</th><th>DGR</th><th>Commentaire</th></tr>';
         u.rows.forEach(function(r, idx) {
             var bg = idx % 2 === 0 ? '#f5f7fa' : '#fff';
-            html += '<tr style="background:' + bg + ';"><td style="padding:4px 6px;">' + r.lta + '</td><td>' + r.dossier + '</td><td style="text-align:center;">' + r.colis + '</td><td style="text-align:center;' + (r.dgr === 'O' ? 'color:red;font-weight:bold;' : '') + '">' + r.dgr + '</td><td>' + r.comment + '</td></tr>';
+            html += '<tr style="background:' + bg + ';"><td style="padding:4px 6px;">' + esc(r.lta) + '</td><td>' + esc(r.dossier) + '</td><td style="text-align:center;">' + r.colis + '</td><td style="text-align:center;' + (r.dgr === 'O' ? 'color:red;font-weight:bold;' : '') + '">' + esc(r.dgr) + '</td><td>' + esc(r.comment) + '</td></tr>';
         });
         html += '<tr style="background:#e2e8f0;font-weight:bold;"><td></td><td>TOTAL</td><td style="text-align:center;">' + u.totalColis + '</td><td></td><td></td></tr>';
         html += '</table>';
@@ -559,7 +568,7 @@ async function sendEmail() {
         var res = await fetch('/api/send-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-auth-token': jwt },
-            body: JSON.stringify({ recipients: data.recipients, cc: data.cc, subject: subject, htmlBody: html, _token: jwt, pdfBase64: pdfBase64, pdfFilename: pdfFilename })
+            body: JSON.stringify({ recipients: data.recipients, cc: data.cc, subject: subject, htmlBody: html, pdfBase64: pdfBase64, pdfFilename: pdfFilename })
         });
         var result = await res.json();
         if (res.ok) {

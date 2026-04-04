@@ -2,10 +2,8 @@ var jwt = require("jsonwebtoken");
 var nodemailer = require("nodemailer");
 
 function verifyToken(req) {
-  // Azure SWA strips Authorization header, so check x-auth-token and body too
-  var token = req.headers["x-auth-token"]
-    || (req.body && req.body._token)
-    || null;
+  // Azure SWA strips Authorization header, so check x-auth-token header
+  var token = req.headers["x-auth-token"] || null;
   if (!token) {
     var auth = req.headers["authorization"] || "";
     token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
@@ -28,6 +26,17 @@ module.exports = async function (context, req) {
     return;
   }
 
+  // Sanitize subject (strip CRLF to prevent header injection)
+  body.subject = String(body.subject).replace(/[\r\n]/g, ' ').substring(0, 500);
+
+  // Validate email addresses
+  var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  function validateEmails(str) {
+    return str.split(",").map(function(e) { return e.trim(); }).filter(Boolean).filter(function(e) {
+      return emailRegex.test(e);
+    });
+  }
+
   var host = process.env.SMTP_HOST;
   var port = parseInt(process.env.SMTP_PORT) || 587;
   var smtpUser = process.env.SMTP_USER;
@@ -47,12 +56,16 @@ module.exports = async function (context, req) {
     auth: { user: smtpUser, pass: smtpPass }
   });
 
-  var toList = body.recipients.split(",").map(function(e) { return e.trim(); }).filter(Boolean).join(", ");
+  var validTo = validateEmails(body.recipients);
+  if (validTo.length === 0) {
+    context.res = { status: 400, body: { error: "Aucune adresse email valide dans recipients." } };
+    return;
+  }
+  var toList = validTo.join(", ");
   // Merge CC from request + env var
-  var ccParts = [];
-  if (body.cc) ccParts = body.cc.split(",").map(function(e) { return e.trim(); }).filter(Boolean);
+  var ccParts = body.cc ? validateEmails(body.cc) : [];
   if (process.env.SMTP_CC_DEFAULT) {
-    process.env.SMTP_CC_DEFAULT.split(",").map(function(e) { return e.trim(); }).filter(Boolean).forEach(function(addr) {
+    validateEmails(process.env.SMTP_CC_DEFAULT).forEach(function(addr) {
       if (ccParts.indexOf(addr) === -1) ccParts.push(addr);
     });
   }

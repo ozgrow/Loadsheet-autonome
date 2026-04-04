@@ -7,8 +7,8 @@ const COOLDOWN_MS = 5000; // 5s entre chaque tentative
 const MAX_ATTEMPTS_PER_HOUR = 100;
 const HOUR_MS = 60 * 60 * 1000;
 
-// SHA-256 hash du mot de passe "Loadsheet2024!"
-// Pour changer : console navigateur →
+// SHA-256 hash du mot de passe (ne PAS mettre le mot de passe en clair ici)
+// Pour generer un nouveau hash : console navigateur →
 //   crypto.subtle.digest('SHA-256', new TextEncoder().encode('NEW_PASSWORD'))
 //     .then(b => Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''))
 //     .then(console.log)

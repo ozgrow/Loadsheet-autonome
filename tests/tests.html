@@ -621,6 +621,22 @@
     // TESTS SECURITE
     // ========================================
 
+    // --- Fonction esc() ---
+    suite('SECU - Fonction esc() echappement HTML');
+    (function() {
+        assertEqual('Echappe <', esc('<'), '&lt;');
+        assertEqual('Echappe >', esc('>'), '&gt;');
+        assertEqual('Echappe "', esc('"'), '&quot;');
+        assertEqual("Echappe '", esc("'"), '&#39;');
+        assertEqual('Echappe &', esc('&'), '&amp;');
+        assertEqual('Texte normal inchange', esc('Hello World'), 'Hello World');
+        assertEqual('Null => vide', esc(null), '');
+        assertEqual('Undefined => vide', esc(undefined), '');
+        assertEqual('Nombre converti en string', esc(123), '123');
+        assertEqual('Payload complet', esc('"><script>alert(1)</script>'), '&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;');
+        assertEqual('Payload img', esc('<img src=x onerror="alert(1)">'), '&lt;img src=x onerror=&quot;alert(1)&quot;&gt;');
+    })();
+
     // --- XSS via innerHTML dans loadManifest ---
     suite('SECU - XSS via localStorage (loadManifest)');
     (function() {
@@ -670,6 +686,12 @@
             // Verifier qu aucun script ne s est injecte dans le DOM
             var scripts = document.getElementById('pmcContainer').querySelectorAll('script');
             assertEqual('Pas de <script> injecte (payload #' + idx + ')', scripts.length, 0);
+
+            // Verifier qu aucun tag img/svg malveillant n est injecte
+            var imgs = document.getElementById('pmcContainer').querySelectorAll('img[onerror]');
+            assertEqual('Pas de <img onerror> injecte (payload #' + idx + ')', imgs.length, 0);
+            var svgs = document.getElementById('pmcContainer').querySelectorAll('svg[onload]');
+            assertEqual('Pas de <svg onload> injecte (payload #' + idx + ')', svgs.length, 0);
         });
 
         window.alert = origAlert;
