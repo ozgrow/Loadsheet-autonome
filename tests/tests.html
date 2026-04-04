@@ -51,7 +51,10 @@
 
 <script src="../static/js/app.js"></script>
 <script>
-(function() {
+(async function() {
+    // Init crypto key for tests
+    await deriveAndStoreKey('test-password-for-unit-tests');
+
     var passed = 0, failed = 0;
     var currentSuite = '';
     var resultsHtml = '';
@@ -304,7 +307,7 @@
 
     // --- save / load manifest ---
     suite('saveManifest / loadManifest');
-    (function() {
+    await (async function() {
         resetDOM();
         var origAlert = window.alert;
         window.alert = function() {};
@@ -323,8 +326,8 @@
         block.querySelector('.colis-input').value = '7';
         block.querySelector('.dgr-input').value = 'O';
 
-        saveManifest();
-        var saved = getSavedManifests();
+        await saveManifest();
+        var saved = await getSavedManifests();
         assertEqual('1 manifeste sauvegarde', saved.length, 1);
         assertEqual('ID correct', saved[0].manifestId, 'MAN-SAVE-TEST');
         assertEqual('Weight sauvegarde', saved[0].ulds[0].weight, 200);
@@ -337,7 +340,7 @@
         document.getElementById('recipients').value = '';
         document.getElementById('cc').value = '';
         uldCount = 0;
-        loadManifest('MAN-SAVE-TEST');
+        await loadManifest('MAN-SAVE-TEST');
 
         assertEqual('Client restaure', document.getElementById('clientName').value, 'SaveClient');
         assertEqual('Agent restaure', document.getElementById('agentName').value, 'SaveAgent');
@@ -359,43 +362,40 @@
 
     // --- Load manifest affiche la section envoi si recipients ---
     suite('loadManifest - section envoi auto-affichee');
-    (function() {
+    await (async function() {
         resetDOM();
         var origAlert = window.alert;
         window.alert = function() {};
 
-        // Sauvegarder un manifeste avec recipients
         manifestId = 'MAN-RECIP-TEST';
         document.getElementById('agentName').value = 'Ag';
         document.getElementById('destAirport').value = 'CDG';
         document.getElementById('recipients').value = 'dest@test.com';
         addUld();
         document.querySelector('.uld-block .colis-input').value = '1';
-        saveManifest();
+        await saveManifest();
 
-        // Reset
         document.getElementById('pmcContainer').innerHTML = '';
         document.getElementById('generateSection').style.display = 'none';
         uldCount = 0;
 
-        loadManifest('MAN-RECIP-TEST');
+        await loadManifest('MAN-RECIP-TEST');
         var display = document.getElementById('generateSection').style.display;
         assertEqual('Section envoi visible quand recipients present', display, 'block');
 
-        // Sauvegarder un manifeste SANS recipients
         resetDOM();
         manifestId = 'MAN-NO-RECIP';
         document.getElementById('agentName').value = 'Ag';
         document.getElementById('destAirport').value = 'CDG';
         addUld();
         document.querySelector('.uld-block .colis-input').value = '1';
-        saveManifest();
+        await saveManifest();
 
         document.getElementById('pmcContainer').innerHTML = '';
         document.getElementById('generateSection').style.display = 'none';
         uldCount = 0;
 
-        loadManifest('MAN-NO-RECIP');
+        await loadManifest('MAN-NO-RECIP');
         var display2 = document.getElementById('generateSection').style.display;
         assertEqual('Section envoi cachee sans recipients', display2, 'none');
 
@@ -404,7 +404,7 @@
 
     // --- Retro-compat ancien format pmcs ---
     suite('Retro-compatibilite ancien format (pmcs)');
-    (function() {
+    await (async function() {
         resetDOM();
         var origAlert = window.alert;
         window.alert = function() {};
@@ -425,7 +425,7 @@
             }]
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify([oldData]));
-        loadManifest('MAN-OLD-001');
+        await loadManifest('MAN-OLD-001');
 
         var block = document.querySelector('.uld-block');
         assert('Ancien format charge un bloc ULD', !!block);
@@ -438,7 +438,7 @@
 
     // --- FIFO max 50 ---
     suite('Storage FIFO max 50');
-    (function() {
+    await (async function() {
         resetDOM();
         var origAlert = window.alert;
         window.alert = function() {};
@@ -450,9 +450,9 @@
             document.getElementById('pmcContainer').innerHTML = '';
             uldCount = 0;
             addUld();
-            saveManifest();
+            await saveManifest();
         }
-        var saved = getSavedManifests();
+        var saved = await getSavedManifests();
         assertEqual('Max 50 manifestes', saved.length, 50);
         assertEqual('Le plus recent en premier', saved[0].manifestId, 'MAN-FIFO-051');
         assert('Le plus ancien (000) supprime', !saved.find(function(m) { return m.manifestId === 'MAN-FIFO-000'; }));
@@ -519,7 +519,7 @@
 
     // --- saveManifest update existant ---
     suite('saveManifest - mise a jour');
-    (function() {
+    await (async function() {
         resetDOM();
         var origAlert = window.alert;
         window.alert = function() {};
@@ -530,14 +530,13 @@
         document.getElementById('clientName').value = 'V1';
         addUld();
         document.querySelector('.colis-input').value = '5';
-        saveManifest();
+        await saveManifest();
 
-        // Modifier et re-sauvegarder
         document.getElementById('clientName').value = 'V2';
         document.querySelector('.colis-input').value = '99';
-        saveManifest();
+        await saveManifest();
 
-        var saved = getSavedManifests();
+        var saved = await getSavedManifests();
         var found = saved.filter(function(m) { return m.manifestId === 'MAN-UPDATE-001'; });
         assertEqual('Un seul manifeste avec cet ID', found.length, 1);
         assertEqual('Client mis a jour', found[0].client, 'V2');
@@ -567,7 +566,7 @@
 
     // --- deleteSavedManifest ---
     suite('deleteSavedManifest');
-    (function() {
+    await (async function() {
         resetDOM();
         var origAlert = window.alert;
         var origConfirm = window.confirm;
@@ -578,14 +577,14 @@
         document.getElementById('agentName').value = 'Ag';
         document.getElementById('destAirport').value = 'CDG';
         addUld();
-        saveManifest();
+        await saveManifest();
 
         manifestId = 'MAN-DEL-002';
-        saveManifest();
+        await saveManifest();
 
-        assertEqual('2 manifestes avant suppression', getSavedManifests().length, 2);
-        deleteSavedManifest('MAN-DEL-001');
-        var afterDelete = getSavedManifests();
+        assertEqual('2 manifestes avant suppression', (await getSavedManifests()).length, 2);
+        await deleteSavedManifest('MAN-DEL-001');
+        var afterDelete = await getSavedManifests();
         assertEqual('1 manifeste apres suppression', afterDelete.length, 1);
         assertEqual('Le bon manifeste reste', afterDelete[0].manifestId, 'MAN-DEL-002');
 
@@ -639,7 +638,7 @@
 
     // --- XSS via innerHTML dans loadManifest ---
     suite('SECU - XSS via localStorage (loadManifest)');
-    (function() {
+    await (async function() {
         resetDOM();
         var origAlert = window.alert;
         window.alert = function() {};
@@ -652,7 +651,8 @@
             '{{constructor.constructor("alert(1)")()}}'
         ];
 
-        xssPayloads.forEach(function(payload, idx) {
+        for (var idx = 0; idx < xssPayloads.length; idx++) {
+            var payload = xssPayloads[idx];
             resetDOM();
             var malicious = {
                 manifestId: 'MAN-XSS-' + idx,
@@ -679,27 +679,24 @@
             localStorage.setItem(STORAGE_KEY, JSON.stringify([malicious]));
             var noError = true;
             try {
-                loadManifest('MAN-XSS-' + idx);
+                await loadManifest('MAN-XSS-' + idx);
             } catch(e) { noError = false; }
             assert('loadManifest ne crash pas avec payload XSS #' + idx, noError);
 
-            // Verifier qu aucun script ne s est injecte dans le DOM
             var scripts = document.getElementById('pmcContainer').querySelectorAll('script');
             assertEqual('Pas de <script> injecte (payload #' + idx + ')', scripts.length, 0);
-
-            // Verifier qu aucun tag img/svg malveillant n est injecte
             var imgs = document.getElementById('pmcContainer').querySelectorAll('img[onerror]');
             assertEqual('Pas de <img onerror> injecte (payload #' + idx + ')', imgs.length, 0);
             var svgs = document.getElementById('pmcContainer').querySelectorAll('svg[onload]');
             assertEqual('Pas de <svg onload> injecte (payload #' + idx + ')', svgs.length, 0);
-        });
+        }
 
         window.alert = origAlert;
     })();
 
     // --- XSS via refreshSavedList ---
     suite('SECU - XSS via refreshSavedList');
-    (function() {
+    await (async function() {
         resetDOM();
         var origAlert = window.alert;
         window.alert = function() {};
@@ -719,7 +716,7 @@
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify([malicious]));
         var noError = true;
-        try { refreshSavedList(); } catch(e) { noError = false; }
+        try { await refreshSavedList(); } catch(e) { noError = false; }
         assert('refreshSavedList ne crash pas avec XSS', noError);
         var scripts = document.getElementById('savedManifestsList').querySelectorAll('script');
         assertEqual('Pas de <script> injecte dans saved list', scripts.length, 0);
@@ -729,8 +726,7 @@
 
     // --- localStorage donnees corrompues ---
     suite('SECU - localStorage donnees corrompues');
-    (function() {
-        // Donnees invalides
+    await (async function() {
         var corrupted = [
             'not json at all',
             '{"manifestId": 1}',
@@ -741,17 +737,16 @@
             '[{"manifestId":"X","ulds":[{"rows":"not_array"}]}]'
         ];
 
-        corrupted.forEach(function(data, idx) {
-            localStorage.setItem(STORAGE_KEY, data);
+        for (var idx = 0; idx < corrupted.length; idx++) {
+            localStorage.setItem(STORAGE_KEY, corrupted[idx]);
             var noError = true;
             try {
-                var result = getSavedManifests();
+                var result = await getSavedManifests();
                 assert('getSavedManifests retourne un array (corrupt #' + idx + ')', Array.isArray(result));
             } catch(e) { noError = false; }
             assert('getSavedManifests ne crash pas (corrupt #' + idx + ')', noError);
-        });
+        }
 
-        // loadManifest avec donnees corrompues
         localStorage.setItem(STORAGE_KEY, JSON.stringify([{
             manifestId: 'MAN-CORRUPT',
             client: null,
@@ -760,7 +755,7 @@
             ulds: null
         }]));
         var noError = true;
-        try { loadManifest('MAN-CORRUPT'); } catch(e) { noError = false; }
+        try { await loadManifest('MAN-CORRUPT'); } catch(e) { noError = false; }
         assert('loadManifest gere ulds:null sans crash', noError);
 
         localStorage.removeItem(STORAGE_KEY);
@@ -844,7 +839,7 @@
 
     // --- Champs tres longs ---
     suite('SECU - Champs tres longs (overflow)');
-    (function() {
+    await (async function() {
         resetDOM();
         var origAlert = window.alert;
         window.alert = function() {};
@@ -870,10 +865,10 @@
         // Save/load avec champs longs
         noError = true;
         try {
-            saveManifest();
+            await saveManifest();
             document.getElementById('pmcContainer').innerHTML = '';
             uldCount = 0;
-            loadManifest('MAN-LONG');
+            await loadManifest('MAN-LONG');
         } catch(e) { noError = false; }
         assert('save/load ne crash pas avec champs longs', noError);
 
@@ -925,7 +920,7 @@
 
     // --- Manifest ID dans onclick (injection) ---
     suite('SECU - ManifestId injection dans onclick');
-    (function() {
+    await (async function() {
         resetDOM();
         var origAlert = window.alert;
         window.alert = function() {};
@@ -939,8 +934,73 @@
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify([malicious]));
         var noError = true;
-        try { refreshSavedList(); } catch(e) { noError = false; }
+        try { await refreshSavedList(); } catch(e) { noError = false; }
         assert('refreshSavedList ne crash pas avec manifestId malveillant', noError);
+
+        window.alert = origAlert;
+    })();
+
+    // --- Chiffrement localStorage ---
+    suite('SECU - Chiffrement localStorage');
+    await (async function() {
+        resetDOM();
+        var origAlert = window.alert;
+        window.alert = function() {};
+
+        manifestId = 'MAN-CRYPTO-TEST';
+        document.getElementById('agentName').value = 'CryptoAgent';
+        document.getElementById('destAirport').value = 'CDG';
+        document.getElementById('clientName').value = 'CryptoClient';
+        addUld();
+        document.querySelector('.colis-input').value = '5';
+        await saveManifest();
+
+        // Verifier que le localStorage ne contient PAS du JSON en clair
+        var raw = localStorage.getItem(STORAGE_KEY);
+        var parsed = JSON.parse(raw);
+        assert('Donnees chiffrees (pas un array)', !Array.isArray(parsed));
+        assert('Format chiffre v1', parsed.v === 1);
+        assert('Contient iv', !!parsed.iv);
+        assert('Contient ct (ciphertext)', !!parsed.ct);
+        assert('Ciphertext ne contient pas le client en clair', parsed.ct.indexOf('CryptoClient') < 0);
+
+        // Verifier que le dechiffrement fonctionne
+        var saved = await getSavedManifests();
+        assertEqual('Dechiffrement OK - 1 manifeste', saved.length, 1);
+        assertEqual('Dechiffrement OK - client', saved[0].client, 'CryptoClient');
+        assertEqual('Dechiffrement OK - agent', saved[0].agent, 'CryptoAgent');
+
+        window.alert = origAlert;
+    })();
+
+    // --- Migration ancien format vers chiffre ---
+    suite('SECU - Migration ancien format non-chiffre');
+    await (async function() {
+        resetDOM();
+        var origAlert = window.alert;
+        window.alert = function() {};
+
+        // Ecrire directement un array JSON (ancien format)
+        var oldFormat = [{ manifestId: 'MAN-MIGRATE', client: 'OldClear', agent: 'Ag', destAirport: 'CDG',
+            ulds: [{ uldNumber: 'U', rows: [{ lta: 'L', dossier: 'D', colis: 1, dgr: 'N', comment: '' }], totalColis: 1 }],
+            recipients: '', cc: '', date: '01/01/2025', timestamp: '2025-01-01T00:00:00.000Z' }];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(oldFormat));
+
+        // getSavedManifests doit lire l ancien format
+        var loaded = await getSavedManifests();
+        assertEqual('Lecture ancien format OK', loaded.length, 1);
+        assertEqual('Client ancien format', loaded[0].client, 'OldClear');
+
+        // migrateStorageIfNeeded doit chiffrer
+        await migrateStorageIfNeeded();
+        var raw = localStorage.getItem(STORAGE_KEY);
+        var parsed = JSON.parse(raw);
+        assert('Apres migration: format chiffre', parsed.v === 1 && !!parsed.ct);
+
+        // Verification relecture apres migration
+        var reloaded = await getSavedManifests();
+        assertEqual('Relecture post-migration OK', reloaded.length, 1);
+        assertEqual('Client post-migration', reloaded[0].client, 'OldClear');
 
         window.alert = origAlert;
     })();

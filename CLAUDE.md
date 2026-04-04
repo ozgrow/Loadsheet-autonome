@@ -54,12 +54,31 @@ npx serve .
 - Pas de framework frontend, JS vanilla uniquement
 - CSS : desktop par defaut, mobile via `@media (max-width: 768px)`
 - Version affichee : variable `APP_VERSION` dans app.js, visible sur login + app + PDF
-- Donnees manifestes en localStorage (max 50, FIFO)
+- Donnees manifestes chiffrees en localStorage (AES-256-GCM + PBKDF2, max 50, FIFO)
 - PMC renomme en ULD partout
 - Le logo ATH est en base64 dans logo.js (pas de fichier image servi)
 - Azure SWA n'accepte qu'un seul `*` dans les exclude paths (pas de `**`)
-- Azure SWA managed functions ne recoivent pas le header `Authorization` — utiliser `x-auth-token` + `_token` dans le body
+- Azure SWA managed functions ne recoivent pas le header `Authorization` — utiliser `x-auth-token` (header uniquement, pas de token dans le body)
+- Toutes les donnees utilisateur injectees dans innerHTML doivent etre echappees via `esc()` (anti-XSS)
+- Les fonctions de storage (getSavedManifests, saveManifest, loadManifest, deleteSavedManifest, refreshSavedList) sont async
+
+## Securite
+- **XSS** : fonction `esc()` dans app.js, obligatoire pour tout innerHTML avec donnees utilisateur
+- **Chiffrement localStorage** : AES-256-GCM, cle derivee du mot de passe via PBKDF2 (100k iterations), salt en localStorage, cle en sessionStorage
+- **Migration** : les anciennes donnees non-chiffrees (JSON array) sont auto-migrees au premier login
+- **CSP** : Content-Security-Policy dans staticwebapp.config.json
+- **Email** : validation regex des adresses + strip CRLF du sujet cote serveur
+- **Auth** : ne JAMAIS mettre le mot de passe en clair dans les commentaires du code
+
+## Tests
+- Fichier : `tests/tests.html` — tests unitaires anti-regression executables dans le navigateur
+- Protege par la meme auth session que l'app principale
+- Lien discret en bas de page (index.html)
+- **Regle** : toute nouvelle fonctionnalite ou modification doit etre accompagnee de tests correspondants dans tests.html
+- Couvre : fonctions metier (ULD, colis, LTA, poids, save/load, FIFO), securite (XSS, donnees corrompues, chiffrement, session), et retro-compatibilite
+- Les tests utilisant les fonctions storage doivent etre `await (async function() { ... })()`
 
 ## URL
 - Production : https://nice-smoke-0ca8eb110.6.azurestaticapps.net
+- Tests : https://nice-smoke-0ca8eb110.6.azurestaticapps.net/tests/tests.html
 - Repo : https://github.com/ozgrow/Loadsheet-autonome

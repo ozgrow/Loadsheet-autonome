@@ -1,8 +1,10 @@
 // --- Version ---
-var APP_VERSION = "1.6.1";
+var APP_VERSION = "1.7.0";
 
 // --- Storage ---
 var STORAGE_KEY = "loadsheet_manifests";
+var STORAGE_SALT_KEY = "loadsheet_salt";
+var STORAGE_CK_KEY = "loadsheet_ck";
 var MAX_SAVED = 50;
 
 // --- State ---
@@ -13,6 +15,83 @@ var uldCount = 0;
 function esc(str) {
     if (str === null || str === undefined) return '';
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ============================================
+// ENCRYPTED STORAGE (AES-256-GCM + PBKDF2)
+// ============================================
+function b64ToUint8(b64) {
+    var raw = atob(b64);
+    var arr = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+    return arr;
+}
+
+function uint8ToB64(uint8) {
+    var s = '';
+    for (var i = 0; i < uint8.length; i++) s += String.fromCharCode(uint8[i]);
+    return btoa(s);
+}
+
+async function deriveAndStoreKey(password) {
+    var saltB64 = localStorage.getItem(STORAGE_SALT_KEY);
+    var salt;
+    if (saltB64) {
+        salt = b64ToUint8(saltB64);
+    } else {
+        salt = crypto.getRandomValues(new Uint8Array(16));
+        localStorage.setItem(STORAGE_SALT_KEY, uint8ToB64(salt));
+    }
+    var keyMaterial = await crypto.subtle.importKey(
+        'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']
+    );
+    var key = await crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        true, ['encrypt', 'decrypt']
+    );
+    var exported = new Uint8Array(await crypto.subtle.exportKey('raw', key));
+    sessionStorage.setItem(STORAGE_CK_KEY, uint8ToB64(exported));
+    return key;
+}
+
+async function getStorageKey() {
+    var raw = sessionStorage.getItem(STORAGE_CK_KEY);
+    if (!raw) return null;
+    return crypto.subtle.importKey('raw', b64ToUint8(raw), 'AES-GCM', false, ['encrypt', 'decrypt']);
+}
+
+async function encryptManifests(data) {
+    var key = await getStorageKey();
+    if (!key) return null;
+    var json = new TextEncoder().encode(JSON.stringify(data));
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, json));
+    return JSON.stringify({ v: 1, iv: uint8ToB64(iv), ct: uint8ToB64(ct) });
+}
+
+async function decryptManifests(str) {
+    var key = await getStorageKey();
+    if (!key) return null;
+    var enc = JSON.parse(str);
+    if (!enc.v || !enc.iv || !enc.ct) return null;
+    var iv = b64ToUint8(enc.iv);
+    var ct = b64ToUint8(enc.ct);
+    var pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, ct);
+    return JSON.parse(new TextDecoder().decode(pt));
+}
+
+async function migrateStorageIfNeeded() {
+    try {
+        var raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        var parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+            var encrypted = await encryptManifests(parsed);
+            if (encrypted) localStorage.setItem(STORAGE_KEY, encrypted);
+        }
+    } catch(e) {}
 }
 
 // --- Manifest ID generation ---
@@ -28,9 +107,10 @@ function generateManifestId() {
 }
 
 // --- Init / New Manifest ---
-function initApp() {
+async function initApp() {
+    await migrateStorageIfNeeded();
     newManifest();
-    refreshSavedList();
+    await refreshSavedList();
 }
 
 function newManifest() {
@@ -193,31 +273,45 @@ function getAllLtas(data) {
 // ============================================
 // SAVE / LOAD MANIFESTS
 // ============================================
-function getSavedManifests() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-    catch (e) { return []; }
+async function getSavedManifests() {
+    try {
+        var raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        var parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed; // old unencrypted or empty
+        if (parsed.v === 1 && parsed.iv && parsed.ct) {
+            var data = await decryptManifests(raw);
+            return Array.isArray(data) ? data : [];
+        }
+        return [];
+    } catch (e) { return []; }
 }
 
-function saveManifest() {
+async function writeSavedManifests(manifests) {
+    var encrypted = await encryptManifests(manifests);
+    if (encrypted) localStorage.setItem(STORAGE_KEY, encrypted);
+}
+
+async function saveManifest() {
     var data = collectData();
     if (data.ulds.length === 0) { alert('Rien a sauvegarder.'); return; }
-    var saved = getSavedManifests();
+    var saved = await getSavedManifests();
     var idx = saved.findIndex(function(m) { return m.manifestId === data.manifestId; });
     if (idx >= 0) { saved[idx] = data; } else { saved.unshift(data); if (saved.length > MAX_SAVED) saved.pop(); }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-    refreshSavedList();
+    await writeSavedManifests(saved);
+    await refreshSavedList();
     alert('Manifeste ' + data.manifestId + ' sauvegarde.');
 }
 
-function deleteSavedManifest(id) {
+async function deleteSavedManifest(id) {
     if (!confirm('Supprimer ce manifeste ?')) return;
-    var saved = getSavedManifests().filter(function(m) { return m.manifestId !== id; });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-    refreshSavedList();
+    var saved = (await getSavedManifests()).filter(function(m) { return m.manifestId !== id; });
+    await writeSavedManifests(saved);
+    await refreshSavedList();
 }
 
-function loadManifest(id) {
-    var saved = getSavedManifests();
+async function loadManifest(id) {
+    var saved = await getSavedManifests();
     var data = saved.find(function(m) { return m.manifestId === id; });
     if (!data) return;
 
@@ -274,8 +368,8 @@ function loadManifest(id) {
     }
 }
 
-function refreshSavedList() {
-    var saved = getSavedManifests();
+async function refreshSavedList() {
+    var saved = await getSavedManifests();
     document.getElementById('savedCount').textContent = saved.length;
     var list = document.getElementById('savedManifestsList');
     if (saved.length === 0) {
@@ -472,7 +566,7 @@ function buildPdf(data) {
     return doc;
 }
 
-function generatePdf() {
+async function generatePdf() {
     if (!validateRequired()) return;
     var data = collectData();
     if (data.ulds.length === 0) { alert('Veuillez ajouter au moins une ULD.'); return; }
@@ -481,7 +575,7 @@ function generatePdf() {
 
     document.getElementById('manifestStatus').textContent = 'Genere';
     document.getElementById('manifestStatus').className = 'status status-generated';
-    saveManifest();
+    await saveManifest();
 
     var url = URL.createObjectURL(doc.output('blob'));
     window.open(url, '_blank');

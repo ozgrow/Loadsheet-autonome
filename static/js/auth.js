@@ -73,7 +73,10 @@ function isLoggedIn() {
   if (!session) return false;
   try {
     const { expiry } = JSON.parse(session);
-    return expiry > Date.now();
+    if (expiry <= Date.now()) return false;
+    // Crypto key must be present for encrypted storage
+    if (!sessionStorage.getItem('loadsheet_ck')) return false;
+    return true;
   } catch {
     return false;
   }
@@ -165,6 +168,10 @@ async function initAuth() {
     const hash = await sha256(password);
 
     if (hash === VALID_PASSWORD_HASH) {
+      // Derive AES key for encrypted localStorage
+      if (typeof deriveAndStoreKey === 'function') {
+        await deriveAndStoreKey(password);
+      }
       // Also get JWT from backend for API calls
       var jwtToken = null;
       try {
