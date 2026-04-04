@@ -49,15 +49,21 @@
     <div id="savedManifestsList"></div>
 </div>
 
+<script>
+// Stub alert/confirm AVANT le chargement de app.js
+var _alertLog = [];
+var _origAlert = window.alert;
+var _origConfirm = window.confirm;
+window.alert = function(msg) { _alertLog.push(msg); };
+window.confirm = function() { return true; };
+// Flag XSS : les payloads utilisent window._xss++ au lieu de alert()
+window._xss = 0;
+// Nettoyer localStorage avant tout
+localStorage.removeItem('loadsheet_manifests');
+</script>
 <script src="../static/js/app.js"></script>
 <script>
 (async function() {
-    // Stub global alert/confirm pour eviter les popups pendant les tests
-    var _alertLog = [];
-    var _origAlert = window.alert;
-    var _origConfirm = window.confirm;
-    window.alert = function(msg) { _alertLog.push(msg); };
-    window.confirm = function() { return true; };
 
     // Init crypto key for tests
     await deriveAndStoreKey('test-password-for-unit-tests');
@@ -618,19 +624,18 @@
         assertEqual('Null => vide', esc(null), '');
         assertEqual('Undefined => vide', esc(undefined), '');
         assertEqual('Nombre converti en string', esc(123), '123');
-        assertEqual('Payload complet', esc('"><script>alert(1)</script>'), '&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;');
-        assertEqual('Payload img', esc('<img src=x onerror="alert(1)">'), '&lt;img src=x onerror=&quot;alert(1)&quot;&gt;');
+        assertEqual('Payload complet', esc('"><script>window._xss++</script>'), '&quot;&gt;&lt;script&gt;window._xss++&lt;/script&gt;');
+        assertEqual('Payload img', esc('<img src=x onerror="window._xss++">'), '&lt;img src=x onerror=&quot;window._xss++&quot;&gt;');
     })();
 
     // --- onclick utilise des index numeriques (pas de donnees user) ---
     suite('SECU - onclick sans donnees utilisateur');
     await (async function() {
         resetDOM();
-        _alertLog = [];
-        var xssTriggered = false;
+        window._xss = 0;
 
         var malicious = {
-            manifestId: "MAN'); alert('XSS'); ('",
+            manifestId: "MAN'); window._xss++; ('",
             client: 'C', agent: 'A', destAirport: 'CDG',
             date: '01/01/2025', timestamp: '2025-01-01T10:00:00.000Z',
             recipients: '', cc: '',
@@ -643,8 +648,7 @@
         var onclicks = document.getElementById('savedManifestsList').innerHTML;
         assert('onclick utilise _savedIds[0] (pas de donnees user)', onclicks.indexOf('_savedIds[0]') >= 0);
         assert('onclick ne contient pas le manifestId brut', onclicks.indexOf("MAN')") < 0);
-        xssTriggered = _alertLog.some(function(msg) { return String(msg).indexOf('XSS') >= 0; });
-        assertEqual('Pas d alerte XSS declenchee', xssTriggered, false);
+        assertEqual('Pas de XSS declenchee', window._xss, 0);
 
     })();
 
@@ -652,14 +656,14 @@
     suite('SECU - XSS via localStorage (loadManifest)');
     await (async function() {
         resetDOM();
-        _alertLog = [];
+        window._xss = 0;
 
         var xssPayloads = [
-            '"><script>alert("XSS")</script>',
-            '"><img src=x onerror="alert(1)">',
-            '<svg onload=alert(1)>',
-            "'+alert(1)+'",
-            '{{constructor.constructor("alert(1)")()}}'
+            '"><script>window._xss++</script>',
+            '"><img src=x onerror="window._xss++">',
+            '<svg onload=window._xss++>',
+            "'+window._xss+++'",
+            '{{constructor.constructor("window._xss++")()}}'
         ];
 
         for (var idx = 0; idx < xssPayloads.length; idx++) {
@@ -701,6 +705,7 @@
             var svgs = document.getElementById('pmcContainer').querySelectorAll('svg[onload]');
             assertEqual('Pas de <svg onload> injecte (payload #' + idx + ')', svgs.length, 0);
         }
+        assertEqual('Aucun XSS execute (loadManifest)', window._xss, 0);
 
     })();
 
@@ -708,11 +713,11 @@
     suite('SECU - XSS via refreshSavedList');
     await (async function() {
         resetDOM();
-        _alertLog = [];
+        window._xss = 0;
 
         var malicious = {
-            manifestId: '"><img src=x onerror="alert(1)">',
-            client: '<script>alert("XSS")</script>',
+            manifestId: '"><img src=x onerror="window._xss++">',
+            client: '<script>window._xss++</script>',
             agent: 'Agent',
             destAirport: '<b>XSS</b>',
             date: '01/01/2025',
@@ -720,7 +725,7 @@
             recipients: '',
             cc: '',
             ulds: [{
-                uldNumber: 'ULD', rows: [{ lta: '<svg onload=alert(1)>', dossier: 'D', colis: 1, dgr: 'N', comment: '' }], totalColis: 1
+                uldNumber: 'ULD', rows: [{ lta: '<svg onload=window._xss++>', dossier: 'D', colis: 1, dgr: 'N', comment: '' }], totalColis: 1
             }]
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify([malicious]));
@@ -729,6 +734,7 @@
         assert('refreshSavedList ne crash pas avec XSS', noError);
         var scripts = document.getElementById('savedManifestsList').querySelectorAll('script');
         assertEqual('Pas de <script> injecte dans saved list', scripts.length, 0);
+        assertEqual('Aucun XSS execute (refreshSavedList)', window._xss, 0);
 
     })();
 
