@@ -1,5 +1,5 @@
 // --- Version ---
-var APP_VERSION = "1.7.1";
+var APP_VERSION = "1.7.2";
 
 // --- Storage ---
 var STORAGE_KEY = "loadsheet_manifests";
@@ -391,7 +391,7 @@ async function refreshSavedList() {
         var dateStr = m.timestamp ? new Date(m.timestamp).toLocaleString('fr-FR') : m.date || '';
         var dest = m.destAirport || '';
         var safeId = esc(m.manifestId);
-        var jsId = escJs(m.manifestId);
+        var jsId = esc(escJs(m.manifestId));
         html += '<div class="saved-item">' +
             '<div class="saved-item-info" onclick="loadManifest(\'' + jsId + '\')">' +
                 '<div class="saved-item-id">' + safeId + (dest ? ' \u2192 ' + esc(dest) : '') + '</div>' +
