@@ -52,6 +52,13 @@
 <script src="../static/js/app.js"></script>
 <script>
 (async function() {
+    // Stub global alert/confirm pour eviter les popups pendant les tests
+    var _alertLog = [];
+    var _origAlert = window.alert;
+    var _origConfirm = window.confirm;
+    window.alert = function(msg) { _alertLog.push(msg); };
+    window.confirm = function() { return true; };
+
     // Init crypto key for tests
     await deriveAndStoreKey('test-password-for-unit-tests');
 
@@ -280,37 +287,32 @@
     suite('validateRequired');
     (function() {
         resetDOM();
-        // Stub alert pour ne pas bloquer les tests
-        var alerts = [];
-        var origAlert = window.alert;
-        window.alert = function(msg) { alerts.push(msg); };
+        _alertLog = [];
 
         document.getElementById('agentName').value = '';
         document.getElementById('destAirport').value = 'CDG';
         var r1 = validateRequired();
         assertEqual('Agent vide => false', r1, false);
-        assert('Alert agent', alerts.length > 0);
+        assert('Alert agent', _alertLog.length > 0);
 
-        alerts = [];
+        _alertLog = [];
         document.getElementById('agentName').value = 'Agent';
         document.getElementById('destAirport').value = 'XX';
         var r2 = validateRequired();
         assertEqual('Dest 2 lettres => false', r2, false);
 
-        alerts = [];
+        _alertLog = [];
         document.getElementById('destAirport').value = 'CDG';
         var r3 = validateRequired();
         assertEqual('Agent + Dest OK => true', r3, true);
 
-        window.alert = origAlert;
     })();
 
     // --- save / load manifest ---
     suite('saveManifest / loadManifest');
     await (async function() {
         resetDOM();
-        var origAlert = window.alert;
-        window.alert = function() {};
+        _alertLog = [];
 
         manifestId = 'MAN-SAVE-TEST';
         document.getElementById('agentName').value = 'SaveAgent';
@@ -357,15 +359,13 @@
         assertEqual('DGR restaure', loadedBlock.querySelector('.dgr-input').value, 'O');
         assertEqual('Total colis recalcule', loadedBlock.querySelector('.total-colis').textContent, '7');
 
-        window.alert = origAlert;
     })();
 
     // --- Load manifest affiche la section envoi si recipients ---
     suite('loadManifest - section envoi auto-affichee');
     await (async function() {
         resetDOM();
-        var origAlert = window.alert;
-        window.alert = function() {};
+        _alertLog = [];
 
         manifestId = 'MAN-RECIP-TEST';
         document.getElementById('agentName').value = 'Ag';
@@ -399,15 +399,13 @@
         var display2 = document.getElementById('generateSection').style.display;
         assertEqual('Section envoi cachee sans recipients', display2, 'none');
 
-        window.alert = origAlert;
     })();
 
     // --- Retro-compat ancien format pmcs ---
     suite('Retro-compatibilite ancien format (pmcs)');
     await (async function() {
         resetDOM();
-        var origAlert = window.alert;
-        window.alert = function() {};
+        _alertLog = [];
 
         var oldData = {
             manifestId: 'MAN-OLD-001',
@@ -433,15 +431,13 @@
         assertEqual('LTA charge', block.querySelector('.lta-input').value, 'LTA-OLD');
         assertEqual('Poids vide (absent ancien format)', block.querySelector('.uld-weight').value, '');
 
-        window.alert = origAlert;
     })();
 
     // --- FIFO max 50 ---
     suite('Storage FIFO max 50');
     await (async function() {
         resetDOM();
-        var origAlert = window.alert;
-        window.alert = function() {};
+        _alertLog = [];
 
         for (var n = 0; n < 52; n++) {
             manifestId = 'MAN-FIFO-' + String(n).padStart(3, '0');
@@ -458,7 +454,6 @@
         assert('Le plus ancien (000) supprime', !saved.find(function(m) { return m.manifestId === 'MAN-FIFO-000'; }));
         assert('Le 2e plus ancien (001) supprime', !saved.find(function(m) { return m.manifestId === 'MAN-FIFO-001'; }));
 
-        window.alert = origAlert;
     })();
 
     // --- updateRecap ---
@@ -521,8 +516,7 @@
     suite('saveManifest - mise a jour');
     await (async function() {
         resetDOM();
-        var origAlert = window.alert;
-        window.alert = function() {};
+        _alertLog = [];
 
         manifestId = 'MAN-UPDATE-001';
         document.getElementById('agentName').value = 'Agent1';
@@ -542,7 +536,6 @@
         assertEqual('Client mis a jour', found[0].client, 'V2');
         assertEqual('Colis mis a jour', found[0].ulds[0].rows[0].colis, 99);
 
-        window.alert = origAlert;
     })();
 
     // --- newManifest reset ---
@@ -568,10 +561,6 @@
     suite('deleteSavedManifest');
     await (async function() {
         resetDOM();
-        var origAlert = window.alert;
-        var origConfirm = window.confirm;
-        window.alert = function() {};
-        window.confirm = function() { return true; };
 
         manifestId = 'MAN-DEL-001';
         document.getElementById('agentName').value = 'Ag';
@@ -587,9 +576,6 @@
         var afterDelete = await getSavedManifests();
         assertEqual('1 manifeste apres suppression', afterDelete.length, 1);
         assertEqual('Le bon manifeste reste', afterDelete[0].manifestId, 'MAN-DEL-002');
-
-        window.alert = origAlert;
-        window.confirm = origConfirm;
     })();
 
     // --- Poids dans collectData: 0 ou negatif ignore ---
@@ -640,9 +626,8 @@
     suite('SECU - onclick sans donnees utilisateur');
     await (async function() {
         resetDOM();
-        var origAlert = window.alert;
+        _alertLog = [];
         var xssTriggered = false;
-        window.alert = function(msg) { if (String(msg).indexOf('XSS') >= 0) xssTriggered = true; };
 
         var malicious = {
             manifestId: "MAN'); alert('XSS'); ('",
@@ -658,17 +643,16 @@
         var onclicks = document.getElementById('savedManifestsList').innerHTML;
         assert('onclick utilise _savedIds[0] (pas de donnees user)', onclicks.indexOf('_savedIds[0]') >= 0);
         assert('onclick ne contient pas le manifestId brut', onclicks.indexOf("MAN')") < 0);
+        xssTriggered = _alertLog.some(function(msg) { return String(msg).indexOf('XSS') >= 0; });
         assertEqual('Pas d alerte XSS declenchee', xssTriggered, false);
 
-        window.alert = origAlert;
     })();
 
     // --- XSS via innerHTML dans loadManifest ---
     suite('SECU - XSS via localStorage (loadManifest)');
     await (async function() {
         resetDOM();
-        var origAlert = window.alert;
-        window.alert = function() {};
+        _alertLog = [];
 
         var xssPayloads = [
             '"><script>alert("XSS")</script>',
@@ -718,15 +702,13 @@
             assertEqual('Pas de <svg onload> injecte (payload #' + idx + ')', svgs.length, 0);
         }
 
-        window.alert = origAlert;
     })();
 
     // --- XSS via refreshSavedList ---
     suite('SECU - XSS via refreshSavedList');
     await (async function() {
         resetDOM();
-        var origAlert = window.alert;
-        window.alert = function() {};
+        _alertLog = [];
 
         var malicious = {
             manifestId: '"><img src=x onerror="alert(1)">',
@@ -748,7 +730,6 @@
         var scripts = document.getElementById('savedManifestsList').querySelectorAll('script');
         assertEqual('Pas de <script> injecte dans saved list', scripts.length, 0);
 
-        window.alert = origAlert;
     })();
 
     // --- localStorage donnees corrompues ---
@@ -792,9 +773,7 @@
     suite('SECU - Validation destAirport');
     (function() {
         resetDOM();
-        var origAlert = window.alert;
-        var alerts = [];
-        window.alert = function(msg) { alerts.push(msg); };
+        _alertLog = [];
 
         // Plus de 3 caracteres
         document.getElementById('agentName').value = 'Agent';
@@ -813,7 +792,6 @@
         document.getElementById('destAirport').value = '<s>';
         assertEqual('Injection 3 chars HTML => true (longueur OK mais contenu suspect)', validateRequired(), true);
 
-        window.alert = origAlert;
     })();
 
     // --- Poids extreme ---
@@ -868,8 +846,7 @@
     suite('SECU - Champs tres longs (overflow)');
     await (async function() {
         resetDOM();
-        var origAlert = window.alert;
-        window.alert = function() {};
+        _alertLog = [];
 
         manifestId = 'MAN-LONG';
         document.getElementById('agentName').value = 'A'.repeat(5000);
@@ -899,7 +876,6 @@
         } catch(e) { noError = false; }
         assert('save/load ne crash pas avec champs longs', noError);
 
-        window.alert = origAlert;
     })();
 
     // --- Session auth (isLoggedIn simulation) ---
@@ -950,8 +926,7 @@
     suite('SECU - Chiffrement localStorage');
     await (async function() {
         resetDOM();
-        var origAlert = window.alert;
-        window.alert = function() {};
+        _alertLog = [];
 
         manifestId = 'MAN-CRYPTO-TEST';
         document.getElementById('agentName').value = 'CryptoAgent';
@@ -976,15 +951,13 @@
         assertEqual('Dechiffrement OK - client', saved[0].client, 'CryptoClient');
         assertEqual('Dechiffrement OK - agent', saved[0].agent, 'CryptoAgent');
 
-        window.alert = origAlert;
     })();
 
     // --- Migration ancien format vers chiffre ---
     suite('SECU - Migration ancien format non-chiffre');
     await (async function() {
         resetDOM();
-        var origAlert = window.alert;
-        window.alert = function() {};
+        _alertLog = [];
 
         // Ecrire directement un array JSON (ancien format)
         var oldFormat = [{ manifestId: 'MAN-MIGRATE', client: 'OldClear', agent: 'Ag', destAirport: 'CDG',
@@ -1008,7 +981,6 @@
         assertEqual('Relecture post-migration OK', reloaded.length, 1);
         assertEqual('Client post-migration', reloaded[0].client, 'OldClear');
 
-        window.alert = origAlert;
     })();
 
     // ========================================
@@ -1022,8 +994,10 @@
     summaryEl.className = failed === 0 ? 'all-pass' : 'has-fail';
     summaryEl.textContent = passed + ' / ' + total + ' tests OK' + (failed > 0 ? ' — ' + failed + ' ECHEC(S)' : ' — Tous les tests passent !');
 
-    // Clean up localStorage
+    // Clean up
     localStorage.removeItem(STORAGE_KEY);
+    window.alert = _origAlert;
+    window.confirm = _origConfirm;
 })();
 </script>
 </body>
