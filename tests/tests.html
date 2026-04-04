@@ -3,6 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <title>Tests anti-regression - Loadsheet ATH</title>
+    <script>
+    // Auth gate: meme verification de session que l'app principale
+    (function() {
+        var AUTH_SESSION_KEY = "loadsheet_auth";
+        try {
+            var session = JSON.parse(sessionStorage.getItem(AUTH_SESSION_KEY));
+            if (!session || !session.expiry || session.expiry <= Date.now()) {
+                window.location.href = "/?redirect=tests";
+            }
+        } catch (e) {
+            window.location.href = "/?redirect=tests";
+        }
+    })();
+    </script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; max-width: 900px; margin: 20px auto; background: #f5f5f5; }
         h1 { color: #1a3a5c; }
