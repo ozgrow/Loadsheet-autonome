@@ -618,6 +618,312 @@
     })();
 
     // ========================================
+    // TESTS SECURITE
+    // ========================================
+
+    // --- XSS via innerHTML dans loadManifest ---
+    suite('SECU - XSS via localStorage (loadManifest)');
+    (function() {
+        resetDOM();
+        var origAlert = window.alert;
+        window.alert = function() {};
+
+        var xssPayloads = [
+            '"><script>alert("XSS")</script>',
+            '"><img src=x onerror="alert(1)">',
+            '<svg onload=alert(1)>',
+            "'+alert(1)+'",
+            '{{constructor.constructor("alert(1)")()}}'
+        ];
+
+        xssPayloads.forEach(function(payload, idx) {
+            resetDOM();
+            var malicious = {
+                manifestId: 'MAN-XSS-' + idx,
+                client: idx === 0 ? payload : 'Safe',
+                agent: idx === 1 ? payload : 'Safe',
+                destAirport: 'CDG',
+                date: '01/01/2025',
+                timestamp: '2025-01-01T10:00:00.000Z',
+                recipients: '',
+                cc: '',
+                ulds: [{
+                    uldNumber: idx === 2 ? payload : 'ULD-1',
+                    weight: 10,
+                    rows: [{
+                        lta: idx === 3 ? payload : 'LTA1',
+                        dossier: idx === 4 ? payload : 'D1',
+                        colis: 1,
+                        dgr: 'N',
+                        comment: payload
+                    }],
+                    totalColis: 1
+                }]
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify([malicious]));
+            var noError = true;
+            try {
+                loadManifest('MAN-XSS-' + idx);
+            } catch(e) { noError = false; }
+            assert('loadManifest ne crash pas avec payload XSS #' + idx, noError);
+
+            // Verifier qu aucun script ne s est injecte dans le DOM
+            var scripts = document.getElementById('pmcContainer').querySelectorAll('script');
+            assertEqual('Pas de <script> injecte (payload #' + idx + ')', scripts.length, 0);
+        });
+
+        window.alert = origAlert;
+    })();
+
+    // --- XSS via refreshSavedList ---
+    suite('SECU - XSS via refreshSavedList');
+    (function() {
+        resetDOM();
+        var origAlert = window.alert;
+        window.alert = function() {};
+
+        var malicious = {
+            manifestId: '"><img src=x onerror="alert(1)">',
+            client: '<script>alert("XSS")</script>',
+            agent: 'Agent',
+            destAirport: '<b>XSS</b>',
+            date: '01/01/2025',
+            timestamp: '2025-01-01T10:00:00.000Z',
+            recipients: '',
+            cc: '',
+            ulds: [{
+                uldNumber: 'ULD', rows: [{ lta: '<svg onload=alert(1)>', dossier: 'D', colis: 1, dgr: 'N', comment: '' }], totalColis: 1
+            }]
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify([malicious]));
+        var noError = true;
+        try { refreshSavedList(); } catch(e) { noError = false; }
+        assert('refreshSavedList ne crash pas avec XSS', noError);
+        var scripts = document.getElementById('savedManifestsList').querySelectorAll('script');
+        assertEqual('Pas de <script> injecte dans saved list', scripts.length, 0);
+
+        window.alert = origAlert;
+    })();
+
+    // --- localStorage donnees corrompues ---
+    suite('SECU - localStorage donnees corrompues');
+    (function() {
+        // Donnees invalides
+        var corrupted = [
+            'not json at all',
+            '{"manifestId": 1}',
+            '[{"ulds": "not_array"}]',
+            '[{"ulds": null}]',
+            '[null]',
+            '[]',
+            '[{"manifestId":"X","ulds":[{"rows":"not_array"}]}]'
+        ];
+
+        corrupted.forEach(function(data, idx) {
+            localStorage.setItem(STORAGE_KEY, data);
+            var noError = true;
+            try {
+                var result = getSavedManifests();
+                assert('getSavedManifests retourne un array (corrupt #' + idx + ')', Array.isArray(result));
+            } catch(e) { noError = false; }
+            assert('getSavedManifests ne crash pas (corrupt #' + idx + ')', noError);
+        });
+
+        // loadManifest avec donnees corrompues
+        localStorage.setItem(STORAGE_KEY, JSON.stringify([{
+            manifestId: 'MAN-CORRUPT',
+            client: null,
+            agent: undefined,
+            destAirport: 123,
+            ulds: null
+        }]));
+        var noError = true;
+        try { loadManifest('MAN-CORRUPT'); } catch(e) { noError = false; }
+        assert('loadManifest gere ulds:null sans crash', noError);
+
+        localStorage.removeItem(STORAGE_KEY);
+    })();
+
+    // --- Validation destAirport injection ---
+    suite('SECU - Validation destAirport');
+    (function() {
+        resetDOM();
+        var origAlert = window.alert;
+        var alerts = [];
+        window.alert = function(msg) { alerts.push(msg); };
+
+        // Plus de 3 caracteres
+        document.getElementById('agentName').value = 'Agent';
+        document.getElementById('destAirport').value = 'CDGX';
+        assertEqual('4 lettres => false', validateRequired(), false);
+
+        // 1 caractere
+        document.getElementById('destAirport').value = 'C';
+        assertEqual('1 lettre => false', validateRequired(), false);
+
+        // Vide
+        document.getElementById('destAirport').value = '';
+        assertEqual('Vide => false', validateRequired(), false);
+
+        // Avec injection
+        document.getElementById('destAirport').value = '<s>';
+        assertEqual('Injection 3 chars HTML => true (longueur OK mais contenu suspect)', validateRequired(), true);
+
+        window.alert = origAlert;
+    })();
+
+    // --- Poids extreme ---
+    suite('SECU - Poids valeurs extremes');
+    (function() {
+        resetDOM();
+        manifestId = 'MAN-WEXT';
+        document.getElementById('agentName').value = 'Ag';
+        document.getElementById('destAirport').value = 'CDG';
+        addUld();
+
+        // Tres grand poids
+        document.querySelector('.uld-weight').value = '999999999';
+        var data = collectData();
+        assertEqual('Poids tres grand collecte', data.ulds[0].weight, 999999999);
+
+        // NaN
+        document.querySelector('.uld-weight').value = 'abc';
+        data = collectData();
+        assert('Poids NaN => pas de weight', data.ulds[0].weight === undefined);
+
+        // Infinity
+        document.querySelector('.uld-weight').value = 'Infinity';
+        data = collectData();
+        assert('Poids Infinity => pas de weight (NaN via parseFloat de input)', data.ulds[0].weight === undefined || data.ulds[0].weight === Infinity);
+    })();
+
+    // --- Colis valeurs extremes ---
+    suite('SECU - Colis valeurs extremes');
+    (function() {
+        resetDOM();
+        manifestId = 'MAN-CEXT';
+        document.getElementById('agentName').value = 'Ag';
+        document.getElementById('destAirport').value = 'CDG';
+        addUld();
+
+        document.querySelector('.colis-input').value = '-100';
+        var data = collectData();
+        assertEqual('Colis negatif collecte tel quel', data.ulds[0].rows[0].colis, -100);
+        assertEqual('totalColis negatif', data.ulds[0].totalColis, -100);
+
+        document.querySelector('.colis-input').value = '0';
+        data = collectData();
+        assertEqual('Colis 0', data.ulds[0].rows[0].colis, 0);
+
+        document.querySelector('.colis-input').value = '';
+        data = collectData();
+        assertEqual('Colis vide => 0', data.ulds[0].rows[0].colis, 0);
+    })();
+
+    // --- Champs tres longs ---
+    suite('SECU - Champs tres longs (overflow)');
+    (function() {
+        resetDOM();
+        var origAlert = window.alert;
+        window.alert = function() {};
+
+        manifestId = 'MAN-LONG';
+        document.getElementById('agentName').value = 'A'.repeat(5000);
+        document.getElementById('destAirport').value = 'CDG';
+        document.getElementById('clientName').value = 'B'.repeat(5000);
+        addUld();
+        document.querySelector('.uld-number').value = 'C'.repeat(5000);
+        document.querySelector('.lta-input').value = 'D'.repeat(5000);
+        document.querySelector('.comment-input').value = 'E'.repeat(5000);
+        document.querySelector('.colis-input').value = '1';
+
+        var noError = true;
+        try {
+            var data = collectData();
+            assertEqual('Agent 5000 chars collecte', data.agent.length, 5000);
+            assertEqual('Client 5000 chars collecte', data.client.length, 5000);
+        } catch(e) { noError = false; }
+        assert('collectData ne crash pas avec champs longs', noError);
+
+        // Save/load avec champs longs
+        noError = true;
+        try {
+            saveManifest();
+            document.getElementById('pmcContainer').innerHTML = '';
+            uldCount = 0;
+            loadManifest('MAN-LONG');
+        } catch(e) { noError = false; }
+        assert('save/load ne crash pas avec champs longs', noError);
+
+        window.alert = origAlert;
+    })();
+
+    // --- Session auth (isLoggedIn simulation) ---
+    suite('SECU - Session auth');
+    (function() {
+        var AUTH_KEY = 'loadsheet_auth';
+        // Session expiree
+        sessionStorage.setItem(AUTH_KEY, JSON.stringify({ expiry: Date.now() - 1000 }));
+        var session = JSON.parse(sessionStorage.getItem(AUTH_KEY));
+        assert('Session expiree detectee', session.expiry <= Date.now());
+
+        // Session valide
+        sessionStorage.setItem(AUTH_KEY, JSON.stringify({ expiry: Date.now() + 60000 }));
+        session = JSON.parse(sessionStorage.getItem(AUTH_KEY));
+        assert('Session valide detectee', session.expiry > Date.now());
+
+        // Session corrompue
+        sessionStorage.setItem(AUTH_KEY, 'not-json');
+        var valid = false;
+        try {
+            session = JSON.parse(sessionStorage.getItem(AUTH_KEY));
+            valid = session && session.expiry > Date.now();
+        } catch(e) { valid = false; }
+        assertEqual('Session corrompue => invalide', valid, false);
+
+        // Session sans expiry
+        sessionStorage.setItem(AUTH_KEY, JSON.stringify({ jwt: 'fake' }));
+        session = JSON.parse(sessionStorage.getItem(AUTH_KEY));
+        valid = session && session.expiry && session.expiry > Date.now();
+        assertEqual('Session sans expiry => invalide', valid, false);
+
+        // Cleanup
+        sessionStorage.removeItem(AUTH_KEY);
+    })();
+
+    // --- getAllLtas avec donnees vides/nulles ---
+    suite('SECU - getAllLtas robustesse');
+    (function() {
+        assertEqual('Data vide => array vide', getAllLtas({}).length, 0);
+        assertEqual('ulds vide => array vide', getAllLtas({ ulds: [] }).length, 0);
+        var data = { ulds: [{ rows: [{ lta: '' }, { lta: null }, { lta: undefined }] }] };
+        var ltas = getAllLtas(data);
+        assertEqual('LTA vides/nulles filtrees', ltas.length, 0);
+    })();
+
+    // --- Manifest ID dans onclick (injection) ---
+    suite('SECU - ManifestId injection dans onclick');
+    (function() {
+        resetDOM();
+        var origAlert = window.alert;
+        window.alert = function() {};
+
+        var malicious = {
+            manifestId: "MAN'); alert('XSS'); ('",
+            client: 'C', agent: 'A', destAirport: 'CDG',
+            date: '01/01/2025', timestamp: '2025-01-01T10:00:00.000Z',
+            recipients: '', cc: '',
+            ulds: [{ uldNumber: 'U', rows: [{ lta: 'L', dossier: 'D', colis: 1, dgr: 'N', comment: '' }], totalColis: 1 }]
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify([malicious]));
+        var noError = true;
+        try { refreshSavedList(); } catch(e) { noError = false; }
+        assert('refreshSavedList ne crash pas avec manifestId malveillant', noError);
+
+        window.alert = origAlert;
+    })();
+
+    // ========================================
     // DISPLAY RESULTS
     // ========================================
     if (currentSuite) resultsHtml += '</div>';
