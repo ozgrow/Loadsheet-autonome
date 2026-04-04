@@ -1,5 +1,5 @@
 // --- Version ---
-var APP_VERSION = "1.7.2";
+var APP_VERSION = "1.7.3";
 
 // --- Storage ---
 var STORAGE_KEY = "loadsheet_manifests";
@@ -10,6 +10,7 @@ var MAX_SAVED = 50;
 // --- State ---
 var manifestId = '';
 var uldCount = 0;
+var _savedIds = []; // tableau d'IDs pour onclick (anti-XSS)
 
 // --- HTML escape (anti-XSS) ---
 function esc(str) {
@@ -17,11 +18,7 @@ function esc(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-// --- JS string escape (pour onclick/oninput avec donnees dynamiques) ---
-function escJs(str) {
-    if (str === null || str === undefined) return '';
-    return String(str).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"').replace(/\n/g,'\\n').replace(/\r/g,'\\r');
-}
+
 
 // ============================================
 // ENCRYPTED STORAGE (AES-256-GCM + PBKDF2)
@@ -382,25 +379,24 @@ async function refreshSavedList() {
         list.innerHTML = '<div style="color:#a0aec0;font-size:0.9em;padding:8px 0;">Aucun manifeste sauvegarde.</div>';
         return;
     }
+    _savedIds = saved.map(function(m) { return m.manifestId; });
     var html = '';
-    saved.forEach(function(m) {
+    saved.forEach(function(m, idx) {
         var uldList = m.ulds || m.pmcs || [];
         var nbUld = uldList.length;
         var totalColis = uldList.reduce(function(s, p) { return s + (p.totalColis || 0); }, 0);
         var ltas = getAllLtas(m).join(', ') || '-';
         var dateStr = m.timestamp ? new Date(m.timestamp).toLocaleString('fr-FR') : m.date || '';
         var dest = m.destAirport || '';
-        var safeId = esc(m.manifestId);
-        var jsId = esc(escJs(m.manifestId));
         html += '<div class="saved-item">' +
-            '<div class="saved-item-info" onclick="loadManifest(\'' + jsId + '\')">' +
-                '<div class="saved-item-id">' + safeId + (dest ? ' \u2192 ' + esc(dest) : '') + '</div>' +
+            '<div class="saved-item-info" onclick="loadManifest(_savedIds[' + idx + '])">' +
+                '<div class="saved-item-id">' + esc(m.manifestId) + (dest ? ' \u2192 ' + esc(dest) : '') + '</div>' +
                 '<div class="saved-item-meta">' + esc(m.client || '-') + ' | ' + nbUld + ' ULD | ' + totalColis + ' colis | LTA: ' + esc(ltas) + '</div>' +
                 '<div class="saved-item-meta">' + esc(dateStr) + '</div>' +
             '</div>' +
             '<div class="saved-item-actions">' +
-                '<button class="btn btn-primary" style="font-size:0.75em;padding:4px 8px;" onclick="loadManifest(\'' + jsId + '\')">Ouvrir</button>' +
-                '<button class="btn btn-danger" onclick="event.stopPropagation();deleteSavedManifest(\'' + jsId + '\')">Suppr.</button>' +
+                '<button class="btn btn-primary" style="font-size:0.75em;padding:4px 8px;" onclick="loadManifest(_savedIds[' + idx + '])">Ouvrir</button>' +
+                '<button class="btn btn-danger" onclick="event.stopPropagation();deleteSavedManifest(_savedIds[' + idx + '])">Suppr.</button>' +
             '</div></div>';
     });
     list.innerHTML = html;

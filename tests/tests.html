@@ -636,15 +636,31 @@
         assertEqual('Payload img', esc('<img src=x onerror="alert(1)">'), '&lt;img src=x onerror=&quot;alert(1)&quot;&gt;');
     })();
 
-    // --- Fonction escJs() ---
-    suite('SECU - Fonction escJs() echappement JS');
-    (function() {
-        assertEqual("Echappe '", escJs("test'XSS"), "test\\'XSS");
-        assertEqual('Echappe "', escJs('test"XSS'), 'test\\"XSS');
-        assertEqual('Echappe \\', escJs('test\\XSS'), 'test\\\\XSS');
-        assertEqual('Echappe newline', escJs('test\nXSS'), 'test\\nXSS');
-        assertEqual('Null => vide', escJs(null), '');
-        assertEqual('Payload onclick', escJs("MAN'); alert('XSS'); ('"), "MAN\\'); alert(\\'XSS\\'); (\\'");
+    // --- onclick utilise des index numeriques (pas de donnees user) ---
+    suite('SECU - onclick sans donnees utilisateur');
+    await (async function() {
+        resetDOM();
+        var origAlert = window.alert;
+        var xssTriggered = false;
+        window.alert = function(msg) { if (String(msg).indexOf('XSS') >= 0) xssTriggered = true; };
+
+        var malicious = {
+            manifestId: "MAN'); alert('XSS'); ('",
+            client: 'C', agent: 'A', destAirport: 'CDG',
+            date: '01/01/2025', timestamp: '2025-01-01T10:00:00.000Z',
+            recipients: '', cc: '',
+            ulds: [{ uldNumber: 'U', rows: [{ lta: 'L', dossier: 'D', colis: 1, dgr: 'N', comment: '' }], totalColis: 1 }]
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify([malicious]));
+        await refreshSavedList();
+
+        // Verifier que les onclick utilisent _savedIds[index] et pas le manifestId
+        var onclicks = document.getElementById('savedManifestsList').innerHTML;
+        assert('onclick utilise _savedIds[0] (pas de donnees user)', onclicks.indexOf('_savedIds[0]') >= 0);
+        assert('onclick ne contient pas le manifestId brut', onclicks.indexOf("MAN')") < 0);
+        assertEqual('Pas d alerte XSS declenchee', xssTriggered, false);
+
+        window.alert = origAlert;
     })();
 
     // --- XSS via innerHTML dans loadManifest ---
@@ -929,27 +945,6 @@
         assertEqual('LTA vides/nulles filtrees', ltas.length, 0);
     })();
 
-    // --- Manifest ID dans onclick (injection) ---
-    suite('SECU - ManifestId injection dans onclick');
-    await (async function() {
-        resetDOM();
-        var origAlert = window.alert;
-        window.alert = function() {};
-
-        var malicious = {
-            manifestId: "MAN'); alert('XSS'); ('",
-            client: 'C', agent: 'A', destAirport: 'CDG',
-            date: '01/01/2025', timestamp: '2025-01-01T10:00:00.000Z',
-            recipients: '', cc: '',
-            ulds: [{ uldNumber: 'U', rows: [{ lta: 'L', dossier: 'D', colis: 1, dgr: 'N', comment: '' }], totalColis: 1 }]
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify([malicious]));
-        var noError = true;
-        try { await refreshSavedList(); } catch(e) { noError = false; }
-        assert('refreshSavedList ne crash pas avec manifestId malveillant', noError);
-
-        window.alert = origAlert;
-    })();
 
     // --- Chiffrement localStorage ---
     suite('SECU - Chiffrement localStorage');
