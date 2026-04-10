@@ -29,10 +29,14 @@ module.exports = async function (context, req) {
   // Sanitize subject (strip CRLF to prevent header injection)
   body.subject = String(body.subject).replace(/[\r\n]/g, ' ').substring(0, 500);
 
-  // Validate email addresses
+  // Validate email addresses (support comma and semicolon separators, and "Name <email>" format)
   var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  var angleBracketRegex = /<([^>]+)>/;
   function validateEmails(str) {
-    return str.split(",").map(function(e) { return e.trim(); }).filter(Boolean).filter(function(e) {
+    return str.split(/[,;]/).map(function(e) { return e.trim(); }).filter(Boolean).map(function(e) {
+      var match = angleBracketRegex.exec(e);
+      return match ? match[1].trim() : e;
+    }).filter(function(e) {
       return emailRegex.test(e);
     });
   }

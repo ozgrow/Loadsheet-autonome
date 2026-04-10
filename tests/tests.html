@@ -989,6 +989,60 @@ localStorage.removeItem('loadsheet_manifests');
 
     })();
 
+    // --- Validation emails serveur (replica de la logique api/send-email) ---
+    suite('SECU - Validation emails (separateurs et formats)');
+    (function() {
+        // Replica exacte de la logique serveur pour tester cote navigateur
+        var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        var angleBracketRegex = /<([^>]+)>/;
+        function validateEmails(str) {
+            return str.split(/[,;]/).map(function(e) { return e.trim(); }).filter(Boolean).map(function(e) {
+                var match = angleBracketRegex.exec(e);
+                return match ? match[1].trim() : e;
+            }).filter(function(e) {
+                return emailRegex.test(e);
+            });
+        }
+
+        // Separateur virgule
+        var r1 = validateEmails('a@b.com, c@d.com');
+        assertEqual('Virgule: 2 emails', r1.length, 2);
+
+        // Separateur point-virgule
+        var r2 = validateEmails('a@b.com; c@d.com');
+        assertEqual('Point-virgule: 2 emails', r2.length, 2);
+
+        // Mix virgule et point-virgule
+        var r3 = validateEmails('a@b.com, c@d.com; e@f.org');
+        assertEqual('Mix separateurs: 3 emails', r3.length, 3);
+
+        // Format "Nom <email>"
+        var r4 = validateEmails('John Doe <john@test.com>, Jane <jane@test.com>');
+        assertEqual('Angle brackets: 2 emails', r4.length, 2);
+        assertEqual('Angle brackets: email extrait', r4[0], 'john@test.com');
+
+        // Format mixte
+        var r5 = validateEmails('plain@test.com; Nom <bracket@test.com>');
+        assertEqual('Mix plain + brackets', r5.length, 2);
+
+        // Email unique
+        var r6 = validateEmails('solo@test.com');
+        assertEqual('Email unique', r6.length, 1);
+
+        // Chaine vide
+        var r7 = validateEmails('');
+        assertEqual('Chaine vide: 0 email', r7.length, 0);
+
+        // Adresses invalides rejetees
+        var r8 = validateEmails('pas-un-email, @broken, ok@valid.com');
+        assertEqual('Filtre invalides: 1 seul valide', r8.length, 1);
+        assertEqual('Filtre invalides: le bon passe', r8[0], 'ok@valid.com');
+
+        // Injection CRLF rejetee
+        var r9 = validateEmails('evil@test.com\\r\\nBcc: spam@hack.com');
+        assertEqual('Injection CRLF rejetee', r9.length, 0);
+    })();
+
     // ========================================
     // DISPLAY RESULTS
     // ========================================
