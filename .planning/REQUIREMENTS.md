@@ -54,36 +54,39 @@
 
 ## Traceability
 
-Mise à jour pendant la création du roadmap.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MAT-01 | — | Pending |
-| MAT-02 | — | Pending |
-| MAT-03 | — | Pending |
-| MAT-04 | — | Pending |
-| MAT-05 | — | Pending |
-| MAT-06 | — | Pending |
-| MAT-07 | — | Pending |
-| MAT-08 | — | Pending |
-| MAT-09 | — | Pending |
-| MAT-10 | — | Pending |
-| MAT-11 | — | Pending |
-| VRAC-01 | — | Pending |
-| VRAC-02 | — | Pending |
-| VRAC-03 | — | Pending |
-| RECAP-01 | — | Pending |
-| RECAP-02 | — | Pending |
-| RECAP-03 | — | Pending |
-| TEST-01 | — | Pending |
-| TEST-02 | — | Pending |
-| TEST-03 | — | Pending |
+| MAT-01 | Phase 1 | Pending |
+| MAT-02 | Phase 1 | Pending |
+| MAT-03 | Phase 1 | Pending |
+| MAT-04 | Phase 1 | Pending |
+| MAT-05 | Phase 1 | Pending |
+| MAT-06 | Phase 1 | Pending |
+| MAT-07 | Phase 1 | Pending |
+| MAT-08 | Phase 1 | Pending |
+| MAT-09 | Phase 1 | Pending |
+| MAT-10 | Phase 1 | Pending |
+| MAT-11 | Phase 1 | Pending |
+| VRAC-01 | Phase 2 | Pending |
+| VRAC-02 | Phase 2 | Pending |
+| VRAC-03 | Phase 2 | Pending |
+| RECAP-01 | Phase 1 | Pending |
+| RECAP-02 | Phase 1 | Pending |
+| RECAP-03 | Phase 1 | Pending |
+| TEST-01 | Phase 3 | Pending |
+| TEST-02 | Phase 1 | Pending |
+| TEST-03 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 20 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 20 ⚠️
+- Mapped to phases: 20 ✓
+- Unmapped: 0
+
+**Distribution:**
+- Phase 1 (Matériel ULD & rétro-compat): 15 requirements (MAT-01..11, RECAP-01..03, TEST-02)
+- Phase 2 (Type ULD VRAC): 3 requirements (VRAC-01..03)
+- Phase 3 (Validation locale & release gate): 2 requirements (TEST-01, TEST-03)
 
 ---
 *Requirements defined: 2026-04-22*
-*Last updated: 2026-04-22 after initial definition*
+*Last updated: 2026-04-22 after roadmap creation — traceability filled*
