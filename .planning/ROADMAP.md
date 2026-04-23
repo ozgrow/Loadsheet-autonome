@@ -44,7 +44,10 @@ Plans:
   2. Quand au moins une ULD VRAC est dans le manifeste, le compteur de palettes du récapitulatif les exclut (seules les palettes réelles sont comptées)
   3. Quand au moins une ULD VRAC est présente, une ligne "Vrac" apparaît dans le récap avec le poids total VRAC et le nombre de colis total VRAC
   4. Les ULD non-VRAC continuent d'être comptées et affichées comme avant (pas de régression sur le flux existant)
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 02-01-PLAN.md — Selecteur type ULD + data model + retro-compat + updateRecap annotation "dont Vrac" + modal planchers conditionnel (VRAC-01, VRAC-02)
+- [ ] 02-02-PLAN.md — Rendu PDF colonne Type + scission page 1 Palettes/Vrac + email HTML miroir + exclusion planchers VRAC (VRAC-03)
 **UI hint**: yes
 
 ### Phase 3: Validation locale & release gate
