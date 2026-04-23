@@ -18,6 +18,14 @@ function esc(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+// --- Stubs pour Task 2 (modal materiel) : surchargees plus bas ---
+// Declarees en tete pour que onclick="openMaterialModal(i)" ne casse pas si Task 1 est commite seul.
+function openMaterialModal(uldIndex) { /* remplace par Task 2 */ }
+function closeMaterialModal() { /* remplace par Task 2 */ }
+function applyMaterialToUld(uldIndex) { /* remplace par Task 2 */ }
+function toggleForfait(checkbox, inputClass) { /* remplace par Task 2 */ }
+function refreshMaterialBadge(uldIndex) { /* remplace par Task 2 */ }
+
 
 
 // ============================================
@@ -140,14 +148,27 @@ function addUld() {
     var div = document.createElement('div');
     div.className = 'uld-block';
     div.id = 'uld-' + i;
+    // Materiel ULD (MAT-01..08) : data-attributes sur le bloc, defaults
+    div.setAttribute('data-straps', '0');
+    div.setAttribute('data-flooring-eu', '0');
+    div.setAttribute('data-flooring-eu-forfait', 'false');
+    div.setAttribute('data-flooring-std', '0');
+    div.setAttribute('data-flooring-std-forfait', 'false');
+    div.setAttribute('data-blocks', '0');
+    div.setAttribute('data-tarps', '0');
+    div.setAttribute('data-dividers', '0');
+    div.setAttribute('data-honeycomb', '0');
+    div.setAttribute('data-uld-comment', '');
     div.innerHTML =
         '<div class="uld-header">' +
             '<label>ULD N\u00b0 :</label>' +
             '<input type="text" class="uld-number" placeholder="Num\u00e9ro ULD" style="width:180px">' +
             '<label style="margin-left:16px;">Poids (kg) :</label>' +
             '<input type="number" class="uld-weight" placeholder="Optionnel" style="width:100px" min="0" step="0.1" oninput="updateRecap()">' +
+            '<button class="btn btn-secondary btn-sm btn-material" onclick="openMaterialModal(' + i + ')">Matériel</button>' +
             '<button class="btn btn-danger" onclick="removeUld(' + i + ')">Supprimer ULD</button>' +
         '</div>' +
+        '<div class="material-badge-wrapper" id="material-badge-' + i + '"></div>' +
         '<table><thead><tr>' +
             '<th style="width:140px">LTA</th><th>Dossier</th><th style="width:100px">Nb Colis</th>' +
             '<th style="width:80px">DGR</th><th>Commentaire</th><th style="width:50px"></th>' +
@@ -248,6 +269,17 @@ function collectData() {
         var totalColis = rows.reduce(function(s, r) { return s + r.colis; }, 0);
         var uldEntry = { uldNumber: uldNumber, rows: rows, totalColis: totalColis };
         if (!isNaN(uldWeightVal) && uldWeightVal > 0) uldEntry.weight = uldWeightVal;
+        // Materiel ULD (MAT-01..08) : lecture des data-attributes
+        uldEntry.strapsCount = parseInt(block.dataset.straps) || 0;
+        uldEntry.flooringEuCount = parseInt(block.dataset.flooringEu) || 0;
+        uldEntry.flooringEuForfait = block.dataset.flooringEuForfait === 'true';
+        uldEntry.flooringStdCount = parseInt(block.dataset.flooringStd) || 0;
+        uldEntry.flooringStdForfait = block.dataset.flooringStdForfait === 'true';
+        uldEntry.blocksCount = parseInt(block.dataset.blocks) || 0;
+        uldEntry.tarpsCount = parseInt(block.dataset.tarps) || 0;
+        uldEntry.dividersCount = parseInt(block.dataset.dividers) || 0;
+        uldEntry.honeycombCount = parseInt(block.dataset.honeycomb) || 0;
+        uldEntry.uldComment = block.dataset.uldComment || '';
         ulds.push(uldEntry);
     });
     return {
@@ -340,12 +372,25 @@ async function loadManifest(id) {
         var div = document.createElement('div');
         div.className = 'uld-block';
         div.id = 'uld-' + i;
+        // Materiel ULD (MAT-01..08, MAT-10 retro-compat) : lecture defensive des data-attributes
+        div.setAttribute('data-straps', String(parseInt(uldData.strapsCount) || 0));
+        div.setAttribute('data-flooring-eu', String(parseInt(uldData.flooringEuCount) || 0));
+        div.setAttribute('data-flooring-eu-forfait', String(uldData.flooringEuForfait === true));
+        div.setAttribute('data-flooring-std', String(parseInt(uldData.flooringStdCount) || 0));
+        div.setAttribute('data-flooring-std-forfait', String(uldData.flooringStdForfait === true));
+        div.setAttribute('data-blocks', String(parseInt(uldData.blocksCount) || 0));
+        div.setAttribute('data-tarps', String(parseInt(uldData.tarpsCount) || 0));
+        div.setAttribute('data-dividers', String(parseInt(uldData.dividersCount) || 0));
+        div.setAttribute('data-honeycomb', String(parseInt(uldData.honeycombCount) || 0));
+        div.setAttribute('data-uld-comment', String(uldData.uldComment || ''));
         div.innerHTML =
             '<div class="uld-header"><label>ULD N\u00b0 :</label>' +
             '<input type="text" class="uld-number" placeholder="Num\u00e9ro ULD" style="width:180px" value="' + esc(uldData.uldNumber || uldData.pmcNumber || '') + '">' +
             '<label style="margin-left:16px;">Poids (kg) :</label>' +
             '<input type="number" class="uld-weight" placeholder="Optionnel" style="width:100px" min="0" step="0.1" oninput="updateRecap()" value="' + esc(uldData.weight || '') + '">' +
+            '<button class="btn btn-secondary btn-sm btn-material" onclick="openMaterialModal(' + i + ')">Matériel</button>' +
             '<button class="btn btn-danger" onclick="removeUld(' + i + ')">Supprimer ULD</button></div>' +
+            '<div class="material-badge-wrapper" id="material-badge-' + i + '"></div>' +
             '<table><thead><tr><th style="width:140px">LTA</th><th>Dossier</th><th style="width:100px">Nb Colis</th><th style="width:80px">DGR</th><th>Commentaire</th><th style="width:50px"></th></tr></thead><tbody class="uld-rows"></tbody></table>' +
             '<div class="uld-totals">Total colis : <span class="total-colis">0</span></div>' +
             '<div style="margin-top:8px"><button class="btn btn-secondary" onclick="addRow(' + i + ')">+ Ajouter ligne</button></div>';
@@ -363,6 +408,7 @@ async function loadManifest(id) {
             tbody.appendChild(tr);
         });
         updateTotals(i);
+        refreshMaterialBadge(i);
     });
     updateRecap();
     // Si le manifeste avait des destinataires, afficher la section envoi
