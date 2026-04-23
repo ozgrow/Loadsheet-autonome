@@ -25,13 +25,13 @@ Outil web de création de loadsheets (feuilles de chargement) pour ATH — Air T
 - ✓ CSP configurée côté Azure SWA — existing
 - ✓ Responsive mobile (media query 768px) — existing
 - ✓ Tests anti-régression navigateur (`tests/tests.html`) — existing
+- ✓ Saisie d'infos matériel sur chaque ULD (sangles, planchers bois EU/standard, bois de calage, bâches, intercalaires, nid d'abeille, commentaire libre) via modal d'édition ULD — Validated in Phase 1 (v1.8.x)
+- ✓ Affichage des infos matériel ULD dans le récap écran (condensé inline), PDF, et email HTML — Validated in Phase 1 (v1.8.x)
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Ajouter des infos matériel sur les ULD (sangles, planchers bois EU/standard, bois de calage, bâches, intercalaires, nid d'abeille, commentaire libre) saisies dans le modal d'édition ULD existant
-- [ ] Afficher les infos matériel ULD dans le récapitulatif (écran + PDF)
 - [ ] Ajouter un type ULD officiel "VRAC" dans le sélecteur de type
 - [ ] Exclure les ULD de type "VRAC" du compteur palette dans le récapitulatif
 - [ ] Afficher le VRAC sur une ligne séparée dans le récapitulatif (colis + poids, sans compter comme palette)
@@ -105,4 +105,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-22 after initialization*
+*Last updated: 2026-04-23 after Phase 1 completion (Matériel ULD & rétro-compat)*
