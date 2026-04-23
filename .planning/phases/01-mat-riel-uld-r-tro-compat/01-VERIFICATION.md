@@ -1,186 +1,265 @@
 ---
 phase: 01-mat-riel-uld-r-tro-compat
-verified: 2026-04-23T00:00:00Z
-status: gaps_found
-score: 5/6 success criteria verified (RECAP-01 partial — badge-only, no condensed info)
-gaps:
-  - truth: "Le récapitulatif écran affiche les infos matériel de chaque ULD sous forme condensée"
-    status: partial
-    reason: "Implementation shows only a boolean badge 'Matériel saisi' under each ULD header (D-14 decision), not the actual condensed material info per ULD. The PDF and email correctly display condensed material per ULD, but the on-screen experience shows only a binary indicator — 'saisi / not saisi' — not the values. The criterion's literal wording ('affiche les infos matériel de chaque ULD sous forme condensée') is not satisfied by a label that hides the information. The user must click 'Matériel' to re-open the modal to see what was entered."
-    artifacts:
-      - path: "static/js/app.js"
-        issue: "refreshMaterialBadge (line 133) always emits the fixed string 'Matériel saisi' regardless of content — sangles=5, forfait EU, commentaire 'Fragile' all yield the same badge."
-      - path: "static/css/style.css"
-        issue: ".material-badge style is a neutral pill — not designed to display condensed values."
-    missing:
-      - "Replace (or complement) the neutral 'Matériel saisi' badge with a condensed summary of entered material values (e.g. 'Sangles: 3 | Planchers EU: forfait | Commentaire: …') under each ULD header."
-      - "Ensure uldComment is escaped via esc() if reintroduced into the badge text (MAT-11 — currently out of scope because badge is neutral)."
-      - "Respect the decision D-13 (keep #liveRecap barre unchanged) while still surfacing the per-ULD condensed info inline, per RECAP-01 literal intent."
-      - "Add a test in tests/tests.html asserting that the badge (or new recap element) contains the entered material values, not just a boolean presence indicator."
+verified: 2026-04-23T12:00:00Z
+status: passed
+score: 6/6 success criteria verified (RECAP-01 promoted PARTIAL → SATISFIED after gap closure 01-03)
+re_verification:
+  previous_status: gaps_found
+  previous_score: 5/6
+  gaps_closed:
+    - "Le récapitulatif écran affiche les infos matériel de chaque ULD sous forme condensée"
+  gaps_remaining: []
+  regressions: []
+  notes: |
+    Gap RECAP-01 partiel (badge neutre "Matériel saisi") fermé par Plan 01-03 :
+    - formatCondensedMaterial(block) ajouté (app.js:140-173) — retourne la chaîne condensée avec esc() sur uldComment tronqué
+    - refreshMaterialBadge réécrit (app.js:179-186) — injecte <span class="material-recap"> au lieu du badge neutre
+    - .material-recap CSS (style.css:167-177 desktop + style.css:241-246 inside @media 768px)
+    - 7 nouvelles suites de tests (tests.html:803-949) + suite XSS renforcée (tests.html:757) + 2 suites legacy réécrites (tests.html:729, 745)
+    - 383/384 tests passent (1 échec pré-existant `Session sans expiry => invalide`, documenté en deferred-items.md)
+    - Aucune régression sur les 5 critères précédemment VERIFIED : refactor localisé à `refreshMaterialBadge` + nouvelle classe CSS, sans toucher au modal, data model, collectData, loadManifest, buildPdf, sendEmail
+human_verification:
+  - test: "Visuel desktop du récap inline"
+    expected: "Créer ULD avec sangles=3 + forfait EU + commentaire 'Fragile' → texte `Sangles: 3 | Planchers EU: forfait | Com: Fragile` visible sous le header ULD sans rouvrir le modal"
+    why_human: "Rendu visuel final, pixel layout et couleurs"
+  - test: "Visuel mobile du récap inline (≤ 768px)"
+    expected: "ULD avec plusieurs champs matériel → récap wrap naturellement sur plusieurs lignes, pas de scroll horizontal du .uld-block, lisible au doigt"
+    why_human: "Layout mobile réel non testable en JSDOM (font scaling, breakpoints actuels)"
+  - test: "Troncature + ellipsis Unicode visuelle"
+    expected: "Commentaire de 60 chars → récap affiche 30 premiers chars + `…`, pas d'overflow, pas de débordement horizontal du bloc"
+    why_human: "Vérification que l'ellipsis U+2026 s'affiche comme un seul glyphe (pas comme `...`)"
+  - test: "XSS manuel dans commentaire"
+    expected: "Saisir `<img src=x onerror=alert(1)>` → aucune alerte, `&lt;img` visible littéralement dans le récap DOM (DevTools Inspector)"
+    why_human: "Confirmation finale du non-exécution XSS via inspecteur navigateur réel"
+  - test: "Rétro-compat loadManifest avec vrai manifeste sauvegardé"
+    expected: "Sauvegarder un manifeste, en créer un nouveau, recharger l'ancien depuis la liste → récap inline restauré pour chaque ULD avec les bonnes valeurs condensées"
+    why_human: "Round-trip localStorage chiffré réel vs JSDOM harness"
+  - test: "Pas de régression PDF/email"
+    expected: "Générer PDF + inspecter payload email dans Network tab → sections matériel (Totaux + par ULD) toujours présentes et correctes"
+    why_human: "Vérifier que le refactor Plan 01-03 n'a pas cassé Plan 01-02 — inspection visuelle finale"
 ---
 
-# Phase 01: Matériel ULD & rétro-compat — Verification Report
+# Phase 01: Matériel ULD & rétro-compat — Verification Report (Re-verification)
 
 **Phase Goal:** L'agent peut saisir des infos matériel sur chaque ULD (sangles, planchers bois EU/standard, bois de calage, bâches, intercalaires, nid d'abeille, commentaire libre), les voir dans le récap écran + PDF, et les anciens manifestes continuent de se charger sans erreur.
 
-**Verified:** 2026-04-23
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Verified:** 2026-04-23T12:00:00Z
+**Status:** passed
+**Re-verification:** Yes — after gap closure via Plan 01-03 (D-14 OVERRIDDEN, badge neutre remplacé par récap inline condensé)
+
+---
+
+## Re-verification Summary
+
+| Metric | Initial (2026-04-23 AM) | Re-verification (2026-04-23 PM) | Delta |
+|---|---|---|---|
+| Status | `gaps_found` | `passed` | +1 gap closed |
+| Score | 5/6 | 6/6 | +1 |
+| Tests pass | 355/356 | 383/384 | +28 (7 new suites + 1 loadManifest recap + XSS reinforced) |
+| Gaps open | 1 (RECAP-01 partial) | 0 | -1 |
+| Regressions | n/a | 0 | — |
+
+**Gap fermé :** RECAP-01 partiel → SATISFIED. Le récap inline condensé (format `Sangles: N | Planchers EU: forfait | Com: <tronqué>`) s'affiche désormais sous chaque header ULD, remplaçant le badge neutre `Matériel saisi`.
+
+**Aucune régression détectée** sur les 5 critères précédemment VERIFIED : `openMaterialModal`, `applyMaterialToUld`, `loadManifest`, `buildPdf`, `sendEmail`, `buildMaterialSummary`, `buildUldMaterialRows`, `formatFlooringDisplay`, `esc()`, XSS payloads — tous les chemins existants intacts.
+
+---
 
 ## Goal Achievement
 
 ### Success Criteria (from ROADMAP.md)
 
-| # | Criterion | Status | Evidence |
-|---|-----------|--------|----------|
-| 1 | Modal d'édition ULD avec 8 champs matériel saisissables | VERIFIED | `openMaterialModal` (app.js:27-78) construit un modal avec les 10 inputs/checkbox/textarea exigés. Accessible via bouton "Matériel" dans `.uld-header` de chaque ULD (app.js:290 et app.js:513). Tests `Materiel ULD - modal ouverture` (tests.html:649) passent 12 assertions. |
-| 2 | Forfait négocié exclusif du nombre (EU et Std) | VERIFIED | `toggleForfait` (app.js:82-89) désactive l'input et force la valeur à '0' au coché ; `applyMaterialToUld` (app.js:107-108) applique la règle stricte `forfait ? 0 : count`. Tests `Materiel ULD - forfait desactive input (D-06)` et `forfait efface le nombre (D-07)` passent. |
-| 3 | Récap écran + PDF affichent les infos matériel de chaque ULD en forme condensée | PARTIAL | PDF: VERIFIED — `buildPdf` (app.js:797-825 récap page 1, app.js:875-894 par ULD) rend "Totaux materiel" + section "Materiel" par ULD avec valeurs condensées. **Récap écran: GAP** — seul un badge neutre "Matériel saisi" (app.js:148) s'affiche sous le header ULD ; il ne contient pas les infos saisies, seulement leur présence. L'agent doit rouvrir le modal pour voir les valeurs. La décision CONTEXT.md D-13/D-14 (badge-only) contredit la lecture littérale du critère de succès. |
-| 4 | Manifeste ancien format se charge sans erreur, sans perte de données | VERIFIED | `loadManifest` (app.js:497-507) applique une lecture défensive (`parseInt(x) || 0`, `x === true`, `String(x || '')`) pour les 10 nouveaux champs matériel. La rétro-compat `pmcs`→`ulds` préexistante reste intacte (app.js:488). Tests `Materiel ULD - loadManifest retro-compat (TEST-02)` et `Retro-compatibilite ancien format (pmcs)` passent. |
-| 5 | uldComment (HTML/JS) échappé littéralement partout où il apparaît | VERIFIED | Modal: `uldComment` injecté via `.value = ...` (app.js:77, pas `innerHTML`). Badge: neutre, aucune donnée user injectée. PDF: `doc.text()` ne parse pas HTML (jsPDF). Email HTML: `buildUldMaterialHtml` (app.js:682-683) applique `esc()` sur `r[0]` et `r[1]`. Tests `Materiel ULD - XSS uldComment (MAT-11)` et `Materiel email HTML - SECU XSS uldComment (MAT-11 D-18)` passent avec injection DOM authoritative `window._xss === 0`. |
-| 6 | Champs du modal utilisables sur écran ≤ 768px | VERIFIED | style.css:219-225 (inside `@media (max-width: 768px)`) : modal full-screen + grid 1 colonne. Classes `.material-modal-overlay`, `.material-modal`, `.material-modal-grid` correctement ciblées. Vérifié aussi par `.btn-material` styling dans `.uld-header` (style.css:167-168). |
+| # | Criterion | Status (initial) | Status (re-verif) | Evidence post-gap-closure |
+|---|---|---|---|---|
+| 1 | Modal d'édition ULD avec 8 champs matériel saisissables | VERIFIED | VERIFIED (no change) | `openMaterialModal` (app.js:27-78) inchangé. Tests `Materiel ULD - modal ouverture` (tests.html:649) passent toujours. |
+| 2 | Forfait négocié exclusif du nombre (EU et Std) | VERIFIED | VERIFIED (no change) | `toggleForfait` (app.js:82-89) + `applyMaterialToUld` (app.js:107-108) inchangés. Tests D-06 / D-07 passent toujours. |
+| 3 | Récap écran + PDF affichent les infos matériel de chaque ULD en forme condensée | **PARTIAL** | **VERIFIED** | **PDF: VERIFIED** (inchangé Plan 01-02). **Récap écran : désormais VERIFIED** — `refreshMaterialBadge` (app.js:179-186) injecte `<span class="material-recap">` contenant la chaîne condensée. `formatCondensedMaterial(block)` (app.js:140-173) construit la chaîne `Sangles: N | Planchers EU: forfait | ... | Com: <tronqué>`. Tests `Materiel ULD - recap *` (7 suites, tests.html:803-913) + `loadManifest restaure recap` (tests.html:916) passent toutes. |
+| 4 | Manifeste ancien format se charge sans erreur, sans perte de données | VERIFIED | VERIFIED (no change) | `loadManifest` (app.js:497-570) inchangé sur la partie data. L'appel à `refreshMaterialBadge(i)` (app.js:570) rend désormais le nouveau format sans régression. Test `loadManifest retro-compat (TEST-02)` + nouveau test `loadManifest restaure recap (TEST-02)` passent. |
+| 5 | uldComment (HTML/JS) échappé littéralement partout où il apparaît | VERIFIED | VERIFIED (renforcé) | **Nouvelle surface XSS couverte** : `formatCondensedMaterial` (app.js:167-168) applique `esc()` sur `truncated` (uldComment slicé à 30 chars) AVANT innerHTML. Modal, PDF, email HTML inchangés (toujours sûrs). Tests `Materiel ULD - recap XSS uldComment (MAT-11)` (tests.html:859) + suite `Materiel ULD - XSS uldComment (MAT-11)` renforcée (tests.html:770-781 : 3 assertions supplémentaires sur le wrapper recap) — `window._xss === 0` sur payload `<img src=x onerror="window._xss++">`. |
+| 6 | Champs du modal utilisables sur écran ≤ 768px | VERIFIED | VERIFIED (étendu) | style.css:232-238 (modal full-screen mobile) inchangé. **NOUVEAU** : `.material-recap` a aussi une règle mobile (style.css:241-246, dans `@media (max-width: 768px)`) : `display: block; width: 100%; word-break: break-word` pour wrap naturel du récap inline sur mobile (RECAP-03 étendu au récap écran). |
 
-**Score:** 5/6 criteria fully verified. Criterion #3 is partial (PDF ok, écran gap).
+**Score:** 6/6 criteria fully verified. Critère #3 promu de PARTIAL → VERIFIED après gap closure.
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
-|----------|----------|--------|---------|
-| `static/js/app.js` | Modal + data model + PDF + email helpers | VERIFIED (Plan 01-01 + 01-02) | Contient `openMaterialModal`, `closeMaterialModal`, `applyMaterialToUld`, `toggleForfait`, `refreshMaterialBadge`, `buildMaterialSummary`, `formatFlooringDisplay`, `buildUldMaterialRows`, `buildMaterialSummaryHtml`, `buildUldMaterialHtml` + extensions `addUld` / `collectData` / `loadManifest` / `buildPdf` / `sendEmail`. |
-| `static/css/style.css` | Classes modal + badge + media query mobile | VERIFIED | Classes `.material-modal*`, `.material-badge`, `.btn-material`, `.mat-*` définies aux lignes 119-168. Mobile full-screen à 219-225 dans `@media (max-width: 768px)`. |
-| `tests/tests.html` | Suites matériel + rétro-compat | VERIFIED | 25 suites `Materiel*` (13 Plan 01-01 + 12 Plan 01-02) + suite `Retro-compatibilite ancien format (pmcs)` préexistante. Test harness confirms 352/353 pass. |
+|---|---|---|---|
+| `static/js/app.js` | `formatCondensedMaterial(block)` + `refreshMaterialBadge(uldIndex)` réécrit | VERIFIED | `grep -c "function formatCondensedMaterial" static/js/app.js` = 1 (ligne 140). `grep -c "function refreshMaterialBadge" static/js/app.js` = 1 (ligne 179). `grep -c "Matériel saisi" static/js/app.js` = 0 (badge neutre éliminé). `grep -n "esc(truncated)" static/js/app.js` = ligne 168 (XSS échappé). `grep -n "material-recap" static/js/app.js` = 1 occurrence (innerHTML line 185). |
+| `static/css/style.css` | Classe `.material-recap` desktop + mobile | VERIFIED | `.material-recap` declared twice (line 167 desktop, line 241 mobile inside `@media (max-width: 768px)`). `.material-badge` conservée pour rétro-compat (line 161). `word-break: break-word` present. Closing `}` du media block à line 247 confirme que le mobile `.material-recap` est bien dedans. |
+| `tests/tests.html` | ≥ 5 nouvelles suites `Materiel ULD - recap *` + 1 suite loadManifest recap + suite XSS renforcée | VERIFIED | 7 nouvelles suites (tests.html:803, 820, 840, 859, 880, 903, 916). Suite legacy `Materiel ULD - badge Materiel saisi` renommée en `Materiel ULD - recap inline remplace badge neutre (RECAP-01)` (tests.html:729). Suite legacy `pas de badge si tout vide` renommée en `pas de recap si tout vide` (tests.html:745). Suite `XSS uldComment (MAT-11)` renforcée (tests.html:757-783, +3 assertions sur wrapper recap). |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
-|------|-----|-----|--------|---------|
-| `bouton .btn-material` dans `.uld-header` | `openMaterialModal(uldIndex)` | onclick inline handler | WIRED | `grep` confirms 2 occurrences (app.js:290 addUld, app.js:513 loadManifest). |
-| `openMaterialModal` | `.uld-block` dataset | lecture/écriture data-attributes | WIRED | app.js:32-41 lit `block.dataset.*` pour pré-remplir. app.js:116-125 (`applyMaterialToUld`) écrit via `setAttribute`. |
-| `collectData()` | objet ULD dans `data.ulds[i]` | lecture data-attributes | WIRED | app.js:395-404 : les 10 champs matériel sont lus de `block.dataset` et assignés à `uldEntry`. |
-| `loadManifest()` | `.uld-block` dataset | écriture défensive avec defaults | WIRED | app.js:498-507 : `parseInt(uldData.xxx) || 0`, `=== true`, `String(x \|\| '')`. |
-| `badge .material-badge` | commentaire `uldComment` | innerHTML via esc() | **N/A — badge neutre** | Le badge n'injecte pas uldComment (décision D-19/D-20). Pas de vecteur XSS mais aussi pas d'info condensée → lié au gap du critère #3. |
-| `buildPdf` page 1 | totaux matériel agrégés | `buildMaterialSummary` + `autoTable` | WIRED | app.js:799-825 conditionnel sur `hasAnyMat`. |
-| `buildPdf` page ULD | champs matériel ULD | `buildUldMaterialRows` + `autoTable` | WIRED | app.js:876-894 conditionnel sur `uldMatRows.length > 0`. |
-| `sendEmail` HTML | sections matériel | `buildMaterialSummaryHtml` + `buildUldMaterialHtml` | WIRED | app.js:970 (récap) + app.js:987 (par ULD). `esc()` appliqué systématiquement. |
+|---|---|---|---|---|
+| `applyMaterialToUld` (app.js:127) | `refreshMaterialBadge(uldIndex)` | appel direct | WIRED | `grep -n "refreshMaterialBadge(uldIndex)" static/js/app.js` = ligne 127 (caller) + ligne 179 (déclaration). Intact. |
+| `loadManifest` (app.js:570) | `refreshMaterialBadge(i)` | appel direct dans forEach uldList | WIRED | `grep -n "refreshMaterialBadge(i)" static/js/app.js` = ligne 570. Intact. |
+| `refreshMaterialBadge` | `formatCondensedMaterial(block)` | appel direct | **NEW — WIRED** | `refreshMaterialBadge` (app.js:183) appelle `formatCondensedMaterial(block)`. Chaîne retournée injectée dans `wrapper.innerHTML` ligne 185. |
+| `formatCondensedMaterial` | `block.dataset.*` | lecture des 10 data-attributes | WIRED | Lignes 143 (`block.dataset.straps`) à 165 (`block.dataset.uldComment`). Tous les 10 champs matériel lus. |
+| `formatCondensedMaterial` | `esc(truncated)` | appel direct sur uldComment tronqué | **NEW — WIRED** | Ligne 167-168 : `slice(0, 30) + '…'` puis `esc(truncated)` → anti-XSS MAT-11 sur nouvelle surface DOM. |
+| `wrapper.innerHTML = '<span class="material-recap">' + content + '</span>'` | `.material-recap` CSS class | injection DOM + CSS selector | WIRED | `grep -c "material-recap" static/css/style.css` = 2 (desktop + mobile). |
+| `buildPdf` (unchanged) | Totaux matériel + section matériel par ULD | `buildMaterialSummary` + `buildUldMaterialRows` | WIRED (no regression) | Tests `Materiel PDF - *` passent toujours. Aucune modification à `buildPdf` dans Plan 01-03. |
+| `sendEmail` (unchanged) | HTML matériel (récap + par ULD) | `buildMaterialSummaryHtml` + `buildUldMaterialHtml` | WIRED (no regression) | Tests `Materiel email HTML - *` passent toujours. |
 
 ### Data-Flow Trace (Level 4)
 
 | Artifact | Data Variable | Source | Produces Real Data | Status |
-|----------|---------------|--------|---------------------|--------|
-| `refreshMaterialBadge` | `hasAny` (bool) | `block.dataset.*` (lu de DOM, écrit par applyMaterialToUld) | Yes (mais binaire seulement) | FLOWING — mais pas de valeurs réelles rendues, seulement un label "Matériel saisi" |
-| `buildPdf` Totaux materiel | `matSummary` | `buildMaterialSummary(data.ulds)` ← `collectData()` ← DOM data-attributes | Yes | FLOWING |
-| `buildPdf` section Materiel ULD | `uldMatRows` | `buildUldMaterialRows(u)` ← `data.ulds[i]` ← collectData | Yes | FLOWING |
-| `sendEmail` htmlBody matériel | `html` (concat) | `buildMaterialSummaryHtml(data.ulds)` + `buildUldMaterialHtml(u)` | Yes | FLOWING |
-| `openMaterialModal` | `straps, flEu, ...` | `block.dataset.*` | Yes (round-trip via DOM) | FLOWING |
+|---|---|---|---|---|
+| `refreshMaterialBadge` | `content` (string) | `formatCondensedMaterial(block)` ← `block.dataset.*` ← DOM (écrit par `applyMaterialToUld`) | Yes — valeurs réelles rendues (pas un label statique) | FLOWING (upgraded from binary-only) |
+| `formatCondensedMaterial` | `parts[]` (array de `<libellé>: <valeur>`) | lecture data-attributes (`straps`, `flooringEu`, `flooringEuForfait`, `flooringStd`, `flooringStdForfait`, `blocks`, `tarps`, `dividers`, `honeycomb`, `uldComment`) | Yes | FLOWING |
+| `formatCondensedMaterial` (uldComment) | `truncated` | `block.dataset.uldComment` → `String(... \|\| '')` → `slice(0, 30) + '…'` → `esc(truncated)` | Yes (with XSS protection) | FLOWING |
+| `buildPdf` Totaux materiel (unchanged) | `matSummary` | `buildMaterialSummary(data.ulds)` ← `collectData()` ← DOM data-attributes | Yes | FLOWING (no regression) |
+| `buildPdf` section Materiel ULD (unchanged) | `uldMatRows` | `buildUldMaterialRows(u)` ← `data.ulds[i]` ← collectData | Yes | FLOWING (no regression) |
+| `sendEmail` htmlBody matériel (unchanged) | `html` (concat) | `buildMaterialSummaryHtml(data.ulds)` + `buildUldMaterialHtml(u)` | Yes | FLOWING (no regression) |
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
-|----------|---------|--------|--------|
-| All tests pass | `node tests/run-harness.cjs` | `Passed: 355, Failed: 1` (failure pre-existing, documented in deferred-items.md) | PASS (scope OK) |
-| openMaterialModal exists | `grep -c "function openMaterialModal" static/js/app.js` | 1 | PASS |
-| applyMaterialToUld exists | `grep -c "function applyMaterialToUld" static/js/app.js` | 1 | PASS |
-| buildMaterialSummary exists | `grep -c "function buildMaterialSummary" static/js/app.js` | 1 | PASS |
-| buildUldMaterialHtml exists | `grep -c "function buildUldMaterialHtml" static/js/app.js` | 1 | PASS |
-| esc() applied to r[1] in HTML helpers | `grep -cE "esc\(r\[1\]\)" static/js/app.js` | 2 | PASS |
-| Mobile modal CSS exists | `grep -nE "material-modal.*max-width: 100%" static/css/style.css` | 1 match inside `@media (max-width: 768px)` | PASS |
-| 25 Materiel suites in tests | `grep -c "suite('Materiel" tests/tests.html` | 25 | PASS |
+|---|---|---|---|
+| All tests pass | `node tests/run-harness.cjs 2>&1 \| tail -3` | `Summary: 380 / 381 tests OK — 1 ECHEC(S)` / `Passed: 383, Failed: 1` | PASS (same pre-existing failure, documented in deferred-items.md) |
+| `formatCondensedMaterial` exists exactly once | `grep -c "function formatCondensedMaterial" static/js/app.js` | 1 | PASS |
+| `refreshMaterialBadge` exists exactly once | `grep -c "function refreshMaterialBadge" static/js/app.js` | 1 | PASS |
+| Old badge text removed | `grep -c "Matériel saisi" static/js/app.js` | 0 | PASS |
+| `esc()` on uldComment tronqué | `grep -n "esc(truncated)" static/js/app.js` | ligne 168 | PASS |
+| `.material-recap` class present ≥ 2x | `grep -c "material-recap" static/css/style.css` | 2 | PASS |
+| Mobile `.material-recap` inside media query | `awk '/@media \(max-width: 768px\)/,/^}$/' static/css/style.css \| grep -c "material-recap"` | 1 (line 241 inside block closed at line 247) | PASS |
+| ≥ 5 new recap suites | `grep -c "suite('Materiel ULD - recap " tests/tests.html` | 7 | PASS |
+| Legacy badge suites renamed | `grep -c "suite('Materiel ULD - badge Materiel saisi'" tests/tests.html` | 0 | PASS (adapted, not left red) |
+| XSS test on recap wrapper | `grep -n "Aucun <img> injecte dans le wrapper" tests/tests.html` | ligne 874 | PASS |
+| Recent commits for plan 01-03 | `git log --oneline -5 \| grep "01-03"` | 3 commits (1b944a1, a8714b6, 4f6713f) | PASS |
 
 ### Requirements Coverage
 
 Plan 01-01 declares: MAT-01..11, RECAP-01, RECAP-03, TEST-02.
 Plan 01-02 declares: RECAP-02, MAT-11.
-Phase expected: MAT-01..11, RECAP-01..03, TEST-02 — **all IDs accounted for** (RECAP-02 in Plan 02, RECAP-01 and RECAP-03 in Plan 01, no orphaned IDs).
+Plan 01-03 declares: RECAP-01, MAT-11, TEST-02.
+Phase expected: MAT-01..11, RECAP-01..03, TEST-02 — **all 15 IDs accounted for**, no orphaned IDs.
 
-| Requirement | Source Plan | Description | Status | Evidence |
-|-------------|-------------|-------------|--------|----------|
-| MAT-01 | 01-01 | Saisie nombre de sangles | SATISFIED | `mat-straps` input dans modal, `strapsCount` dans schema + tests |
-| MAT-02 | 01-01 | Planchers bois EU + forfait alternatif | SATISFIED | `mat-flooring-eu` + `mat-flooring-eu-forfait` checkbox, `toggleForfait` + D-07 applied |
-| MAT-03 | 01-01 | Planchers bois Std + forfait alternatif | SATISFIED | Symétrique MAT-02 avec `.mat-flooring-std*` |
-| MAT-04 | 01-01 | Bois de calage | SATISFIED | `mat-blocks`, `blocksCount` |
-| MAT-05 | 01-01 | Bâches | SATISFIED | `mat-tarps`, `tarpsCount` |
-| MAT-06 | 01-01 | Intercalaires | SATISFIED | `mat-dividers`, `dividersCount` |
-| MAT-07 | 01-01 | Nids d'abeille | SATISFIED | `mat-honeycomb`, `honeycombCount` |
-| MAT-08 | 01-01 | Commentaire libre | SATISFIED | `mat-uld-comment` textarea, `uldComment` |
-| MAT-09 | 01-01 | Disponible sur tous types d'ULD | SATISFIED | addUld/loadManifest construisent les mêmes data-attrs et bouton Matériel pour TOUS les blocs `.uld-block` — pas de discrimination de type (ATT: le projet n'a pas encore de typage ULD, donc uniforme) |
-| MAT-10 | 01-01 | Rétro-compat localStorage chiffré | SATISFIED | `loadManifest` lecture défensive, test `loadManifest retro-compat (TEST-02)` passes, round-trip save/load test passes |
-| MAT-11 | 01-01 + 01-02 | uldComment échappé partout | SATISFIED | Modal: `.value` (pas innerHTML). Badge: neutre, aucun user data. Email HTML: `esc()` sur toutes les valeurs. Tests XSS confirment payloads `<script>` et `<img onerror>` produisent `&lt;` + `window._xss===0`. |
-| RECAP-01 | 01-01 | Récap écran affiche infos matériel condensées | **BLOCKED (partial)** | Seul un badge neutre "Matériel saisi" s'affiche. Les valeurs saisies ne sont pas visibles à l'écran sans rouvrir le modal. La décision D-13/D-14 (documentée en CONTEXT.md) est en tension avec la lecture littérale de RECAP-01. |
-| RECAP-02 | 01-02 | PDF inclut infos matériel | SATISFIED | `buildPdf` page 1 "Totaux materiel" + section "Materiel" par ULD avec affichage "forfait" littéral (D-16). Tests `buildPdf avec materiel` passent. |
-| RECAP-03 | 01-01 | Mobile ≤ 768px lisible | SATISFIED | CSS mobile full-screen (style.css:219-225), grid 1 colonne. Pas testable programmatiquement sans browser réel (flagged for human verification). |
-| TEST-02 | 01-01 | Tests rétro-compat | SATISFIED | Suite `Materiel ULD - loadManifest retro-compat (TEST-02)` + `Retro-compatibilite ancien format (pmcs)` passent |
+| Requirement | Source Plan(s) | Description | Status | Evidence (post-gap-closure) |
+|---|---|---|---|---|
+| MAT-01 | 01-01 | Saisie nombre de sangles | SATISFIED | `mat-straps` input + `strapsCount` collectData + rendu récap inline (`Sangles: N`) |
+| MAT-02 | 01-01 | Planchers bois EU + forfait alternatif | SATISFIED | `mat-flooring-eu` + forfait D-06/D-07 + récap inline `Planchers EU: forfait` |
+| MAT-03 | 01-01 | Planchers bois Std + forfait alternatif | SATISFIED | Symétrique MAT-02 + récap inline `Planchers Std: forfait` |
+| MAT-04 | 01-01 | Bois de calage | SATISFIED | `mat-blocks` + `Bois calage: N` dans récap |
+| MAT-05 | 01-01 | Bâches | SATISFIED | `mat-tarps` + `Bâches: N` dans récap |
+| MAT-06 | 01-01 | Intercalaires | SATISFIED | `mat-dividers` + `Intercalaires: N` dans récap |
+| MAT-07 | 01-01 | Nids d'abeille | SATISFIED | `mat-honeycomb` + `Nids d'abeille: N` dans récap |
+| MAT-08 | 01-01 | Commentaire libre | SATISFIED | `mat-uld-comment` + `Com: <tronqué>` dans récap (30 chars + U+2026) |
+| MAT-09 | 01-01 | Disponible sur tous types d'ULD | SATISFIED | addUld/loadManifest uniformes (pas de discrimination de type ULD) |
+| MAT-10 | 01-01 | Rétro-compat localStorage chiffré | SATISFIED | `loadManifest` lecture défensive + nouveau test `loadManifest restaure recap (TEST-02)` round-trip |
+| MAT-11 | 01-01 + 01-02 + **01-03** | uldComment échappé partout | **REINFORCED** | Nouvelle surface DOM couverte : `formatCondensedMaterial` applique `esc(truncated)` sur uldComment tronqué AVANT innerHTML. Tests XSS `window._xss === 0` sur wrapper recap (+ modal + email + PDF inchangés). |
+| RECAP-01 | 01-01 + **01-03** | Récap écran affiche infos matériel condensées | **SATISFIED (promoted from PARTIAL)** | Gap fermé. `formatCondensedMaterial` rend `Sangles: 3 \| Planchers EU: forfait \| Com: Fragile` visible sous chaque header ULD. D-14 (badge neutre) ANNULÉ. |
+| RECAP-02 | 01-02 | PDF inclut infos matériel | SATISFIED (no change) | Plan 01-02 intact. Tests `Materiel PDF - *` toujours verts. |
+| RECAP-03 | 01-01 + **01-03** | Mobile ≤ 768px lisible | **EXTENDED** | Règle mobile `.material-recap` ajoutée (style.css:241-246) : `display: block; width: 100%` pour wrap naturel. Règle mobile modal inchangée. |
+| TEST-02 | 01-01 + **01-03** | Tests rétro-compat | **REINFORCED** | Nouveau test `Materiel ULD - loadManifest restaure recap (RECAP-01 / TEST-02)` : round-trip chiffré écrit/lit un manifeste avec matériel et vérifie le rendu récap inline après loadManifest. |
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
-|------|------|---------|----------|--------|
-| `static/js/app.js` | 148 | `wrapper.innerHTML = hasAny ? '<span class="material-badge">Matériel saisi</span>' : ''` | Info | Badge neutre — conforme à la décision D-13/D-14 mais ne satisfait pas la lecture littérale de RECAP-01 (pas un stub technique, décision produit assumée) |
-| `static/js/app.js` | 634 | `'Bâches'` (avec accent) dans `buildUldMaterialRows`, remappé en 'Baches' pour PDF ligne 881 | Info | Conscient : PDF font helvetica ne gère pas bien les accents. Remap localisé au rendu PDF uniquement. HTML/écran gardent UTF-8. |
-| Tests pre-existing | - | `Session sans expiry => invalide` retourne `undefined` au lieu de `false` | Info | Bug pré-existant documenté dans `deferred-items.md`, reporté en Phase 3. Hors scope de Phase 01. |
+|---|---|---|---|---|
+| `static/js/app.js` | 68, 324, 326, 352-356, 547-549 | `placeholder="..."` dans strings HTML | Info | Attribut HTML légitime (UX hint text des inputs), PAS un placeholder TODO. Aucun impact. |
+| `tests/tests.html` | 129 | `'Format MAN-XXXXXXXX-XXXX-XXX'` dans regex assertion | Info | Regex check de format ID manifeste, PAS un XXX/TODO. Aucun impact. |
+| `tests/tests.html` | (pre-existing) | `Session sans expiry => invalide` retourne `undefined` au lieu de `false` | Info | Bug pré-existant Phase 3 (deferred-items.md), hors scope 01. |
 
-Aucun TODO/FIXME/placeholder/stub technique trouvé dans les artifacts modifiés. Aucun `return []` ou `return {}` statique qui simulerait de la data fictive.
+**Aucun TODO/FIXME/HACK technique trouvé.** Aucun stub introduit. Aucun `return []` / `return {}` statique. Aucun console.log orphelin. Le badge neutre `'Matériel saisi'` a été complètement supprimé (pas laissé en tant que fallback mort).
+
+### Gaps Closure Evidence
+
+**Gap initial (01-VERIFICATION.md 2026-04-23 AM) :**
+> **RECAP-01 partiel** : le récap écran affiche seulement un badge binaire `Matériel saisi`, pas les valeurs saisies. L'agent doit rouvrir le modal pour voir ses saisies.
+
+**Résolution (Plan 01-03, commits 1b944a1 + a8714b6 + 4f6713f) :**
+
+1. **Fonction helper ajoutée** — `formatCondensedMaterial(block)` (app.js:140-173) :
+   - Lit les 10 data-attributes du bloc `.uld-block`
+   - Construit parts[] avec libellés FR courts (Sangles, Planchers EU, Planchers Std, Bois calage, Bâches, Intercalaires, Nids d'abeille, Com)
+   - Omet champs à 0 / forfait=false / commentaire vide (pas de pipes orphelins)
+   - Affiche littéralement `forfait` quand checkbox cochée (cohérent D-16 PDF/email)
+   - Tronque uldComment à 30 chars + U+2026 ellipsis
+   - Applique `esc()` UNIQUEMENT sur uldComment tronqué (autres valeurs sûres)
+   - Retourne chaîne vide si aucune entrée (pas de span fantôme)
+
+2. **Fonction réécrite** — `refreshMaterialBadge(uldIndex)` (app.js:179-186) :
+   - Signature inchangée (2 callers existants préservés : applyMaterialToUld:127, loadManifest:570)
+   - Injecte `<span class="material-recap">` + chaîne condensée (ou rien si vide)
+   - Ancien badge neutre `<span class="material-badge">Matériel saisi</span>` supprimé
+
+3. **CSS ajouté** — `.material-recap` (style.css:167-177 desktop + 241-246 mobile) :
+   - Desktop : pill grise inline, `word-break: break-word`, `max-width: 100%`
+   - Mobile (inside @media 768px) : `display: block`, `width: 100%`, font réduite
+
+4. **Tests ajoutés** — 7 nouvelles suites + 1 loadManifest recap suite + suite XSS renforcée (tests.html:729-949) :
+   - `Materiel ULD - recap inline remplace badge neutre (RECAP-01)` (renamed from legacy)
+   - `Materiel ULD - pas de recap si tout vide` (renamed from legacy)
+   - `Materiel ULD - XSS uldComment (MAT-11)` (reinforced with recap wrapper assertions)
+   - `Materiel ULD - recap inline condense (RECAP-01)` (new)
+   - `Materiel ULD - recap forfait litteral (RECAP-01 / D-16)` (new)
+   - `Materiel ULD - recap omet zeros (RECAP-01)` (new)
+   - `Materiel ULD - recap XSS uldComment (RECAP-01 / MAT-11)` (new)
+   - `Materiel ULD - recap uldComment tronque (RECAP-01)` (new)
+   - `Materiel ULD - recap vide = pas de span (RECAP-01)` (new)
+   - `Materiel ULD - loadManifest restaure recap (RECAP-01 / TEST-02)` (new)
+
+5. **Tests : 355 → 383** (+28 assertions nouvelles), 1 échec pré-existant inchangé.
+
+**Aucune régression détectée :** les 5 critères précédemment VERIFIED (modal, forfait, PDF/email côté rendu, loadManifest data, XSS) reposent sur des fonctions et surfaces distinctes. Le refactor 01-03 est strictement localisé à `refreshMaterialBadge` + `formatCondensedMaterial` (nouveau) + `.material-recap` CSS (nouveau) + tests. `openMaterialModal`, `applyMaterialToUld` (seule ligne 127 appelle refreshMaterialBadge, inchangée), `collectData`, `loadManifest`, `buildPdf`, `sendEmail`, `buildMaterialSummary`, `buildUldMaterialRows`, `buildUldMaterialHtml`, `formatFlooringDisplay`, `esc()` : tous intacts.
 
 ### Human Verification Required
 
-Les 6 points suivants (tous documentés dans les SUMMARYs) nécessitent une validation humaine en local (`npx serve .`) avant release :
+Les tests automatisés (JSDOM via run-harness.cjs) couvrent tous les comportements clés. Les 6 points suivants restent recommandés en local (`npx serve .`) avant release, et couvrent le layout visuel + le vrai dataset prod :
 
-### 1. Visual mobile modal ≤ 768px
+#### 1. Visuel desktop du récap inline
 
-**Test:** Ouvrir l'app sur mobile réel ou DevTools device mode ≤ 768px, créer une ULD, cliquer "Matériel".
-**Expected:** Le modal occupe tout l'écran, les 8 champs sont empilés sur 1 colonne, le bouton Fermer est accessible en haut, tous les inputs sont saisissables au doigt.
-**Why human:** Layout mobile réel (font scaling, input focus, keyboard overlay) non testable en JSDOM.
+**Test:** Créer ULD avec sangles=3 + forfait EU coché + commentaire "Fragile". Observer l'écran sans rouvrir le modal.
+**Expected:** `Sangles: 3 | Planchers EU: forfait | Com: Fragile` visible en pill grise sous le header ULD.
+**Why human:** Rendu visuel final (couleurs, pixel layout) non assertable en JSDOM.
 
-### 2. PDF rendering with forfait literal
+#### 2. Visuel mobile (≤ 768px) du récap inline
 
-**Test:** Créer 2 ULDs : ULD1 (sangles=3, forfait EU coché, commentaire "Fragile"), ULD2 (sangles=2, flooringEuCount=5). Générer PDF et ouvrir.
-**Expected:** Page 1 "Totaux materiel" : "Sangles 5", "Planchers bois EU 5 + 1 forfait". Page ULD1 : "Materiel — Sangles 3, Planchers bois EU forfait, Commentaire ULD Fragile". Page ULD2 : "Materiel — Sangles 2, Planchers bois EU 5".
-**Why human:** jsPDF rendering (glyphes, alignement autoTable) non inspectable programmatiquement sans parser PDF complet.
+**Test:** DevTools en mode mobile, créer ULD avec plusieurs champs matériel (sangles=5, flStd=2, dividers=3, commentaire long).
+**Expected:** Le récap occupe 100% de la largeur du `.uld-block`, wrap naturellement sur plusieurs lignes, pas de scroll horizontal, lisible au doigt.
+**Why human:** Layout mobile réel non testable en JSDOM (font scaling, breakpoints viewport).
 
-### 3. Email HTML in Network tab
+#### 3. Troncature commentaire 30 chars + ellipsis
 
-**Test:** Saisir destinataire valide, cliquer "Envoyer par email". Ouvrir DevTools Network, inspecter le POST `/api/send-email`, regarder le body `htmlBody`.
-**Expected:** `htmlBody` contient `<h4>Totaux matériel</h4>` + `<h4>Matériel</h4>` par ULD avec les bonnes valeurs. XSS `<img src=x onerror=...>` apparaît en `&lt;img src=x onerror=&quot;...&quot;&gt;`.
-**Why human:** Confirmation visuelle du payload email envoyé (les tests automatisés valident via fetch-spy mais une vérification finale dans Network tab est prudente avant release).
+**Test:** Commentaire de 60 caractères.
+**Expected:** Récap affiche 30 premiers chars + `…` (un seul glyphe U+2026), pas `...` (trois points ASCII), pas d'overflow horizontal.
+**Why human:** Vérifier que l'ellipsis est bien rendue comme un seul glyphe visible (fontface-dépendant).
 
-### 4. Retro-compat with a real pre-evolution localStorage manifest
+#### 4. XSS manuel dans commentaire
 
-**Test:** Si un manifeste créé AVANT Plan 01-01 existe dans localStorage chiffré d'un user en prod, le charger.
-**Expected:** Manifeste se charge, aucune erreur console, champs matériel vides (defaults 0/false/''). Après re-save, acquisition des champs matériel (D-11 expected).
-**Why human:** Nécessite un vrai dataset de prod pour une vérification réaliste. Les tests synthétiques (dans tests.html) couvrent le cas mais ne garantissent pas la compat avec un dataset terrain.
+**Test:** Saisir `<img src=x onerror="alert(1)">` dans le commentaire, valider, inspecter le DOM avec DevTools.
+**Expected:** Aucune alerte, récap affiche `&lt;img src=x onerror=...&gt;` littéralement (pas de balise img dans le DOM du wrapper).
+**Why human:** Validation finale dans navigateur réel (JSDOM peut différer subtilement).
 
-### 5. **RECAP-01 on-screen condensed display — GAP to confirm with product owner**
+#### 5. Rétro-compat loadManifest avec manifeste sauvegardé
 
-**Test:** Créer une ULD avec sangles=5, forfait EU, commentaire "Fragile". Fermer le modal. Observer l'écran sans rouvrir le modal.
-**Expected (per RECAP-01 literal):** Les valeurs condensées ("Sangles: 5 | EU: forfait | Com: Fragile") devraient être visibles sous le header ULD.
-**Actual:** Seul un badge neutre "Matériel saisi" est visible.
-**Why human:** Déterminer si le badge neutre satisfait l'intention de RECAP-01 (décision D-14 "suffisant") ou si un vrai récap condensé inline est nécessaire. **Le critère de succès #3 du ROADMAP mentionne explicitement "récap écran" — produit ou technique : à trancher avec l'utilisateur avant release.**
+**Test:** Sauvegarder un manifeste (via bouton Sauvegarder), en créer un nouveau, recharger l'ancien depuis la liste sauvegardée.
+**Expected:** Récap inline restauré pour chaque ULD avec les bonnes valeurs condensées.
+**Why human:** Round-trip localStorage chiffré réel (clé AES dérivée en sessionStorage) vs JSDOM harness.
 
-### 6. Rerun tests/tests.html in real browser
+#### 6. Pas de régression PDF/email
 
-**Test:** `npx serve .`, login, ouvrir `/tests/tests.html`.
-**Expected:** `352 / 353 tests OK` (failure pré-existant `Session sans expiry => invalide` documenté).
-**Why human:** Harness Node+JSDOM diffère légèrement du vrai browser (crypto.subtle exposure notamment). Une vérification finale dans le vrai browser est demandée par le success criterion TEST-03 (Phase 3).
-
-### Gaps Summary
-
-**Un seul gap (partial) identifié :**
-
-**Gap #1 — RECAP-01 partiel : récap écran condensé manquant**
-Le plan a délibérément interprété RECAP-01 comme "badge de présence" (décision D-14 CONTEXT.md) plutôt que "affichage inline des valeurs condensées" (lecture littérale du success criterion #3 du ROADMAP). Le produit fournit un indicateur "Matériel saisi" binaire ; il ne fournit pas les valeurs condensées à l'écran.
-
-**Impact :**
-- Les agents ATH ne voient pas leurs saisies matériel sans rouvrir le modal.
-- Le PDF et l'email, en revanche, rendent correctement l'info condensée.
-- La disjonction "PDF ok / écran minimal" peut être assumée ou non selon l'intention produit.
-
-**Options pour fermer le gap :**
-- **Option A (alignement strict)** : Remplacer le badge "Matériel saisi" par un récap condensé inline (ex: `Sangles: 3 | EU: forfait | Com: Fragile`). Impose `esc()` sur uldComment (XSS MAT-11). Plan additionnel ~30-60 min.
-- **Option B (décision assumée)** : Documenter formellement dans REQUIREMENTS.md que RECAP-01 a été livré sous forme de badge binaire, et marquer le critère comme "accepté avec déviation" (nécessite validation utilisateur/product owner).
-- **Option C (hybride)** : Conserver le badge mais ajouter un tooltip (hover) ou un petit extrait visible après le badge. Nécessite un test XSS supplémentaire.
-
-**Recommandation :** Trancher avec l'utilisateur avant Phase 2 (VRAC). Si option A choisie, `/gsd:plan-phase --gaps` générera un plan focalisé sur `refreshMaterialBadge` + CSS + tests XSS.
+**Test:** Générer PDF + envoyer email de test, inspecter payload email dans Network tab.
+**Expected:** Sections matériel (Totaux page 1 + par ULD) toujours présentes et correctes. Pas de changement de layout vs Plan 01-02.
+**Why human:** Confirmer que le refactor Plan 01-03 n'a pas cassé Plan 01-02 via inspection visuelle finale.
 
 ---
 
-*Verified: 2026-04-23*
-*Verifier: Claude (gsd-verifier, Opus 4.7 1M)*
+## Gaps Summary
+
+**Aucun gap ouvert.** Tous les 6 critères de succès du ROADMAP sont SATISFIED. Tous les 15 requirement IDs (MAT-01..11, RECAP-01..03, TEST-02) couverts et vérifiés.
+
+Le gap unique de la vérification initiale (RECAP-01 partiel — badge neutre) a été fermé par Plan 01-03 :
+- D-14 ANNULÉ (décision utilisateur post-vérification)
+- Badge neutre remplacé par récap inline condensé avec esc() anti-XSS
+- 28 nouvelles assertions de tests ajoutées
+- Aucune régression détectée sur les 5 critères précédemment VERIFIED
+
+**Phase 01 prête à être marquée complète dans STATE.md / ROADMAP.md** (après validation humaine optionnelle des 6 points ci-dessus).
+
+---
+
+_Initial verification: 2026-04-23 (gaps_found — RECAP-01 partial)_
+_Re-verification: 2026-04-23 12:00 UTC (passed — gap closed by Plan 01-03)_
+_Verifier: Claude (gsd-verifier, Opus 4.7 1M)_
