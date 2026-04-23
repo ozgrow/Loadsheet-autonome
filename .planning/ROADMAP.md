@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 2 plans
 Plans:
 - [x] 01-01-PLAN.md — Data model + modal UI + rétro-compat + tests TEST-02
-- [ ] 01-02-PLAN.md — Rendu PDF + email HTML (section matériel par ULD + totaux)
+- [x] 01-02-PLAN.md — Rendu PDF + email HTML (section matériel par ULD + totaux)
 **UI hint**: yes
 
 ### Phase 2: Type ULD VRAC

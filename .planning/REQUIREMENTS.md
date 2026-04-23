@@ -28,7 +28,7 @@
 ### Récapitulatif
 
 - [x] **RECAP-01**: Le récapitulatif écran affiche les infos matériel de chaque ULD (forme condensée)
-- [ ] **RECAP-02**: Le PDF généré inclut les infos matériel de chaque ULD
+- [x] **RECAP-02**: Le PDF généré inclut les infos matériel de chaque ULD
 - [x] **RECAP-03**: Les champs matériel restent utilisables et lisibles sur mobile (≤ 768px)
 
 ### Tests & validation
@@ -71,7 +71,7 @@
 | VRAC-02 | Phase 2 | Pending |
 | VRAC-03 | Phase 2 | Pending |
 | RECAP-01 | Phase 1 | Complete |
-| RECAP-02 | Phase 1 | Pending |
+| RECAP-02 | Phase 1 | Complete |
 | RECAP-03 | Phase 1 | Complete |
 | TEST-01 | Phase 3 | Pending |
 | TEST-02 | Phase 1 | Complete |

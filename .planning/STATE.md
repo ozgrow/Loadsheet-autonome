@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 01-01-PLAN.md — material ULD data model + modal UI
-last_updated: "2026-04-23T09:06:56.991Z"
+status: verifying
+stopped_at: Completed 01-02-PLAN.md - material rendering in PDF and email HTML
+last_updated: "2026-04-23T09:25:50.056Z"
 last_activity: 2026-04-23
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-22)
 
 Phase: 01 (mat-riel-uld-r-tro-compat) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-23
 
 Progress: [░░░░░░░░░░] 0%
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 822 | 2 tasks | 3 files |
+| Phase 01 P02 | 792 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,10 @@ Recent decisions affecting current work:
 - [Phase 01]: uldComment injected via textarea.value (never innerHTML) — anti-XSS by construction
 - [Phase 01]: Neutral 'Matériel saisi' badge text (no user data in badge)
 - [Phase 01]: Forfait coché force count=0 à applyMaterialToUld (D-07 strict exclusivité)
+- [Phase 01]: Shared [label, value] rows between PDF and HTML (buildUldMaterialRows used by both)
+- [Phase 01]: Material sections are conditional (empty string when no material) - no stray headers in retro-compat output
+- [Phase 01]: PDF labels mapped to ASCII-safe at render (Bâches -> Baches) due to jsPDF font glyph support; email HTML keeps full UTF-8
+- [Phase 01]: esc() applied to both label and value in HTML helpers (D-18 defense in depth)
 
 ### Pending Todos
 
@@ -84,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-23T09:06:56.987Z
-Stopped at: Completed 01-01-PLAN.md — material ULD data model + modal UI
+Last session: 2026-04-23T09:25:50.053Z
+Stopped at: Completed 01-02-PLAN.md - material rendering in PDF and email HTML
 Resume file: None
