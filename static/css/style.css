@@ -156,11 +156,24 @@ td input[type="number"] { width: 80px; }
     display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px;
 }
 
-/* Material badge (RECAP-01) */
+/* Material badge (RECAP-01) — ancienne classe conservee pour retro-compat visuelle, plus emise par refreshMaterialBadge */
 .material-badge-wrapper { margin-top: 4px; margin-bottom: 4px; }
 .material-badge {
     display: inline-block; font-size: 0.75em; color: #718096;
     font-style: italic; background: #edf2f7; padding: 2px 8px; border-radius: 10px;
+}
+
+/* Material recap inline condense (RECAP-01 — D-14 OVERRIDDEN par 01-VERIFICATION.md Option A) */
+.material-recap {
+    display: inline-block;
+    font-size: 0.78em;
+    color: #4a5568;
+    background: #edf2f7;
+    padding: 3px 10px;
+    border-radius: 4px;
+    line-height: 1.5;
+    word-break: break-word;
+    max-width: 100%;
 }
 
 /* Button "Matériel" in uld-header */
@@ -223,4 +236,12 @@ td input[type="number"] { width: 80px; }
         border-radius: 0; padding: 14px 12px;
     }
     .material-modal-grid { grid-template-columns: 1fr; gap: 10px; }
+
+    /* Material recap inline mobile (RECAP-03 — wrap naturel pour eviter overflow horizontal) */
+    .material-recap {
+        font-size: 0.72em;
+        padding: 4px 8px;
+        display: block;
+        width: 100%;
+    }
 }
