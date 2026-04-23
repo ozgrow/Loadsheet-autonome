@@ -29,7 +29,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Un manifeste sauvegardé avant cette évolution (sans les nouveaux champs) se charge sans erreur et sans perte de données
   5. Le commentaire libre affiche tout caractère HTML/JS littéralement (pas d'exécution) partout où il apparaît — récap écran, PDF, modal
   6. Les nouveaux champs du modal restent utilisables et lisibles sur un écran ≤ 768px
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 01-01-PLAN.md — Data model + modal UI + rétro-compat + tests TEST-02
+- [ ] 01-02-PLAN.md — Rendu PDF + email HTML (section matériel par ULD + totaux)
 **UI hint**: yes
 
 ### Phase 2: Type ULD VRAC
@@ -62,6 +65,6 @@ Phases execute in numeric order: 1 → 2 → 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Matériel ULD & rétro-compat | 0/TBD | Not started | - |
+| 1. Matériel ULD & rétro-compat | 0/2 | Not started | - |
 | 2. Type ULD VRAC | 0/TBD | Not started | - |
 | 3. Validation locale & release gate | 0/TBD | Not started | - |
