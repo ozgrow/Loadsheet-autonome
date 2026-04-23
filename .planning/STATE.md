@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 01-02-PLAN.md - material rendering in PDF and email HTML
-last_updated: "2026-04-23T09:25:50.056Z"
+status: executing
+stopped_at: Completed 01-03-PLAN.md - gap closure RECAP-01 inline condensed material recap
+last_updated: "2026-04-23T09:57:19.370Z"
 last_activity: 2026-04-23
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 3
+  completed_plans: 3
   percent: 0
 ---
 
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-04-22)
 ## Current Position
 
 Phase: 01 (mat-riel-uld-r-tro-compat) — EXECUTING
-Plan: 2 of 2
-Status: Phase complete — ready for verification
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-04-23
 
 Progress: [░░░░░░░░░░] 0%
@@ -54,6 +54,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 01 P01 | 822 | 2 tasks | 3 files |
 | Phase 01 P02 | 792 | 2 tasks | 3 files |
+| Phase 01 P03 | 262 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,8 @@ Recent decisions affecting current work:
 - [Phase 01]: Material sections are conditional (empty string when no material) - no stray headers in retro-compat output
 - [Phase 01]: PDF labels mapped to ASCII-safe at render (Bâches -> Baches) due to jsPDF font glyph support; email HTML keeps full UTF-8
 - [Phase 01]: esc() applied to both label and value in HTML helpers (D-18 defense in depth)
+- [Phase 01]: D-14 OVERRIDDEN (user-approved per 01-VERIFICATION.md Option A): neutral 'Matériel saisi' badge replaced by inline condensed recap under each ULD header
+- [Phase 01]: Material recap format: 'Libellé: valeur' joined by ' | ', labels short for mobile, uldComment truncated to 30 chars + U+2026 ellipsis, esc() on user-supplied comment only
 
 ### Pending Todos
 
@@ -89,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-23T09:25:50.053Z
-Stopped at: Completed 01-02-PLAN.md - material rendering in PDF and email HTML
+Last session: 2026-04-23T09:57:19.358Z
+Stopped at: Completed 01-03-PLAN.md - gap closure RECAP-01 inline condensed material recap
 Resume file: None
