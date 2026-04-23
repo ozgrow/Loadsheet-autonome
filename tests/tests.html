@@ -641,6 +641,145 @@ localStorage.removeItem('loadsheet_manifests');
         assertEqual('Apres resave: totalColis preserve', found.ulds[0].totalColis, 1);
     })();
 
+    // --- Modal materiel : ouverture ---
+    suite('Materiel ULD - modal ouverture');
+    (function() {
+        resetDOM();
+        addUld();
+        openMaterialModal(uldCount);
+        var modal = document.querySelector('.material-modal');
+        assert('Modal existe apres openMaterialModal', !!modal);
+        assert('Overlay existe', !!document.getElementById('materialModalOverlay'));
+        assert('Input sangles', !!modal.querySelector('.mat-straps'));
+        assert('Input flooring EU', !!modal.querySelector('.mat-flooring-eu'));
+        assert('Checkbox forfait EU', !!modal.querySelector('.mat-flooring-eu-forfait'));
+        assert('Input flooring Std', !!modal.querySelector('.mat-flooring-std'));
+        assert('Checkbox forfait Std', !!modal.querySelector('.mat-flooring-std-forfait'));
+        assert('Input blocks', !!modal.querySelector('.mat-blocks'));
+        assert('Input tarps', !!modal.querySelector('.mat-tarps'));
+        assert('Input dividers', !!modal.querySelector('.mat-dividers'));
+        assert('Input honeycomb', !!modal.querySelector('.mat-honeycomb'));
+        assert('Textarea uld comment', !!modal.querySelector('.mat-uld-comment'));
+        closeMaterialModal();
+    })();
+
+    // --- Modal materiel : forfait desactive input ---
+    suite('Materiel ULD - forfait desactive input (D-06)');
+    (function() {
+        resetDOM();
+        addUld();
+        openMaterialModal(uldCount);
+        var modal = document.querySelector('.material-modal');
+        var cb = modal.querySelector('.mat-flooring-eu-forfait');
+        var inp = modal.querySelector('.mat-flooring-eu');
+        assertEqual('Input EU actif par defaut', inp.disabled, false);
+        cb.checked = true;
+        toggleForfait(cb, 'mat-flooring-eu');
+        assertEqual('Input EU disabled apres cocher forfait', inp.disabled, true);
+        cb.checked = false;
+        toggleForfait(cb, 'mat-flooring-eu');
+        assertEqual('Input EU reactive apres decocher', inp.disabled, false);
+        closeMaterialModal();
+    })();
+
+    // --- Modal materiel : applyMaterialToUld ecrit data-attributes ---
+    suite('Materiel ULD - applyMaterialToUld ecrit data-attributes');
+    (function() {
+        resetDOM();
+        addUld();
+        var i = uldCount;
+        openMaterialModal(i);
+        var modal = document.querySelector('.material-modal');
+        modal.querySelector('.mat-straps').value = '5';
+        modal.querySelector('.mat-uld-comment').value = 'Fragile';
+        modal.querySelector('.mat-blocks').value = '2';
+        applyMaterialToUld(i);
+        var block = document.getElementById('uld-' + i);
+        assertEqual('data-straps=5', block.getAttribute('data-straps'), '5');
+        assertEqual('data-uld-comment=Fragile', block.getAttribute('data-uld-comment'), 'Fragile');
+        assertEqual('data-blocks=2', block.getAttribute('data-blocks'), '2');
+        assert('Modal ferme apres valider', !document.querySelector('.material-modal'));
+    })();
+
+    // --- Modal materiel : forfait efface le nombre (D-07) ---
+    suite('Materiel ULD - forfait efface le nombre (D-07)');
+    (function() {
+        resetDOM();
+        addUld();
+        var i = uldCount;
+        openMaterialModal(i);
+        var modal = document.querySelector('.material-modal');
+        modal.querySelector('.mat-flooring-eu').value = '3';
+        var cb = modal.querySelector('.mat-flooring-eu-forfait');
+        cb.checked = true;
+        toggleForfait(cb, 'mat-flooring-eu');
+        applyMaterialToUld(i);
+        var block = document.getElementById('uld-' + i);
+        assertEqual('data-flooring-eu=0 apres forfait', block.getAttribute('data-flooring-eu'), '0');
+        assertEqual('data-flooring-eu-forfait=true', block.getAttribute('data-flooring-eu-forfait'), 'true');
+    })();
+
+    // --- Modal materiel : badge "Materiel saisi" ---
+    suite('Materiel ULD - badge Materiel saisi');
+    (function() {
+        resetDOM();
+        addUld();
+        var i = uldCount;
+        openMaterialModal(i);
+        var modal = document.querySelector('.material-modal');
+        modal.querySelector('.mat-straps').value = '3';
+        applyMaterialToUld(i);
+        var wrap = document.getElementById('material-badge-' + i);
+        assert('Badge wrapper contient .material-badge', !!wrap.querySelector('.material-badge'));
+        assertEqual('Texte badge', wrap.querySelector('.material-badge').textContent, 'Matériel saisi');
+    })();
+
+    // --- Modal materiel : pas de badge si vide ---
+    suite('Materiel ULD - pas de badge si tout vide');
+    (function() {
+        resetDOM();
+        addUld();
+        var i = uldCount;
+        openMaterialModal(i);
+        applyMaterialToUld(i); // tous les inputs sont vides/0 par defaut
+        var wrap = document.getElementById('material-badge-' + i);
+        assertEqual('Wrapper vide', wrap.innerHTML, '');
+    })();
+
+    // --- Modal materiel : XSS uldComment (MAT-11) ---
+    suite('Materiel ULD - XSS uldComment (MAT-11)');
+    (function() {
+        resetDOM();
+        window._xss = 0;
+        addUld();
+        var i = uldCount;
+        openMaterialModal(i);
+        var modal = document.querySelector('.material-modal');
+        var payload = '<img src=x onerror="window._xss++">';
+        modal.querySelector('.mat-uld-comment').value = payload;
+        applyMaterialToUld(i);
+        // Re-ouvrir
+        openMaterialModal(i);
+        var modal2 = document.querySelector('.material-modal');
+        var imgs = modal2.querySelectorAll('img');
+        assertEqual('Pas de <img> injecte dans le modal', imgs.length, 0);
+        assertEqual('Textarea affiche le texte brut', modal2.querySelector('.mat-uld-comment').value, payload);
+        assertEqual('Pas de XSS execute', window._xss, 0);
+        closeMaterialModal();
+    })();
+
+    // --- Modal materiel : closeMaterialModal supprime overlay ---
+    suite('Materiel ULD - closeMaterialModal');
+    (function() {
+        resetDOM();
+        addUld();
+        openMaterialModal(uldCount);
+        assert('Modal ouvert', !!document.querySelector('.material-modal'));
+        closeMaterialModal();
+        assert('Modal ferme', !document.querySelector('.material-modal'));
+        assert('Overlay supprime', !document.getElementById('materialModalOverlay'));
+    })();
+
     // --- FIFO max 50 ---
     suite('Storage FIFO max 50');
     await (async function() {

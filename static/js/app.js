@@ -18,13 +18,135 @@ function esc(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-// --- Stubs pour Task 2 (modal materiel) : surchargees plus bas ---
-// Declarees en tete pour que onclick="openMaterialModal(i)" ne casse pas si Task 1 est commite seul.
-function openMaterialModal(uldIndex) { /* remplace par Task 2 */ }
-function closeMaterialModal() { /* remplace par Task 2 */ }
-function applyMaterialToUld(uldIndex) { /* remplace par Task 2 */ }
-function toggleForfait(checkbox, inputClass) { /* remplace par Task 2 */ }
-function refreshMaterialBadge(uldIndex) { /* remplace par Task 2 */ }
+// ============================================
+// MATERIAL MODAL (MAT-01..08, MAT-11, RECAP-01, RECAP-03)
+// ============================================
+
+// Ouvre le modal d'edition materiel pour une ULD donnee.
+// Lit l'etat actuel depuis les data-attributes du bloc ULD et pre-remplit les champs.
+function openMaterialModal(uldIndex) {
+    var block = document.getElementById('uld-' + uldIndex);
+    if (!block) return;
+    closeMaterialModal(); // idempotent
+
+    var straps = block.dataset.straps || '0';
+    var flEu = block.dataset.flooringEu || '0';
+    var flEuF = block.dataset.flooringEuForfait === 'true';
+    var flStd = block.dataset.flooringStd || '0';
+    var flStdF = block.dataset.flooringStdForfait === 'true';
+    var blocks = block.dataset.blocks || '0';
+    var tarps = block.dataset.tarps || '0';
+    var dividers = block.dataset.dividers || '0';
+    var honeycomb = block.dataset.honeycomb || '0';
+    var uldComment = block.dataset.uldComment || '';
+
+    var overlay = document.createElement('div');
+    overlay.className = 'material-modal-overlay';
+    overlay.id = 'materialModalOverlay';
+    overlay.onclick = function(e) { if (e.target === overlay) closeMaterialModal(); };
+
+    var modal = document.createElement('div');
+    modal.className = 'material-modal';
+    modal.setAttribute('data-uld-index', String(uldIndex));
+    // Valeurs numeriques : setAttribute value via esc() (safe : parseInt en input).
+    // uldComment : JAMAIS via innerHTML ; assigne via .value apres appendChild (anti-XSS MAT-11 / D-19).
+    modal.innerHTML =
+        '<div class="material-modal-header">' +
+            '<h3>Matériel ULD</h3>' +
+            '<button class="btn btn-danger btn-sm" onclick="closeMaterialModal()">Fermer</button>' +
+        '</div>' +
+        '<div class="material-modal-grid">' +
+            '<label>Sangles<input type="number" min="0" class="mat-straps" value="' + esc(straps) + '"></label>' +
+            '<label>Planchers bois EU<input type="number" min="0" class="mat-flooring-eu" value="' + esc(flEu) + '"' + (flEuF ? ' disabled' : '') + '>' +
+                '<span class="mat-forfait-label"><input type="checkbox" class="mat-flooring-eu-forfait"' + (flEuF ? ' checked' : '') + ' onchange="toggleForfait(this, \'mat-flooring-eu\')"> Forfait négocié</span></label>' +
+            '<label>Planchers bois Standard<input type="number" min="0" class="mat-flooring-std" value="' + esc(flStd) + '"' + (flStdF ? ' disabled' : '') + '>' +
+                '<span class="mat-forfait-label"><input type="checkbox" class="mat-flooring-std-forfait"' + (flStdF ? ' checked' : '') + ' onchange="toggleForfait(this, \'mat-flooring-std\')"> Forfait négocié</span></label>' +
+            '<label>Bois de calage<input type="number" min="0" class="mat-blocks" value="' + esc(blocks) + '"></label>' +
+            '<label>Bâches<input type="number" min="0" class="mat-tarps" value="' + esc(tarps) + '"></label>' +
+            '<label>Intercalaires<input type="number" min="0" class="mat-dividers" value="' + esc(dividers) + '"></label>' +
+            '<label>Nids d\'abeille<input type="number" min="0" class="mat-honeycomb" value="' + esc(honeycomb) + '"></label>' +
+            '<label class="mat-comment-label">Commentaire ULD<textarea class="mat-uld-comment" rows="3" placeholder="Commentaire libre niveau ULD"></textarea></label>' +
+        '</div>' +
+        '<div class="material-modal-actions">' +
+            '<button class="btn btn-secondary" onclick="closeMaterialModal()">Annuler</button>' +
+            '<button class="btn btn-primary" onclick="applyMaterialToUld(' + uldIndex + ')">Valider</button>' +
+        '</div>';
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    // ANTI-XSS (MAT-11, D-19) : uldComment assigne via .value (textarea traite comme texte brut)
+    modal.querySelector('.mat-uld-comment').value = uldComment;
+}
+
+// Active/desactive un input nombre en fonction de la checkbox forfait associee.
+// Quand on coche forfait : input disabled + value remis a '0' (D-07).
+function toggleForfait(checkbox, inputClass) {
+    var modal = document.querySelector('.material-modal');
+    if (!modal) return;
+    var input = modal.querySelector('.' + inputClass);
+    if (!input) return;
+    if (checkbox.checked) { input.disabled = true; input.value = '0'; }
+    else { input.disabled = false; }
+}
+
+// Ferme le modal materiel s'il existe (idempotent).
+function closeMaterialModal() {
+    var overlay = document.getElementById('materialModalOverlay');
+    if (overlay) overlay.remove();
+}
+
+// Applique les valeurs du modal aux data-attributes du bloc ULD,
+// rafraichit le badge, ferme le modal.
+function applyMaterialToUld(uldIndex) {
+    var modal = document.querySelector('.material-modal');
+    var block = document.getElementById('uld-' + uldIndex);
+    if (!modal || !block) return;
+
+    var flEuF = modal.querySelector('.mat-flooring-eu-forfait').checked;
+    var flStdF = modal.querySelector('.mat-flooring-std-forfait').checked;
+    // D-07 : forfait coche => nombre force a 0 a la save
+    var flEu = flEuF ? 0 : (parseInt(modal.querySelector('.mat-flooring-eu').value) || 0);
+    var flStd = flStdF ? 0 : (parseInt(modal.querySelector('.mat-flooring-std').value) || 0);
+    var straps = parseInt(modal.querySelector('.mat-straps').value) || 0;
+    var blocks = parseInt(modal.querySelector('.mat-blocks').value) || 0;
+    var tarps = parseInt(modal.querySelector('.mat-tarps').value) || 0;
+    var dividers = parseInt(modal.querySelector('.mat-dividers').value) || 0;
+    var honeycomb = parseInt(modal.querySelector('.mat-honeycomb').value) || 0;
+    var uldComment = String(modal.querySelector('.mat-uld-comment').value || '');
+
+    block.setAttribute('data-straps', String(straps));
+    block.setAttribute('data-flooring-eu', String(flEu));
+    block.setAttribute('data-flooring-eu-forfait', String(flEuF));
+    block.setAttribute('data-flooring-std', String(flStd));
+    block.setAttribute('data-flooring-std-forfait', String(flStdF));
+    block.setAttribute('data-blocks', String(blocks));
+    block.setAttribute('data-tarps', String(tarps));
+    block.setAttribute('data-dividers', String(dividers));
+    block.setAttribute('data-honeycomb', String(honeycomb));
+    block.setAttribute('data-uld-comment', uldComment);
+
+    refreshMaterialBadge(uldIndex);
+    closeMaterialModal();
+}
+
+// Affiche/masque le badge "Materiel saisi" sous le header ULD.
+// Badge neutre (pas de texte utilisateur) -> pas de vecteur XSS ici (D-19/D-20).
+function refreshMaterialBadge(uldIndex) {
+    var block = document.getElementById('uld-' + uldIndex);
+    var wrapper = document.getElementById('material-badge-' + uldIndex);
+    if (!block || !wrapper) return;
+    var hasAny =
+        (parseInt(block.dataset.straps) || 0) > 0 ||
+        (parseInt(block.dataset.flooringEu) || 0) > 0 ||
+        block.dataset.flooringEuForfait === 'true' ||
+        (parseInt(block.dataset.flooringStd) || 0) > 0 ||
+        block.dataset.flooringStdForfait === 'true' ||
+        (parseInt(block.dataset.blocks) || 0) > 0 ||
+        (parseInt(block.dataset.tarps) || 0) > 0 ||
+        (parseInt(block.dataset.dividers) || 0) > 0 ||
+        (parseInt(block.dataset.honeycomb) || 0) > 0 ||
+        (block.dataset.uldComment || '').length > 0;
+    wrapper.innerHTML = hasAny ? '<span class="material-badge">Matériel saisi</span>' : '';
+}
 
 
 

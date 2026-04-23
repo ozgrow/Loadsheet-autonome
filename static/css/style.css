@@ -114,6 +114,60 @@ td input[type="number"] { width: 80px; }
 .saved-item-actions { display: flex; gap: 6px; flex-shrink: 0; }
 
 /* ==========================================
+   MATERIAL MODAL (MAT-01..08, RECAP-01)
+   ========================================== */
+.material-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 2000;
+}
+.material-modal {
+    background: #fff; border-radius: 8px; padding: 20px 24px;
+    width: 600px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+.material-modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;
+}
+.material-modal-header h3 { margin: 0; color: #1a3a5c; }
+.material-modal-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px;
+}
+.material-modal-grid label {
+    display: flex; flex-direction: column; gap: 4px;
+    font-weight: 600; font-size: 0.9em; color: #4a5568;
+}
+.material-modal-grid input[type="number"] {
+    padding: 6px 8px; border: 1px solid #cbd5e0; border-radius: 4px;
+    font-size: 1em; width: 100%;
+}
+.material-modal-grid input:disabled { background: #edf2f7; color: #a0aec0; }
+.material-modal-grid textarea {
+    padding: 6px 8px; border: 1px solid #cbd5e0; border-radius: 4px;
+    font-size: 1em; width: 100%; font-family: inherit; resize: vertical;
+}
+.mat-forfait-label {
+    font-size: 0.8em; font-weight: 400; color: #718096;
+    display: flex; align-items: center; gap: 4px; margin-top: 2px;
+}
+.mat-comment-label { grid-column: 1 / -1; }
+.material-modal-actions {
+    display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px;
+}
+
+/* Material badge (RECAP-01) */
+.material-badge-wrapper { margin-top: 4px; margin-bottom: 4px; }
+.material-badge {
+    display: inline-block; font-size: 0.75em; color: #718096;
+    font-style: italic; background: #edf2f7; padding: 2px 8px; border-radius: 10px;
+}
+
+/* Button "Matériel" in uld-header */
+.uld-header .btn-material { background: #4a5568; color: #fff; }
+.uld-header .btn-material:hover { background: #2d3748; }
+
+/* ==========================================
    MOBILE — max 768px
    ========================================== */
 @media (max-width: 768px) {
@@ -161,4 +215,12 @@ td input[type="number"] { width: 80px; }
 
     /* Login */
     .login-box { padding: 24px 16px; margin: 8px; }
+
+    /* Material modal full-screen mobile (D-04 RECAP-03) */
+    .material-modal-overlay { align-items: stretch; }
+    .material-modal {
+        width: 100%; max-width: 100%; max-height: 100vh; height: 100vh;
+        border-radius: 0; padding: 14px 12px;
+    }
+    .material-modal-grid { grid-template-columns: 1fr; gap: 10px; }
 }
