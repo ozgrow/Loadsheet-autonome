@@ -639,6 +639,53 @@ function buildUldMaterialRows(u) {
     return rows;
 }
 
+// HTML email — Totaux materiel (RECAP-02 mirror D-17).
+// SECU D-18 : toutes les valeurs injectees passent par esc().
+// Retourne '' si aucun total non nul (pas de section parasite dans l'email).
+function buildMaterialSummaryHtml(ulds) {
+    var s = buildMaterialSummary(ulds);
+    var hasAny = s.straps > 0 ||
+                 s.flooringEu.count > 0 || s.flooringEu.forfaits > 0 ||
+                 s.flooringStd.count > 0 || s.flooringStd.forfaits > 0 ||
+                 s.blocks > 0 || s.tarps > 0 || s.dividers > 0 || s.honeycomb > 0;
+    if (!hasAny) return '';
+    var rows = [];
+    if (s.straps > 0) rows.push(['Sangles', String(s.straps)]);
+    var feStr = formatFlooringDisplay(s.flooringEu);
+    if (feStr !== '—') rows.push(['Planchers bois EU', feStr]);
+    var fsStr = formatFlooringDisplay(s.flooringStd);
+    if (fsStr !== '—') rows.push(['Planchers bois Standard', fsStr]);
+    if (s.blocks > 0) rows.push(['Bois de calage', String(s.blocks)]);
+    if (s.tarps > 0) rows.push(['Bâches', String(s.tarps)]);
+    if (s.dividers > 0) rows.push(['Intercalaires', String(s.dividers)]);
+    if (s.honeycomb > 0) rows.push(['Nids d\'abeille', String(s.honeycomb)]);
+    var html = '<h4 style="color:#1a3a5c;margin-top:16px;">Totaux matériel</h4>';
+    html += '<table style="border-collapse:collapse;font-size:13px;">';
+    rows.forEach(function(r) {
+        html += '<tr><td style="padding:4px 10px;background:#f0f4f8;font-weight:600;">' + esc(r[0]) + '</td>';
+        html += '<td style="padding:4px 10px;">' + esc(r[1]) + '</td></tr>';
+    });
+    html += '</table>';
+    return html;
+}
+
+// HTML email — Section materiel par ULD (RECAP-02 mirror D-17, MAT-11 esc uldComment D-18).
+// Reutilise buildUldMaterialRows (memes regles que PDF : omet zeros, forfait litteral).
+// Toutes les valeurs (label + valeur, y compris uldComment user-supplied) sont echappees via esc().
+function buildUldMaterialHtml(u) {
+    var rows = buildUldMaterialRows(u);
+    if (rows.length === 0) return '';
+    var html = '<h4 style="color:#1a3a5c;margin-top:10px;">Matériel</h4>';
+    html += '<table style="border-collapse:collapse;font-size:13px;">';
+    rows.forEach(function(r) {
+        // D-18 : esc() sur r[0] (label statique, defensive) ET r[1] (peut contenir uldComment user-supplied)
+        html += '<tr><td style="padding:4px 10px;background:#f0f4f8;font-weight:600;">' + esc(r[0]) + '</td>';
+        html += '<td style="padding:4px 10px;">' + esc(r[1]) + '</td></tr>';
+    });
+    html += '</table>';
+    return html;
+}
+
 
 // ============================================
 // PDF GENERATION
@@ -919,6 +966,9 @@ async function sendEmail() {
     }
     html += '</table>';
 
+    // Totaux materiel (RECAP-02 mirror D-17) — retourne '' si aucun materiel
+    html += buildMaterialSummaryHtml(data.ulds);
+
     // Detail per ULD
     data.ulds.forEach(function(u) {
         var uldTitle = 'ULD : ' + esc(u.uldNumber);
@@ -932,6 +982,9 @@ async function sendEmail() {
         });
         html += '<tr style="background:#e2e8f0;font-weight:bold;"><td></td><td>TOTAL</td><td style="text-align:center;">' + u.totalColis + '</td><td></td><td></td></tr>';
         html += '</table>';
+
+        // Section Materiel par ULD (RECAP-02 mirror D-17, MAT-11 esc uldComment D-18)
+        html += buildUldMaterialHtml(u);
     });
 
     html += '<hr style="border-color:#1a3a5c;margin-top:20px;"><p style="font-size:11px;color:#718096;">ATH - Air Terminal Handling - Paris Roissy | v' + APP_VERSION + '</p></div>';

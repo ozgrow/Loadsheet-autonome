@@ -47,6 +47,7 @@
     <div id="liveRecap"></div>
     <span id="savedCount">0</span>
     <div id="savedManifestsList"></div>
+    <button id="sendEmailBtn">Envoyer par email</button>
 </div>
 
 <script>
@@ -918,6 +919,123 @@ localStorage.removeItem('loadsheet_manifests');
         assert('doc2 genere', !!doc2);
         if (doc2) {
             assertEqual('doc2 a 2 pages (1 recap + 1 ULD)', doc2.getNumberOfPages(), 2);
+        }
+    })();
+
+    // ============================================
+    // PLAN 01-02 : Materiel email HTML (RECAP-02, D-17, D-18, MAT-11)
+    // ============================================
+
+    // --- buildMaterialSummaryHtml : totaux HTML ---
+    suite('Materiel email HTML - summary');
+    (function() {
+        var htmlEmpty = buildMaterialSummaryHtml([{ uldNumber: 'U', rows: [], totalColis: 0 }]);
+        assertEqual('Pas de HTML si pas de materiel', htmlEmpty, '');
+
+        var htmlAllZero = buildMaterialSummaryHtml([{
+            strapsCount: 0, flooringEuCount: 0, flooringEuForfait: false,
+            flooringStdCount: 0, flooringStdForfait: false,
+            blocksCount: 0, tarpsCount: 0, dividersCount: 0, honeycombCount: 0, uldComment: ''
+        }]);
+        assertEqual('Pas de HTML si tous zeros', htmlAllZero, '');
+
+        var htmlWith = buildMaterialSummaryHtml([{ strapsCount: 3, flooringEuForfait: true }]);
+        assert('HTML contient Sangles', htmlWith.indexOf('Sangles') >= 0);
+        assert('HTML contient Totaux matériel', htmlWith.indexOf('Totaux mat') >= 0);
+        assert('HTML contient forfait', htmlWith.indexOf('forfait') >= 0);
+
+        var htmlNull = buildMaterialSummaryHtml(null);
+        assertEqual('Null safe => vide', htmlNull, '');
+    })();
+
+    // --- buildUldMaterialHtml : section par ULD ---
+    suite('Materiel email HTML - ULD section');
+    (function() {
+        var htmlEmpty = buildUldMaterialHtml({ uldNumber: 'U', rows: [], totalColis: 0 });
+        assertEqual('Pas de HTML pour ULD sans materiel', htmlEmpty, '');
+
+        var htmlStraps = buildUldMaterialHtml({ strapsCount: 2 });
+        assert('HTML contient Sangles', htmlStraps.indexOf('Sangles') >= 0);
+        assert('HTML contient h4 Matériel', htmlStraps.indexOf('Matériel') >= 0 || htmlStraps.indexOf('Mat') >= 0);
+        assert('HTML omet Planchers', htmlStraps.indexOf('Planchers') < 0);
+        assert('HTML omet Bâches', htmlStraps.indexOf('Bâches') < 0);
+
+        var htmlForfait = buildUldMaterialHtml({ flooringEuForfait: true });
+        assert('Forfait affiche litteralement', htmlForfait.indexOf('forfait') >= 0);
+
+        // ULD ancien format sans champs : pas de crash, pas de HTML
+        var htmlLegacy = buildUldMaterialHtml({ uldNumber: 'U', rows: [], totalColis: 0 });
+        assertEqual('Ancien format ULD => vide', htmlLegacy, '');
+    })();
+
+    // --- SECURITE XSS : uldComment echappe via esc() (MAT-11, D-18) ---
+    suite('Materiel email HTML - SECU XSS uldComment (MAT-11 D-18)');
+    (function() {
+        var xssPayload = '<script>window._xss++<\/script><img src=x onerror="window._xss++">';
+        var html = buildUldMaterialHtml({ uldComment: xssPayload });
+        assert('HTML ne contient pas <script> litteral', html.indexOf('<script>') < 0);
+        assert('HTML ne contient pas <img src litteral', html.indexOf('<img src') < 0);
+        // onerror="..." devient onerror=&quot;..&quot; : l'attribut n'est plus valide (plus de quotes HTML)
+        assert('HTML ne contient pas onerror="..." sequence', html.indexOf('onerror="') < 0);
+        assert('HTML contient entite echappee &lt;script&gt;', html.indexOf('&lt;script&gt;') >= 0);
+        assert('HTML contient entite echappee &lt;img', html.indexOf('&lt;img') >= 0);
+
+        // Injection reelle dans le DOM pour prouver qu'il n'y a pas d'execution
+        var before = window._xss;
+        var testDiv = document.createElement('div');
+        testDiv.innerHTML = html;
+        document.body.appendChild(testDiv);
+        assertEqual('window._xss inchange apres injection', window._xss, before);
+        testDiv.remove();
+    })();
+
+    // --- Contrat sendEmail : html contient les sections materiel quand non vide ---
+    // Note : on ne fait PAS l'envoi reseau ; on cree un ULD avec materiel, on verifie
+    // que le html passe a fetch inclut les helpers. Strategie : spy fetch, capturer le body.
+    suite('Materiel email HTML - sendEmail inclut sections materiel');
+    await (async function() {
+        resetDOM();
+
+        // Prepare session auth + jwt (sendEmail les verifie)
+        sessionStorage.setItem('loadsheet_auth', JSON.stringify({ expiry: Date.now() + 3600000 }));
+        sessionStorage.setItem('loadsheet_jwt', 'fake-jwt-for-test');
+
+        // Ajoute 1 ULD avec du materiel + 1 ligne
+        addUld();
+        document.getElementById('agentName').value = 'Ag';
+        document.getElementById('destAirport').value = 'CDG';
+        document.getElementById('recipients').value = 'test@example.com';
+        var block = document.querySelector('.uld-block');
+        block.querySelector('.uld-number').value = 'U1';
+        block.querySelector('.lta-input').value = 'LTA1';
+        block.querySelector('.colis-input').value = '5';
+        block.setAttribute('data-straps', '3');
+        block.setAttribute('data-flooring-eu-forfait', 'true');
+        block.setAttribute('data-uld-comment', '<script>alert(1)<\/script>');
+
+        // Spy fetch
+        var capturedBody = null;
+        var origFetch = window.fetch;
+        window.fetch = async function(url, opts) {
+            capturedBody = opts && opts.body ? JSON.parse(opts.body) : null;
+            return { ok: true, json: async function() { return { success: true }; } };
+        };
+
+        try {
+            await sendEmail();
+            assert('fetch appele', capturedBody !== null);
+            if (capturedBody) {
+                assert('htmlBody contient Totaux mat', capturedBody.htmlBody.indexOf('Totaux mat') >= 0);
+                assert('htmlBody contient Sangles', capturedBody.htmlBody.indexOf('Sangles') >= 0);
+                assert('htmlBody contient forfait', capturedBody.htmlBody.indexOf('forfait') >= 0);
+                // SECU: le payload XSS uldComment DOIT etre echappe
+                assert('htmlBody ne contient PAS <script>alert', capturedBody.htmlBody.indexOf('<script>alert') < 0);
+                assert('htmlBody contient entite &lt;script&gt;', capturedBody.htmlBody.indexOf('&lt;script&gt;') >= 0);
+            }
+        } finally {
+            window.fetch = origFetch;
+            sessionStorage.removeItem('loadsheet_auth');
+            sessionStorage.removeItem('loadsheet_jwt');
         }
     })();
 
