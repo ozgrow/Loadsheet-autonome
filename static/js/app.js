@@ -128,24 +128,61 @@ function applyMaterialToUld(uldIndex) {
     closeMaterialModal();
 }
 
-// Affiche/masque le badge "Materiel saisi" sous le header ULD.
-// Badge neutre (pas de texte utilisateur) -> pas de vecteur XSS ici (D-19/D-20).
+// ============================================
+// RECAP INLINE CONDENSE (RECAP-01 — D-14 OVERRIDDEN par 01-VERIFICATION.md Option A)
+// ============================================
+// Construit une chaine condensee representant les valeurs materiel non-nulles
+// de l'ULD, lisible directement a l'ecran sous le header de l'ULD.
+// Format : "Sangles: 3 | Planchers EU: forfait | Bois calage: 2 | Com: Fragile"
+// Champs a 0 / forfait=false / commentaire vide : OMIS.
+// uldComment : esc() + troncature 30 chars + "…" si plus long (anti-XSS MAT-11 + layout mobile).
+// Retourne un STRING HTML deja echappe, pret a etre injecte en innerHTML.
+function formatCondensedMaterial(block) {
+    if (!block) return '';
+    var parts = [];
+    var straps = parseInt(block.dataset.straps) || 0;
+    if (straps > 0) parts.push('Sangles: ' + straps);
+    // Planchers EU : "forfait" si checkbox cochee, sinon le nombre (si > 0)
+    var flEuF = block.dataset.flooringEuForfait === 'true';
+    var flEu = parseInt(block.dataset.flooringEu) || 0;
+    if (flEuF) parts.push('Planchers EU: forfait');
+    else if (flEu > 0) parts.push('Planchers EU: ' + flEu);
+    // Planchers Std : symetrique
+    var flStdF = block.dataset.flooringStdForfait === 'true';
+    var flStd = parseInt(block.dataset.flooringStd) || 0;
+    if (flStdF) parts.push('Planchers Std: forfait');
+    else if (flStd > 0) parts.push('Planchers Std: ' + flStd);
+    // Autres compteurs : omettre si 0
+    var blocks = parseInt(block.dataset.blocks) || 0;
+    if (blocks > 0) parts.push('Bois calage: ' + blocks);
+    var tarps = parseInt(block.dataset.tarps) || 0;
+    if (tarps > 0) parts.push('Bâches: ' + tarps);
+    var dividers = parseInt(block.dataset.dividers) || 0;
+    if (dividers > 0) parts.push('Intercalaires: ' + dividers);
+    var honeycomb = parseInt(block.dataset.honeycomb) || 0;
+    if (honeycomb > 0) parts.push("Nids d'abeille: " + honeycomb);
+    // Commentaire : esc() + troncature 30 + "…" (MAT-11 / D-19)
+    var rawComment = String(block.dataset.uldComment || '');
+    if (rawComment.length > 0) {
+        var truncated = rawComment.length > 30 ? (rawComment.slice(0, 30) + '…') : rawComment;
+        parts.push('Com: ' + esc(truncated));
+    }
+    if (parts.length === 0) return '';
+    // Separateur : " | " (espace-pipe-espace) ; les libelles sont litteraux et surs (pas user input)
+    return parts.join(' | ');
+}
+
+// Affiche/masque le recap condense inline sous le header ULD.
+// Remplace le badge neutre 'Materiel saisi' (D-14 OVERRIDDEN par 01-VERIFICATION.md Option A).
+// Note : la fonction garde son nom historique 'refreshMaterialBadge' pour ne pas casser
+// les 2 appelants existants (applyMaterialToUld app.js:127, loadManifest app.js:533).
 function refreshMaterialBadge(uldIndex) {
     var block = document.getElementById('uld-' + uldIndex);
     var wrapper = document.getElementById('material-badge-' + uldIndex);
     if (!block || !wrapper) return;
-    var hasAny =
-        (parseInt(block.dataset.straps) || 0) > 0 ||
-        (parseInt(block.dataset.flooringEu) || 0) > 0 ||
-        block.dataset.flooringEuForfait === 'true' ||
-        (parseInt(block.dataset.flooringStd) || 0) > 0 ||
-        block.dataset.flooringStdForfait === 'true' ||
-        (parseInt(block.dataset.blocks) || 0) > 0 ||
-        (parseInt(block.dataset.tarps) || 0) > 0 ||
-        (parseInt(block.dataset.dividers) || 0) > 0 ||
-        (parseInt(block.dataset.honeycomb) || 0) > 0 ||
-        (block.dataset.uldComment || '').length > 0;
-    wrapper.innerHTML = hasAny ? '<span class="material-badge">Matériel saisi</span>' : '';
+    var content = formatCondensedMaterial(block);
+    // content est DEJA echappe pour uldComment ; les libelles et nombres sont surs (statiques / parseInt).
+    wrapper.innerHTML = content ? '<span class="material-recap">' + content + '</span>' : '';
 }
 
 

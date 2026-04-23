@@ -723,8 +723,10 @@ localStorage.removeItem('loadsheet_manifests');
         assertEqual('data-flooring-eu-forfait=true', block.getAttribute('data-flooring-eu-forfait'), 'true');
     })();
 
-    // --- Modal materiel : badge "Materiel saisi" ---
-    suite('Materiel ULD - badge Materiel saisi');
+    // --- Modal materiel : recap inline condense remplace ancien badge (RECAP-01 — D-14 OVERRIDDEN) ---
+    // NOTE : cette suite remplace l'ancienne suite badge neutre (Plan 01-01)
+    // qui assertait le texte fixe. Ferme le gap RECAP-01 (01-VERIFICATION.md Option A).
+    suite('Materiel ULD - recap inline remplace badge neutre (RECAP-01)');
     (function() {
         resetDOM();
         addUld();
@@ -734,12 +736,13 @@ localStorage.removeItem('loadsheet_manifests');
         modal.querySelector('.mat-straps').value = '3';
         applyMaterialToUld(i);
         var wrap = document.getElementById('material-badge-' + i);
-        assert('Badge wrapper contient .material-badge', !!wrap.querySelector('.material-badge'));
-        assertEqual('Texte badge', wrap.querySelector('.material-badge').textContent, 'Matériel saisi');
+        assert('Wrapper contient .material-recap (plus .material-badge)', !!wrap.querySelector('.material-recap'));
+        assert('Aucun .material-badge residuel', !wrap.querySelector('.material-badge'));
+        assertEqual('Texte recap affiche la valeur saisie', wrap.querySelector('.material-recap').textContent, 'Sangles: 3');
     })();
 
-    // --- Modal materiel : pas de badge si vide ---
-    suite('Materiel ULD - pas de badge si tout vide');
+    // --- Modal materiel : pas de recap si vide ---
+    suite('Materiel ULD - pas de recap si tout vide');
     (function() {
         resetDOM();
         addUld();
@@ -762,7 +765,14 @@ localStorage.removeItem('loadsheet_manifests');
         var payload = '<img src=x onerror="window._xss++">';
         modal.querySelector('.mat-uld-comment').value = payload;
         applyMaterialToUld(i);
-        // Re-ouvrir
+        // RECAP-01 : desormais le recap inline rend aussi uldComment (echappe).
+        // Verifier qu'aucun img n'est injecte dans le wrapper recap non plus.
+        var wrap = document.getElementById('material-badge-' + i);
+        assertEqual('Pas de <img> injecte dans wrapper recap', wrap.querySelectorAll('img').length, 0);
+        assert('Wrapper recap ne contient pas le tag litteral <img src=x',
+            wrap.innerHTML.indexOf('<img src=x') < 0);
+        assertEqual('window._xss toujours a 0 apres rendu recap', window._xss, 0);
+        // Re-ouvrir le modal (assertion originale)
         openMaterialModal(i);
         var modal2 = document.querySelector('.material-modal');
         var imgs = modal2.querySelectorAll('img');
@@ -782,6 +792,160 @@ localStorage.removeItem('loadsheet_manifests');
         closeMaterialModal();
         assert('Modal ferme', !document.querySelector('.material-modal'));
         assert('Overlay supprime', !document.getElementById('materialModalOverlay'));
+    })();
+
+    // ============================================
+    // PLAN 01-03 : Materiel ULD - recap inline condense (RECAP-01 strict)
+    // Ferme le gap identifie par 01-VERIFICATION.md (Option A — D-14 OVERRIDDEN)
+    // ============================================
+
+    // --- Recap inline : valeurs presentes dans le DOM ---
+    suite('Materiel ULD - recap inline condense (RECAP-01)');
+    (function() {
+        resetDOM();
+        addUld();
+        var i = uldCount;
+        openMaterialModal(i);
+        var modal = document.querySelector('.material-modal');
+        modal.querySelector('.mat-straps').value = '5';
+        modal.querySelector('.mat-blocks').value = '2';
+        applyMaterialToUld(i);
+        var wrap = document.getElementById('material-badge-' + i);
+        var recap = wrap.querySelector('.material-recap');
+        assert('Element .material-recap present', !!recap);
+        assertEqual('Texte recap = "Sangles: 5 | Bois calage: 2"', recap.textContent, 'Sangles: 5 | Bois calage: 2');
+    })();
+
+    // --- Recap inline : forfait affiche litteralement ---
+    suite('Materiel ULD - recap forfait litteral (RECAP-01 / D-16)');
+    (function() {
+        resetDOM();
+        addUld();
+        var i = uldCount;
+        openMaterialModal(i);
+        var modal = document.querySelector('.material-modal');
+        modal.querySelector('.mat-flooring-eu-forfait').checked = true;
+        // Simuler le toggle (D-06 : input desactive et value=0)
+        modal.querySelector('.mat-flooring-eu').disabled = true;
+        modal.querySelector('.mat-flooring-eu').value = '0';
+        applyMaterialToUld(i);
+        var wrap = document.getElementById('material-badge-' + i);
+        var recap = wrap.querySelector('.material-recap');
+        assert('Recap contient "Planchers EU: forfait"', recap.textContent.indexOf('Planchers EU: forfait') >= 0);
+        assert('Recap ne contient PAS "Planchers EU: 0"', recap.textContent.indexOf('Planchers EU: 0') < 0);
+        assert('Recap ne contient PAS "Planchers EU: true"', recap.textContent.indexOf('Planchers EU: true') < 0);
+    })();
+
+    // --- Recap inline : zeros omis, pas de pipes orphelins ---
+    suite('Materiel ULD - recap omet zeros (RECAP-01)');
+    (function() {
+        resetDOM();
+        addUld();
+        var i = uldCount;
+        openMaterialModal(i);
+        var modal = document.querySelector('.material-modal');
+        modal.querySelector('.mat-straps').value = '4';
+        applyMaterialToUld(i);
+        var wrap = document.getElementById('material-badge-' + i);
+        var recap = wrap.querySelector('.material-recap');
+        assertEqual('Recap = "Sangles: 4" (rien d\'autre)', recap.textContent, 'Sangles: 4');
+        assert('Pas de "Planchers EU: 0"', recap.textContent.indexOf('Planchers EU: 0') < 0);
+        assert('Pas de "Bois calage: 0"', recap.textContent.indexOf('Bois calage: 0') < 0);
+        assert('Pas de pipe orphelin "| |"', recap.textContent.indexOf('| |') < 0);
+        assert('Pas de pipe en debut " | S"', recap.textContent.indexOf(' | S') !== 0);
+    })();
+
+    // --- Recap inline : XSS uldComment echappe (MAT-11) ---
+    suite('Materiel ULD - recap XSS uldComment (RECAP-01 / MAT-11)');
+    (function() {
+        resetDOM();
+        window._xss = 0;
+        addUld();
+        var i = uldCount;
+        openMaterialModal(i);
+        var modal = document.querySelector('.material-modal');
+        modal.querySelector('.mat-uld-comment').value = '<img src=x onerror="window._xss++">';
+        applyMaterialToUld(i);
+        var wrap = document.getElementById('material-badge-' + i);
+        // Le innerHTML doit contenir l'entite echappee, pas le tag litteral
+        assert('innerHTML ne contient pas "<img src=x onerror=" litteral', wrap.innerHTML.indexOf('<img src=x onerror=') < 0);
+        assert('innerHTML contient l\'entite "&lt;img"', wrap.innerHTML.indexOf('&lt;img') >= 0);
+        // Aucune balise img injectee
+        assertEqual('Aucun <img> injecte dans le wrapper', wrap.querySelectorAll('img').length, 0);
+        // Pas d'execution
+        assertEqual('window._xss inchange (pas d\'execution XSS)', window._xss, 0);
+    })();
+
+    // --- Recap inline : uldComment tronque a 30 chars + ellipsis ---
+    suite('Materiel ULD - recap uldComment tronque (RECAP-01)');
+    (function() {
+        resetDOM();
+        addUld();
+        var i = uldCount;
+        openMaterialModal(i);
+        var modal = document.querySelector('.material-modal');
+        var longComment = 'Lorem ipsum dolor sit amet consectetur adipiscing elit'; // 54 chars
+        modal.querySelector('.mat-uld-comment').value = longComment;
+        applyMaterialToUld(i);
+        var wrap = document.getElementById('material-badge-' + i);
+        var recap = wrap.querySelector('.material-recap');
+        // 30 premiers chars + "…" (ellipsis Unicode U+2026).
+        // slice(0, 30) de "Lorem ipsum dolor sit amet consectetur..." = "Lorem ipsum dolor sit amet con"
+        assert('Recap contient "Com: Lorem ipsum dolor sit amet con…"', recap.textContent.indexOf('Com: Lorem ipsum dolor sit amet con…') >= 0);
+        assert('Recap NE contient PAS le commentaire complet', recap.textContent.indexOf('adipiscing elit') < 0);
+        assert('Recap contient l\'ellipsis U+2026', recap.textContent.indexOf('…') >= 0);
+        // Verifier la troncature : la chaine rendue apres "Com: " doit faire 30 chars + 1 ellipsis
+        var comPart = recap.textContent.split('Com: ')[1];
+        assertEqual('Partie commentaire = 30 chars + ellipsis', comPart.length, 31);
+    })();
+
+    // --- Recap inline : vide = pas de span fantome ---
+    suite('Materiel ULD - recap vide = pas de span (RECAP-01)');
+    (function() {
+        resetDOM();
+        addUld();
+        var i = uldCount;
+        openMaterialModal(i);
+        applyMaterialToUld(i); // tous les inputs sont vides/0/false par defaut
+        var wrap = document.getElementById('material-badge-' + i);
+        assertEqual('innerHTML strictement vide', wrap.innerHTML, '');
+        assertEqual('Aucun .material-recap', wrap.querySelectorAll('.material-recap').length, 0);
+    })();
+
+    // --- Recap inline : loadManifest restaure le recap (retro-compat avec donnees chiffrees) ---
+    suite('Materiel ULD - loadManifest restaure recap (RECAP-01 / TEST-02)');
+    await (async function() {
+        resetDOM();
+        // Ecrire un manifeste avec materiel
+        var manifests = [{
+            manifestId: 'MAN-TEST-RECAP-01',
+            date: '2026-04-23',
+            client: '',
+            agent: 'A',
+            destAirport: 'CDG',
+            recipients: '',
+            cc: '',
+            ulds: [{
+                uldNumber: 'U1',
+                rows: [{ lta: 'L', dossier: 'D', colis: 1, dgr: 'N', comment: '' }],
+                totalColis: 1,
+                strapsCount: 7,
+                flooringEuCount: 0, flooringEuForfait: false,
+                flooringStdCount: 0, flooringStdForfait: false,
+                blocksCount: 0, tarpsCount: 0, dividersCount: 0, honeycombCount: 0,
+                uldComment: 'Fragile'
+            }]
+        }];
+        await writeSavedManifests(manifests);
+        await loadManifest('MAN-TEST-RECAP-01');
+        // Apres loadManifest, le bloc ULD existe avec data-attributes + recap rendu
+        var blocks = document.querySelectorAll('.uld-block');
+        assertEqual('1 ULD chargee', blocks.length, 1);
+        var wrap = document.querySelector('[id^="material-badge-"]');
+        assert('Wrapper recap existe', !!wrap);
+        var recap = wrap.querySelector('.material-recap');
+        assert('Recap rendu apres loadManifest', !!recap);
+        assertEqual('Recap = "Sangles: 7 | Com: Fragile"', recap.textContent, 'Sangles: 7 | Com: Fragile');
     })();
 
     // ============================================
