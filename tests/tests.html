@@ -61,6 +61,9 @@ window._xss = 0;
 // Nettoyer localStorage avant tout
 localStorage.removeItem('loadsheet_manifests');
 </script>
+<!-- jsPDF + autotable : necessaire pour les tests buildPdf (Materiel PDF) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="../static/js/app.js"></script>
 <script>
 (async function() {
@@ -778,6 +781,144 @@ localStorage.removeItem('loadsheet_manifests');
         closeMaterialModal();
         assert('Modal ferme', !document.querySelector('.material-modal'));
         assert('Overlay supprime', !document.getElementById('materialModalOverlay'));
+    })();
+
+    // ============================================
+    // PLAN 01-02 : Materiel PDF (RECAP-02, D-15, D-16)
+    // ============================================
+
+    // --- Helper buildMaterialSummary : agregation totaux ---
+    suite('Materiel PDF - buildMaterialSummary');
+    (function() {
+        var s = buildMaterialSummary([
+            { strapsCount: 3, flooringEuForfait: true },
+            { strapsCount: 2, flooringEuCount: 5 }
+        ]);
+        assertEqual('Total sangles', s.straps, 5);
+        assertEqual('FlooringEu count', s.flooringEu.count, 5);
+        assertEqual('FlooringEu forfaits', s.flooringEu.forfaits, 1);
+        assertEqual('FlooringStd count defaut 0', s.flooringStd.count, 0);
+        assertEqual('FlooringStd forfaits defaut 0', s.flooringStd.forfaits, 0);
+        assertEqual('Blocks defaut 0', s.blocks, 0);
+        assertEqual('Tarps defaut 0', s.tarps, 0);
+        assertEqual('Dividers defaut 0', s.dividers, 0);
+        assertEqual('Honeycomb defaut 0', s.honeycomb, 0);
+    })();
+
+    // --- buildMaterialSummary retro-compat (ULD ancien format sans champs) ---
+    suite('Materiel PDF - buildMaterialSummary retro-compat sans champs');
+    (function() {
+        var s = buildMaterialSummary([{ uldNumber: 'U', rows: [], totalColis: 0 }]);
+        assertEqual('Sangles defaut 0', s.straps, 0);
+        assertEqual('FlooringEu count defaut 0', s.flooringEu.count, 0);
+        assertEqual('FlooringEu forfaits defaut 0', s.flooringEu.forfaits, 0);
+        assertEqual('FlooringStd count defaut 0', s.flooringStd.count, 0);
+        assertEqual('FlooringStd forfaits defaut 0', s.flooringStd.forfaits, 0);
+        assertEqual('Blocks defaut 0', s.blocks, 0);
+        assertEqual('Tarps defaut 0', s.tarps, 0);
+
+        // Tableau vide ou null : pas d'erreur
+        var s2 = buildMaterialSummary([]);
+        assertEqual('Tableau vide - sangles 0', s2.straps, 0);
+        var s3 = buildMaterialSummary(null);
+        assertEqual('Null - sangles 0 sans crash', s3.straps, 0);
+    })();
+
+    // --- buildUldMaterialRows omet les zeros (specifics CONTEXT.md D-15 "omettre les zeros") ---
+    suite('Materiel PDF - buildUldMaterialRows omet zeros');
+    (function() {
+        var rows = buildUldMaterialRows({ strapsCount: 4, flooringEuCount: 0, flooringStdForfait: false });
+        var labels = rows.map(function(r) { return r[0]; });
+        assert('Contient Sangles', labels.indexOf('Sangles') >= 0);
+        assert('Omet Planchers bois EU (count=0 et pas forfait)', labels.indexOf('Planchers bois EU') < 0);
+        assert('Omet Planchers bois Standard (absent)', labels.indexOf('Planchers bois Standard') < 0);
+        assert('Omet Bois de calage (absent)', labels.indexOf('Bois de calage') < 0);
+        assert('Omet Bâches (absent)', labels.indexOf('Bâches') < 0);
+        assert('Omet Intercalaires (absent)', labels.indexOf('Intercalaires') < 0);
+        assert('Omet Nids d\'abeille (absent)', labels.indexOf('Nids d\'abeille') < 0);
+        assert('Omet Commentaire ULD (vide)', labels.indexOf('Commentaire ULD') < 0);
+    })();
+
+    // --- buildUldMaterialRows : forfait affiche litteralement "forfait" (D-16) ---
+    suite('Materiel PDF - buildUldMaterialRows forfait litteral');
+    (function() {
+        var rows = buildUldMaterialRows({ flooringEuForfait: true, flooringStdForfait: false });
+        var feRow = rows.find(function(r) { return r[0] === 'Planchers bois EU'; });
+        assert('Planchers EU present avec forfait', !!feRow);
+        assertEqual('Valeur Planchers EU = "forfait"', feRow[1], 'forfait');
+        assert('Planchers Std absent (pas coche)', !rows.find(function(r) { return r[0] === 'Planchers bois Standard'; }));
+
+        var rows2 = buildUldMaterialRows({ flooringEuForfait: false, flooringEuCount: 7, flooringStdForfait: true });
+        var feRow2 = rows2.find(function(r) { return r[0] === 'Planchers bois EU'; });
+        var fsRow2 = rows2.find(function(r) { return r[0] === 'Planchers bois Standard'; });
+        assertEqual('Planchers EU count=7 affiche "7"', feRow2[1], '7');
+        assertEqual('Planchers Std forfait affiche "forfait"', fsRow2[1], 'forfait');
+    })();
+
+    // --- buildUldMaterialRows inclut uldComment quand non-vide ---
+    suite('Materiel PDF - buildUldMaterialRows inclut commentaire');
+    (function() {
+        var rows = buildUldMaterialRows({ uldComment: 'Fragile - manipuler avec soin' });
+        var commentRow = rows.find(function(r) { return r[0] === 'Commentaire ULD'; });
+        assert('Commentaire present', !!commentRow);
+        assertEqual('Valeur commentaire intacte', commentRow[1], 'Fragile - manipuler avec soin');
+
+        var rowsEmpty = buildUldMaterialRows({ uldComment: '' });
+        assert('Commentaire vide omis', !rowsEmpty.find(function(r) { return r[0] === 'Commentaire ULD'; }));
+    })();
+
+    // --- formatFlooringDisplay : rendu combinee count + forfaits ---
+    suite('Materiel PDF - formatFlooringDisplay');
+    (function() {
+        assertEqual('Rien => tiret', formatFlooringDisplay({ count: 0, forfaits: 0 }), '—');
+        assertEqual('Count seul', formatFlooringDisplay({ count: 5, forfaits: 0 }), '5');
+        assertEqual('Forfait unique', formatFlooringDisplay({ count: 0, forfaits: 1 }), '1 forfait');
+        assertEqual('Plusieurs forfaits', formatFlooringDisplay({ count: 0, forfaits: 3 }), '3 forfaits');
+        assertEqual('Mixte count + forfait', formatFlooringDisplay({ count: 12, forfaits: 2 }), '12 + 2 forfaits');
+    })();
+
+    // --- buildPdf ne crash pas avec ou sans materiel (retro-compat) ---
+    suite('Materiel PDF - buildPdf avec materiel');
+    (function() {
+        var dataWith = {
+            manifestId: 'MAN-TEST-PDF-1', client: '', agent: 'Agent', destAirport: 'CDG', date: '01/01/2025',
+            ulds: [{
+                uldNumber: 'U1',
+                rows: [{ lta: 'LTA1', dossier: 'D', colis: 1, dgr: 'N', comment: '' }],
+                totalColis: 1,
+                strapsCount: 3, flooringEuForfait: true, flooringStdForfait: false,
+                flooringEuCount: 0, flooringStdCount: 0, blocksCount: 0, tarpsCount: 0,
+                dividersCount: 0, honeycombCount: 0, uldComment: ''
+            }]
+        };
+        var doc1 = null; var err1 = null;
+        try { doc1 = buildPdf(dataWith); } catch(e) { err1 = e; }
+        assert('buildPdf avec materiel ne crash pas', err1 === null);
+        assert('doc1 genere', !!doc1);
+        if (doc1) {
+            assertEqual('doc1 a 2 pages (1 recap + 1 ULD)', doc1.getNumberOfPages(), 2);
+        }
+    })();
+
+    // --- buildPdf : manifeste ancien format sans champs materiel ---
+    suite('Materiel PDF - buildPdf manifeste ancien format');
+    (function() {
+        var dataLegacy = {
+            manifestId: 'MAN-TEST-PDF-2', client: '', agent: 'Agent', destAirport: 'CDG', date: '01/01/2025',
+            ulds: [{
+                uldNumber: 'U1',
+                rows: [{ lta: 'LTA1', dossier: 'D', colis: 1, dgr: 'N', comment: '' }],
+                totalColis: 1
+                // Aucun champ materiel : ancien format pre-Plan 01-01
+            }]
+        };
+        var doc2 = null; var err2 = null;
+        try { doc2 = buildPdf(dataLegacy); } catch(e) { err2 = e; }
+        assert('buildPdf ancien format (sans materiel) ne crash pas', err2 === null);
+        assert('doc2 genere', !!doc2);
+        if (doc2) {
+            assertEqual('doc2 a 2 pages (1 recap + 1 ULD)', doc2.getNumberOfPages(), 2);
+        }
     })();
 
     // --- FIFO max 50 ---

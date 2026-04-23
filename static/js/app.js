@@ -578,6 +578,69 @@ function toggleSavedManifests() {
 }
 
 // ============================================
+// MATERIAL SUMMARY (RECAP-02, D-15, D-16)
+// ============================================
+// Agrege les totaux materiel sur toutes les ULD.
+// - count = somme des nombres saisis (hors forfaits)
+// - forfaits = nombre d'ULD avec la checkbox forfait cochee
+// Lecture defensive : un ULD sans champs materiel (ancien format, D-10) est traite avec defaults.
+function buildMaterialSummary(ulds) {
+    var s = {
+        straps: 0,
+        flooringEu: { count: 0, forfaits: 0 },
+        flooringStd: { count: 0, forfaits: 0 },
+        blocks: 0, tarps: 0, dividers: 0, honeycomb: 0
+    };
+    (ulds || []).forEach(function(u) {
+        if (!u) return;
+        s.straps += parseInt(u.strapsCount) || 0;
+        if (u.flooringEuForfait === true) s.flooringEu.forfaits += 1;
+        else s.flooringEu.count += parseInt(u.flooringEuCount) || 0;
+        if (u.flooringStdForfait === true) s.flooringStd.forfaits += 1;
+        else s.flooringStd.count += parseInt(u.flooringStdCount) || 0;
+        s.blocks += parseInt(u.blocksCount) || 0;
+        s.tarps += parseInt(u.tarpsCount) || 0;
+        s.dividers += parseInt(u.dividersCount) || 0;
+        s.honeycomb += parseInt(u.honeycombCount) || 0;
+    });
+    return s;
+}
+
+// Formate une entree "Planchers EU/Std" en texte lisible pour les totaux agreges.
+// Retour : "—" si rien, "12" si count seul, "2 forfaits" si forfaits seuls, "12 + 2 forfaits" si les deux.
+function formatFlooringDisplay(entry) {
+    if (!entry || (entry.count === 0 && entry.forfaits === 0)) return '—';
+    var parts = [];
+    if (entry.count > 0) parts.push(String(entry.count));
+    if (entry.forfaits > 0) parts.push(entry.forfaits + ' forfait' + (entry.forfaits > 1 ? 's' : ''));
+    return parts.join(' + ');
+}
+
+// Formate la section materiel d'une ULD unique en paires [label, value] pour autoTable.
+// Omet les zeros (CONTEXT.md D-15 "omettre les zeros pour alleger").
+// Forfait affiche litteralement "forfait" (D-16) au lieu d'un nombre.
+function buildUldMaterialRows(u) {
+    if (!u) return [];
+    var rows = [];
+    var straps = parseInt(u.strapsCount) || 0;
+    if (straps > 0) rows.push(['Sangles', String(straps)]);
+    // Planchers EU : forfait prime sur count (D-07 applique a la saisie, defensive ici aussi)
+    if (u.flooringEuForfait === true) rows.push(['Planchers bois EU', 'forfait']);
+    else { var fe = parseInt(u.flooringEuCount) || 0; if (fe > 0) rows.push(['Planchers bois EU', String(fe)]); }
+    // Planchers Std
+    if (u.flooringStdForfait === true) rows.push(['Planchers bois Standard', 'forfait']);
+    else { var fs = parseInt(u.flooringStdCount) || 0; if (fs > 0) rows.push(['Planchers bois Standard', String(fs)]); }
+    var blocks = parseInt(u.blocksCount) || 0; if (blocks > 0) rows.push(['Bois de calage', String(blocks)]);
+    var tarps = parseInt(u.tarpsCount) || 0; if (tarps > 0) rows.push(['Bâches', String(tarps)]);
+    var dividers = parseInt(u.dividersCount) || 0; if (dividers > 0) rows.push(['Intercalaires', String(dividers)]);
+    var honeycomb = parseInt(u.honeycombCount) || 0; if (honeycomb > 0) rows.push(['Nids d\'abeille', String(honeycomb)]);
+    var comment = String(u.uldComment || '');
+    if (comment.length > 0) rows.push(['Commentaire ULD', comment]);
+    return rows;
+}
+
+
+// ============================================
 // PDF GENERATION
 // ============================================
 function drawAthLogo(doc, x, y) {
@@ -684,6 +747,36 @@ function buildPdf(data) {
             if (h.row.index === summaryBody.length - 1) { h.cell.styles.fontStyle = 'bold'; h.cell.styles.fillColor = [226, 232, 240]; }
         }
     });
+
+    // Totaux materiel (RECAP-02, D-15 page 1) : inseres sous la table recap si au moins un total non nul
+    var matSummary = buildMaterialSummary(data.ulds);
+    var hasAnyMat = matSummary.straps > 0 ||
+                    matSummary.flooringEu.count > 0 || matSummary.flooringEu.forfaits > 0 ||
+                    matSummary.flooringStd.count > 0 || matSummary.flooringStd.forfaits > 0 ||
+                    matSummary.blocks > 0 || matSummary.tarps > 0 || matSummary.dividers > 0 || matSummary.honeycomb > 0;
+    if (hasAnyMat) {
+        var matY = doc.lastAutoTable.finalY + 8;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(26, 58, 92);
+        doc.text('Totaux materiel', margin, matY);
+        var matRows = [];
+        if (matSummary.straps > 0) matRows.push(['Sangles', String(matSummary.straps)]);
+        var feStr = formatFlooringDisplay(matSummary.flooringEu);
+        if (feStr !== '—') matRows.push(['Planchers bois EU', feStr]);
+        var fsStr = formatFlooringDisplay(matSummary.flooringStd);
+        if (fsStr !== '—') matRows.push(['Planchers bois Standard', fsStr]);
+        if (matSummary.blocks > 0) matRows.push(['Bois de calage', String(matSummary.blocks)]);
+        if (matSummary.tarps > 0) matRows.push(['Baches', String(matSummary.tarps)]);
+        if (matSummary.dividers > 0) matRows.push(['Intercalaires', String(matSummary.dividers)]);
+        if (matSummary.honeycomb > 0) matRows.push(['Nids d\'abeille', String(matSummary.honeycomb)]);
+        doc.autoTable({
+            startY: matY + 2,
+            body: matRows,
+            margin: { left: margin, right: margin },
+            styles: { fontSize: 9, cellPadding: 3, lineColor: [200, 210, 220], lineWidth: 0.3 },
+            columnStyles: { 0: { fontStyle: 'bold', fillColor: [240, 244, 248], cellWidth: 60 } }
+        });
+    }
+
     drawFooter(1);
 
     // One page per ULD
@@ -731,6 +824,28 @@ function buildPdf(data) {
                 if (h.column.index === 3 && h.cell.raw === 'O') { h.cell.styles.textColor = [200, 30, 50]; h.cell.styles.fontStyle = 'bold'; }
             }
         });
+
+        // Section Materiel pour cette ULD (RECAP-02, D-15 page detail) : omet les zeros
+        var uldMatRows = buildUldMaterialRows(u);
+        if (uldMatRows.length > 0) {
+            // Remplace les labels accentues par leur version ASCII-safe pour le rendu jsPDF default font
+            var pdfMatRows = uldMatRows.map(function(r) {
+                var label = r[0];
+                if (label === 'Bâches') label = 'Baches';
+                return [label, r[1]];
+            });
+            var uldMatY = doc.lastAutoTable.finalY + 6;
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(26, 58, 92);
+            doc.text('Materiel', margin, uldMatY);
+            doc.autoTable({
+                startY: uldMatY + 2,
+                body: pdfMatRows,
+                margin: { left: margin, right: margin },
+                styles: { fontSize: 9, cellPadding: 3, lineColor: [200, 210, 220], lineWidth: 0.3 },
+                columnStyles: { 0: { fontStyle: 'bold', fillColor: [240, 244, 248], cellWidth: 50 } }
+            });
+        }
+
         drawFooter(idx + 2);
     });
 

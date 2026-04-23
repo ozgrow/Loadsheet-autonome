@@ -4,3 +4,9 @@ node_modules/
 .idea/
 .vscode/
 api/local.settings.json
+
+# Local test harness scripts (Node + JSDOM, dev-only)
+tests/run-harness.cjs
+tests/debug-buildpdf.cjs
+package.json
+package-lock.json
