@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   6. Les nouveaux champs du modal restent utilisables et lisibles sur un écran ≤ 768px
 **Plans**: 2 plans
 Plans:
-- [ ] 01-01-PLAN.md — Data model + modal UI + rétro-compat + tests TEST-02
+- [x] 01-01-PLAN.md — Data model + modal UI + rétro-compat + tests TEST-02
 - [ ] 01-02-PLAN.md — Rendu PDF + email HTML (section matériel par ULD + totaux)
 **UI hint**: yes
 

@@ -7,17 +7,17 @@
 
 ### Matériel ULD
 
-- [ ] **MAT-01**: L'utilisateur peut saisir le nombre de sangles dans le modal d'édition ULD
-- [ ] **MAT-02**: L'utilisateur peut saisir le nombre de planchers bois europe (ou cocher "forfait négocié" en alternative)
-- [ ] **MAT-03**: L'utilisateur peut saisir le nombre de planchers bois standard (ou cocher "forfait négocié" en alternative)
-- [ ] **MAT-04**: L'utilisateur peut saisir le nombre de bois de calage
-- [ ] **MAT-05**: L'utilisateur peut saisir le nombre de bâches
-- [ ] **MAT-06**: L'utilisateur peut saisir le nombre d'intercalaires
-- [ ] **MAT-07**: L'utilisateur peut saisir le nombre de nids d'abeille
-- [ ] **MAT-08**: L'utilisateur peut saisir un commentaire libre sur l'ULD
-- [ ] **MAT-09**: Les champs matériel sont disponibles sur tous les types d'ULD (palettes + conteneurs)
-- [ ] **MAT-10**: Les manifestes sauvegardés avant cette évolution se chargent sans erreur (rétro-compat localStorage chiffré)
-- [ ] **MAT-11**: Le commentaire libre est échappé via `esc()` partout où il est affiché (anti-XSS)
+- [x] **MAT-01**: L'utilisateur peut saisir le nombre de sangles dans le modal d'édition ULD
+- [x] **MAT-02**: L'utilisateur peut saisir le nombre de planchers bois europe (ou cocher "forfait négocié" en alternative)
+- [x] **MAT-03**: L'utilisateur peut saisir le nombre de planchers bois standard (ou cocher "forfait négocié" en alternative)
+- [x] **MAT-04**: L'utilisateur peut saisir le nombre de bois de calage
+- [x] **MAT-05**: L'utilisateur peut saisir le nombre de bâches
+- [x] **MAT-06**: L'utilisateur peut saisir le nombre d'intercalaires
+- [x] **MAT-07**: L'utilisateur peut saisir le nombre de nids d'abeille
+- [x] **MAT-08**: L'utilisateur peut saisir un commentaire libre sur l'ULD
+- [x] **MAT-09**: Les champs matériel sont disponibles sur tous les types d'ULD (palettes + conteneurs)
+- [x] **MAT-10**: Les manifestes sauvegardés avant cette évolution se chargent sans erreur (rétro-compat localStorage chiffré)
+- [x] **MAT-11**: Le commentaire libre est échappé via `esc()` partout où il est affiché (anti-XSS)
 
 ### VRAC
 
@@ -27,14 +27,14 @@
 
 ### Récapitulatif
 
-- [ ] **RECAP-01**: Le récapitulatif écran affiche les infos matériel de chaque ULD (forme condensée)
+- [x] **RECAP-01**: Le récapitulatif écran affiche les infos matériel de chaque ULD (forme condensée)
 - [ ] **RECAP-02**: Le PDF généré inclut les infos matériel de chaque ULD
-- [ ] **RECAP-03**: Les champs matériel restent utilisables et lisibles sur mobile (≤ 768px)
+- [x] **RECAP-03**: Les champs matériel restent utilisables et lisibles sur mobile (≤ 768px)
 
 ### Tests & validation
 
 - [ ] **TEST-01**: Les nouvelles fonctionnalités sont couvertes par des tests dans `tests/tests.html`
-- [ ] **TEST-02**: Des tests de rétro-compatibilité vérifient que les anciens manifestes (sans champs matériel) se chargent correctement
+- [x] **TEST-02**: Des tests de rétro-compatibilité vérifient que les anciens manifestes (sans champs matériel) se chargent correctement
 - [ ] **TEST-03**: L'application entière est testée en local via `npx serve .` avant tout push sur `master`
 
 ## v2 Requirements
@@ -56,25 +56,25 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MAT-01 | Phase 1 | Pending |
-| MAT-02 | Phase 1 | Pending |
-| MAT-03 | Phase 1 | Pending |
-| MAT-04 | Phase 1 | Pending |
-| MAT-05 | Phase 1 | Pending |
-| MAT-06 | Phase 1 | Pending |
-| MAT-07 | Phase 1 | Pending |
-| MAT-08 | Phase 1 | Pending |
-| MAT-09 | Phase 1 | Pending |
-| MAT-10 | Phase 1 | Pending |
-| MAT-11 | Phase 1 | Pending |
+| MAT-01 | Phase 1 | Complete |
+| MAT-02 | Phase 1 | Complete |
+| MAT-03 | Phase 1 | Complete |
+| MAT-04 | Phase 1 | Complete |
+| MAT-05 | Phase 1 | Complete |
+| MAT-06 | Phase 1 | Complete |
+| MAT-07 | Phase 1 | Complete |
+| MAT-08 | Phase 1 | Complete |
+| MAT-09 | Phase 1 | Complete |
+| MAT-10 | Phase 1 | Complete |
+| MAT-11 | Phase 1 | Complete |
 | VRAC-01 | Phase 2 | Pending |
 | VRAC-02 | Phase 2 | Pending |
 | VRAC-03 | Phase 2 | Pending |
-| RECAP-01 | Phase 1 | Pending |
+| RECAP-01 | Phase 1 | Complete |
 | RECAP-02 | Phase 1 | Pending |
-| RECAP-03 | Phase 1 | Pending |
+| RECAP-03 | Phase 1 | Complete |
 | TEST-01 | Phase 3 | Pending |
-| TEST-02 | Phase 1 | Pending |
+| TEST-02 | Phase 1 | Complete |
 | TEST-03 | Phase 3 | Pending |
 
 **Coverage:**
