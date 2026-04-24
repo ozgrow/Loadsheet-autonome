@@ -949,6 +949,203 @@ localStorage.removeItem('loadsheet_manifests');
     })();
 
     // ============================================
+    // PLAN 02-01 Task 1 : Type ULD VRAC - selecteur + data model + retro-compat (VRAC-01, D-01..D-06, D-15..D-17)
+    // ============================================
+
+    // --- Test 1 : addUld cree select avec PMC par defaut ---
+    suite('Type ULD - addUld cree select avec PMC par defaut');
+    (function() {
+        resetDOM();
+        addUld();
+        var block = document.querySelector('.uld-block');
+        var sel = block.querySelector('.uld-type');
+        assert('Select .uld-type present dans le header', !!sel);
+        var opts = sel.querySelectorAll('option');
+        assertEqual('Nombre d\'options = 5', opts.length, 5);
+        assertEqual('Option 0 = PMC', opts[0].value, 'PMC');
+        assertEqual('Option 1 = AKE', opts[1].value, 'AKE');
+        assertEqual('Option 2 = AKN', opts[2].value, 'AKN');
+        assertEqual('Option 3 = PAG', opts[3].value, 'PAG');
+        assertEqual('Option 4 = VRAC', opts[4].value, 'VRAC');
+        assertEqual('Valeur par defaut = PMC', sel.value, 'PMC');
+    })();
+
+    // --- Test 2 : addUld positionne le select AVANT .uld-number ---
+    suite('Type ULD - select positionne avant uld-number');
+    (function() {
+        resetDOM();
+        addUld();
+        var header = document.querySelector('.uld-header');
+        var sel = header.querySelector('.uld-type');
+        var numInput = header.querySelector('.uld-number');
+        assert('Select ET input present', !!sel && !!numInput);
+        // compareDocumentPosition : Node.DOCUMENT_POSITION_FOLLOWING (4) signifie que numInput suit sel
+        var pos = sel.compareDocumentPosition(numInput);
+        assert('Select precede .uld-number (Node.DOCUMENT_POSITION_FOLLOWING)', (pos & 4) !== 0);
+    })();
+
+    // --- Test 3 : addUld ecrit data-uld-type = PMC ---
+    suite('Type ULD - addUld data-uld-type par defaut');
+    (function() {
+        resetDOM();
+        addUld();
+        var block = document.querySelector('.uld-block');
+        assertEqual('data-uld-type = PMC', block.dataset.uldType, 'PMC');
+    })();
+
+    // --- Test 4 : collectData inclut la cle type ---
+    suite('Type ULD - collectData inclut type');
+    (function() {
+        resetDOM();
+        addUld();
+        addUld();
+        var blocks = document.querySelectorAll('.uld-block');
+        // Changer le type de la 2eme ULD a VRAC via le select
+        blocks[1].querySelector('.uld-type').value = 'VRAC';
+        // Simuler un change (pour mettre a jour dataset + recap via changeUldType)
+        changeUldType(blocks[1].querySelector('.uld-type'), 2);
+        var data = collectData();
+        assertEqual('ULD 0 type = PMC', data.ulds[0].type, 'PMC');
+        assertEqual('ULD 1 type = VRAC', data.ulds[1].type, 'VRAC');
+    })();
+
+    // --- Test 5 : collectData fallback PMC si select corrompue ---
+    suite('Type ULD - collectData fallback PMC si value corrompue');
+    (function() {
+        resetDOM();
+        addUld();
+        var block = document.querySelector('.uld-block');
+        // Simuler une valeur corrompue hors liste (defense en profondeur)
+        block.querySelector('.uld-type').innerHTML += '<option value="BOGUS">BOGUS</option>';
+        block.querySelector('.uld-type').value = 'BOGUS';
+        var data = collectData();
+        assertEqual('Valeur corrompue fallback a PMC', data.ulds[0].type, 'PMC');
+    })();
+
+    // --- Test 6 : loadManifest retro-compat (type absent) ---
+    suite('Type ULD - loadManifest retro-compat type absent => PMC (D-15)');
+    await (async function() {
+        resetDOM();
+        await deriveAndStoreKey('test-password-for-unit-tests');
+        // Manifeste ANCIEN format : aucune cle "type" dans l'ULD
+        var manifests = [{
+            manifestId: 'TEST-VRAC-OLD',
+            date: '2026-04-23',
+            client: '',
+            agent: 'A',
+            destAirport: 'CDG',
+            ulds: [{
+                uldNumber: 'U1',
+                rows: [{ lta: 'L', dossier: 'D', colis: 1, dgr: 'N', comment: '' }],
+                totalColis: 1
+                // Pas de type, pas de champ materiel non plus
+            }]
+        }];
+        await writeSavedManifests(manifests);
+        await loadManifest('TEST-VRAC-OLD');
+        var block = document.querySelector('.uld-block');
+        assert('Bloc ULD charge', !!block);
+        var sel = block.querySelector('.uld-type');
+        assertEqual('Select present avec valeur PMC (default)', sel.value, 'PMC');
+        assertEqual('data-uld-type = PMC', block.dataset.uldType, 'PMC');
+    })();
+
+    // --- Test 7 : loadManifest restaure type VRAC ---
+    suite('Type ULD - loadManifest restaure type VRAC');
+    await (async function() {
+        resetDOM();
+        await deriveAndStoreKey('test-password-for-unit-tests');
+        var manifests = [{
+            manifestId: 'TEST-VRAC-NEW',
+            date: '2026-04-23',
+            client: '',
+            agent: 'A',
+            destAirport: 'CDG',
+            ulds: [{
+                uldNumber: 'V1',
+                rows: [{ lta: 'L', dossier: 'D', colis: 5, dgr: 'N', comment: '' }],
+                totalColis: 5,
+                type: 'VRAC',
+                strapsCount: 0, flooringEuCount: 0, flooringEuForfait: false,
+                flooringStdCount: 0, flooringStdForfait: false,
+                blocksCount: 0, tarpsCount: 0, dividersCount: 0, honeycombCount: 0,
+                uldComment: ''
+            }]
+        }];
+        await writeSavedManifests(manifests);
+        await loadManifest('TEST-VRAC-NEW');
+        var block = document.querySelector('.uld-block');
+        var sel = block.querySelector('.uld-type');
+        assertEqual('Select value = VRAC', sel.value, 'VRAC');
+        assertEqual('data-uld-type = VRAC', block.dataset.uldType, 'VRAC');
+    })();
+
+    // --- Test 8 : loadManifest rejette type corrompu (XSS defense en profondeur) ---
+    suite('Type ULD - loadManifest rejette type corrompu (D-15 + XSS)');
+    await (async function() {
+        resetDOM();
+        await deriveAndStoreKey('test-password-for-unit-tests');
+        var manifests = [{
+            manifestId: 'TEST-VRAC-BOGUS',
+            date: '2026-04-23',
+            client: '',
+            agent: 'A',
+            destAirport: 'CDG',
+            ulds: [{
+                uldNumber: 'U1',
+                rows: [{ lta: 'L', dossier: 'D', colis: 1, dgr: 'N', comment: '' }],
+                totalColis: 1,
+                type: '<img src=x onerror=window._xss++>' // payload XSS
+            }]
+        }];
+        await writeSavedManifests(manifests);
+        await loadManifest('TEST-VRAC-BOGUS');
+        var block = document.querySelector('.uld-block');
+        var sel = block.querySelector('.uld-type');
+        assertEqual('Select fallback a PMC', sel.value, 'PMC');
+        assertEqual('data-uld-type = PMC', block.dataset.uldType, 'PMC');
+        // Verifier qu'aucun <img> n'a ete injecte dans le DOM
+        assertEqual('Aucun <img> dans le bloc ULD', block.querySelectorAll('img').length, 0);
+    })();
+
+    // --- Test 9 : changeUldType met a jour dataset + declenche updateRecap ---
+    suite('Type ULD - changeUldType met a jour dataset + updateRecap');
+    (function() {
+        resetDOM();
+        addUld();
+        var block = document.querySelector('.uld-block');
+        var sel = block.querySelector('.uld-type');
+        sel.value = 'VRAC';
+        changeUldType(sel, 1);
+        assertEqual('data-uld-type synchro a VRAC', block.dataset.uldType, 'VRAC');
+        // updateRecap a ete appele => #liveRecap contient "dont Vrac"
+        var recap = document.getElementById('liveRecap').innerHTML;
+        assert('#liveRecap contient "dont Vrac"', recap.indexOf('dont Vrac') >= 0);
+    })();
+
+    // --- Test 10 : save/load round-trip preserve type ---
+    suite('Type ULD - save/load round-trip preserve type (TEST-02)');
+    await (async function() {
+        resetDOM();
+        await deriveAndStoreKey('test-password-for-unit-tests');
+        addUld();
+        var block = document.querySelector('.uld-block');
+        block.querySelector('.uld-number').value = 'AKE001';
+        block.querySelector('.uld-type').value = 'AKE';
+        changeUldType(block.querySelector('.uld-type'), 1);
+        document.getElementById('agentName').value = 'A';
+        document.getElementById('destAirport').value = 'CDG';
+        await saveManifest();
+        var savedId = manifestId;
+        newManifest();
+        await loadManifest(savedId);
+        var loadedBlock = document.querySelector('.uld-block');
+        var loadedSel = loadedBlock.querySelector('.uld-type');
+        assertEqual('Type AKE preserve apres save/load', loadedSel.value, 'AKE');
+        assertEqual('data-uld-type AKE preserve', loadedBlock.dataset.uldType, 'AKE');
+    })();
+
+    // ============================================
     // PLAN 01-02 : Materiel PDF (RECAP-02, D-15, D-16)
     // ============================================
 

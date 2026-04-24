@@ -58,6 +58,15 @@ h3 { color: #2c5282; margin: 10px 0 8px; }
 .uld-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
 .uld-header label { font-weight: 600; }
 .uld-header input { padding: 6px 10px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 1em; }
+/* Type ULD select (VRAC-01) */
+.uld-header .uld-type {
+    padding: 6px 10px;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    font-size: 1em;
+    background: #fff;
+    min-width: 90px;
+}
 .uld-totals { margin-top: 8px; font-weight: 600; color: #2c5282; text-align: right; padding: 6px 10px; }
 
 /* ---- Tables ---- */
@@ -203,6 +212,8 @@ td input[type="number"] { width: 80px; }
     .uld-block { padding: 10px; }
     .uld-header { flex-direction: column; align-items: stretch; gap: 6px; }
     .uld-header input { width: 100% !important; }
+    /* Type ULD select mobile (VRAC-01) */
+    .uld-header .uld-type { width: 100% !important; }
 
     /* Table: scroll horizontal */
     table { display: block; overflow-x: auto; white-space: nowrap; }

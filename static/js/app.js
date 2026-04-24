@@ -12,6 +12,12 @@ var manifestId = '';
 var uldCount = 0;
 var _savedIds = []; // tableau d'IDs pour onclick (anti-XSS)
 
+// --- Types ULD (VRAC-01, D-01, D-02) ---
+// Liste figee des types officiels. VRAC est le seul avec comportement special
+// (exclusion compteur palettes, masquage planchers modal, exclusion planchers recap/PDF/email).
+var ULD_TYPES = ['PMC', 'AKE', 'AKN', 'PAG', 'VRAC'];
+var ULD_TYPE_DEFAULT = 'PMC';
+
 // --- HTML escape (anti-XSS) ---
 function esc(str) {
     if (str === null || str === undefined) return '';
@@ -185,6 +191,35 @@ function refreshMaterialBadge(uldIndex) {
     wrapper.innerHTML = content ? '<span class="material-recap">' + content + '</span>' : '';
 }
 
+// ============================================
+// TYPE ULD - Handler onchange du <select class="uld-type"> (VRAC-01, D-21)
+// ============================================
+// Declenche quand l'agent change le type dans le dropdown d'une ULD.
+// Effets en cascade :
+//  (a) Met a jour block.dataset.uldType (synchronisation avec le select, D-06)
+//  (b) Appelle updateRecap() pour rafraichir l'annotation "dont Vrac" dans le #liveRecap
+//  (c) Appelle refreshMaterialBadge(uldIndex) pour actualiser le recap inline
+//      (les planchers disparaissent de la chaine condensee quand type devient VRAC, D-21)
+//  (d) Si le modal est ouvert pour CETTE ULD (cas rare, robustesse) : on le ferme
+//      pour eviter un etat incoherent (planchers affiches alors que VRAC).
+//      L'agent peut rouvrir le modal si besoin - simple et sur.
+function changeUldType(selectEl, uldIndex) {
+    var block = document.getElementById('uld-' + uldIndex);
+    if (!block || !selectEl) return;
+    var newType = selectEl.value;
+    // Defense en profondeur : valider que newType est dans la liste figee
+    if (ULD_TYPES.indexOf(newType) < 0) newType = ULD_TYPE_DEFAULT;
+    block.setAttribute('data-uld-type', newType);
+    // Si le modal est ouvert pour cette ULD, fermer (evite incoherence planchers)
+    var openModal = document.querySelector('.material-modal');
+    if (openModal && openModal.getAttribute('data-uld-index') === String(uldIndex)) {
+        closeMaterialModal();
+    }
+    // Rafraichir recap global (annotation "dont Vrac") + recap inline (exclusion planchers si VRAC)
+    updateRecap();
+    refreshMaterialBadge(uldIndex);
+}
+
 
 
 // ============================================
@@ -318,8 +353,18 @@ function addUld() {
     div.setAttribute('data-dividers', '0');
     div.setAttribute('data-honeycomb', '0');
     div.setAttribute('data-uld-comment', '');
+    // Type ULD (VRAC-01, D-05, D-06) - defaut PMC
+    div.setAttribute('data-uld-type', ULD_TYPE_DEFAULT);
     div.innerHTML =
         '<div class="uld-header">' +
+            '<label>Type :</label>' +
+            '<select class="uld-type" onchange="changeUldType(this, ' + i + ')">' +
+                '<option value="PMC" selected>PMC</option>' +
+                '<option value="AKE">AKE</option>' +
+                '<option value="AKN">AKN</option>' +
+                '<option value="PAG">PAG</option>' +
+                '<option value="VRAC">VRAC</option>' +
+            '</select>' +
             '<label>ULD N\u00b0 :</label>' +
             '<input type="text" class="uld-number" placeholder="Num\u00e9ro ULD" style="width:180px">' +
             '<label style="margin-left:16px;">Poids (kg) :</label>' +
@@ -439,6 +484,10 @@ function collectData() {
         uldEntry.dividersCount = parseInt(block.dataset.dividers) || 0;
         uldEntry.honeycombCount = parseInt(block.dataset.honeycomb) || 0;
         uldEntry.uldComment = block.dataset.uldComment || '';
+        // Type ULD (VRAC-01, D-05, D-06 : source de verite live = valeur du <select>, fallback PMC)
+        var typeSelect = block.querySelector('.uld-type');
+        var typeValue = typeSelect ? typeSelect.value : ULD_TYPE_DEFAULT;
+        uldEntry.type = (ULD_TYPES.indexOf(typeValue) >= 0) ? typeValue : ULD_TYPE_DEFAULT;
         ulds.push(uldEntry);
     });
     return {
@@ -542,8 +591,16 @@ async function loadManifest(id) {
         div.setAttribute('data-dividers', String(parseInt(uldData.dividersCount) || 0));
         div.setAttribute('data-honeycomb', String(parseInt(uldData.honeycombCount) || 0));
         div.setAttribute('data-uld-comment', String(uldData.uldComment || ''));
+        // Type ULD (VRAC-01, D-05, D-15 retro-compat : type absent => PMC ; defense en profondeur vs valeurs corrompues)
+        var uldType = (uldData.type && ULD_TYPES.indexOf(uldData.type) >= 0) ? uldData.type : ULD_TYPE_DEFAULT;
+        div.setAttribute('data-uld-type', uldType);
+        var typeOptions = ULD_TYPES.map(function(t) {
+            return '<option value="' + t + '"' + (t === uldType ? ' selected' : '') + '>' + t + '</option>';
+        }).join('');
         div.innerHTML =
-            '<div class="uld-header"><label>ULD N\u00b0 :</label>' +
+            '<div class="uld-header"><label>Type :</label>' +
+            '<select class="uld-type" onchange="changeUldType(this, ' + i + ')">' + typeOptions + '</select>' +
+            '<label>ULD N\u00b0 :</label>' +
             '<input type="text" class="uld-number" placeholder="Num\u00e9ro ULD" style="width:180px" value="' + esc(uldData.uldNumber || uldData.pmcNumber || '') + '">' +
             '<label style="margin-left:16px;">Poids (kg) :</label>' +
             '<input type="number" class="uld-weight" placeholder="Optionnel" style="width:100px" min="0" step="0.1" oninput="updateRecap()" value="' + esc(uldData.weight || '') + '">' +
