@@ -46,7 +46,7 @@ Plans:
   4. Les ULD non-VRAC continuent d'être comptées et affichées comme avant (pas de régression sur le flux existant)
 **Plans**: 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — Selecteur type ULD + data model + retro-compat + updateRecap annotation "dont Vrac" + modal planchers conditionnel (VRAC-01, VRAC-02)
+- [x] 02-01-PLAN.md — Selecteur type ULD + data model + retro-compat + updateRecap annotation "dont Vrac" + modal planchers conditionnel (VRAC-01, VRAC-02)
 - [ ] 02-02-PLAN.md — Rendu PDF colonne Type + scission page 1 Palettes/Vrac + email HTML miroir + exclusion planchers VRAC (VRAC-03)
 **UI hint**: yes
 

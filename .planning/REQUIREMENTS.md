@@ -21,8 +21,8 @@
 
 ### VRAC
 
-- [ ] **VRAC-01**: "VRAC" apparaît comme type ULD officiel dans le sélecteur de type
-- [ ] **VRAC-02**: Les ULD de type VRAC sont exclues du compteur de palettes du récapitulatif
+- [x] **VRAC-01**: "VRAC" apparaît comme type ULD officiel dans le sélecteur de type
+- [x] **VRAC-02**: Les ULD de type VRAC sont exclues du compteur de palettes du récapitulatif
 - [ ] **VRAC-03**: Le récapitulatif affiche une ligne séparée "Vrac" (poids + nombre de colis) quand au moins une ULD VRAC est présente
 
 ### Récapitulatif
@@ -67,8 +67,8 @@
 | MAT-09 | Phase 1 | Complete |
 | MAT-10 | Phase 1 | Complete |
 | MAT-11 | Phase 1 | Complete |
-| VRAC-01 | Phase 2 | Pending |
-| VRAC-02 | Phase 2 | Pending |
+| VRAC-01 | Phase 2 | Complete |
+| VRAC-02 | Phase 2 | Complete |
 | VRAC-03 | Phase 2 | Pending |
 | RECAP-01 | Phase 1 | Complete |
 | RECAP-02 | Phase 1 | Complete |
