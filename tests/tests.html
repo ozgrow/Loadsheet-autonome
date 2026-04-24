@@ -1815,6 +1815,249 @@ localStorage.removeItem('loadsheet_manifests');
         }
     })();
 
+    // ============================================
+    // PLAN 02-02 Task 2 : Type ULD - email HTML (D-14, D-20)
+    // ============================================
+
+    // Helper local pour tests email : on reconstruit le HTML comme sendEmail le fait,
+    // sans envoyer la requete reseau. Miroir exact du code de sendEmail (app.js:~1063-1116).
+    // Si sendEmail change, buildEmailHtmlForTest doit suivre (code reviewer humain).
+    function buildEmailHtmlForTest(data) {
+        var allLtas = getAllLtas(data).join(', ') || '-';
+        var grandTotal = data.ulds.reduce(function(s, u) { return s + u.totalColis; }, 0);
+        var html = '<div style="font-family:Arial,sans-serif;max-width:700px;">';
+        html += '<h2 style="color:#1a3a5c;">Loadsheet - ' + esc(data.manifestId) + '</h2>';
+        html += '<p><strong>Client :</strong> ' + esc(data.client || '-') + ' | <strong>Dest :</strong> ' + esc(data.destAirport) + ' | <strong>Agent :</strong> ' + esc(data.agent) + '</p>';
+        html += '<p><strong>Date :</strong> ' + esc(data.date) + ' | <strong>LTA :</strong> ' + esc(allLtas) + '</p>';
+        html += '<hr style="border-color:#1a3a5c;">';
+        html += '<h3 style="color:#1a3a5c;">Recapitulatif (' + data.ulds.length + ' ULD - ' + grandTotal + ' colis)</h3>';
+        var emailHasWeight = data.ulds.some(function(u) { return u.weight > 0; });
+        html += '<table style="width:100%;border-collapse:collapse;font-size:14px;">';
+        html += emailHasWeight
+            ? '<tr style="background:#1a3a5c;color:#fff;"><th style="padding:8px;text-align:left;">ULD</th><th>LTA(s)</th><th>Nb Colis</th><th>Poids (kg)</th><th>DGR</th></tr>'
+            : '<tr style="background:#1a3a5c;color:#fff;"><th style="padding:8px;text-align:left;">ULD</th><th>LTA(s)</th><th>Nb Colis</th><th>DGR</th></tr>';
+        data.ulds.forEach(function(u, idx) {
+            var ltaSet = {};
+            u.rows.forEach(function(r) { if (r.lta) ltaSet[r.lta] = true; });
+            var bg = idx % 2 === 0 ? '#f5f7fa' : '#fff';
+            var hasDgr = u.rows.some(function(r) { return r.dgr === 'O'; });
+            html += '<tr style="background:' + bg + ';"><td style="padding:6px 8px;">' + esc(u.uldNumber) + '</td><td>' + esc(Object.keys(ltaSet).join(', ')) + '</td><td style="text-align:center;">' + u.totalColis + '</td>';
+            if (emailHasWeight) html += '<td style="text-align:center;">' + (u.weight ? u.weight : '-') + '</td>';
+            html += '<td style="text-align:center;' + (hasDgr ? 'color:red;font-weight:bold;' : '') + '">' + (hasDgr ? 'OUI' : 'NON') + '</td></tr>';
+        });
+        var emailGrandWeight = data.ulds.reduce(function(s, u) { return s + (u.weight || 0); }, 0);
+        if (emailHasWeight) {
+            html += '<tr style="background:#e2e8f0;font-weight:bold;"><td style="padding:6px 8px;">TOTAL</td><td></td><td style="text-align:center;">' + grandTotal + '</td><td style="text-align:center;">' + emailGrandWeight + '</td><td></td></tr>';
+        } else {
+            html += '<tr style="background:#e2e8f0;font-weight:bold;"><td style="padding:6px 8px;">TOTAL</td><td></td><td style="text-align:center;">' + grandTotal + '</td><td></td></tr>';
+        }
+        html += '</table>';
+        // D-14 miroir D-12 : scission Palettes/Vrac (conditionnelle)
+        var pvSplit = buildPalettesVracSplit(data.ulds);
+        if (pvSplit.hasVrac) {
+            html += '<h3 style="color:#1a3a5c;margin-top:14px;">Detail par categorie</h3>';
+            html += '<table style="border-collapse:collapse;font-size:13px;">';
+            html += '<tr><td style="padding:4px 10px;background:#f0f4f8;font-weight:600;">dont Palettes</td>';
+            html += '<td style="padding:4px 10px;">' + pvSplit.palettes.count + ' (' + pvSplit.palettes.colis + ' colis, ' + pvSplit.palettes.weight + ' kg)</td></tr>';
+            html += '<tr><td style="padding:4px 10px;background:#f0f4f8;font-weight:600;">dont Vrac</td>';
+            html += '<td style="padding:4px 10px;">' + pvSplit.vrac.count + ' (' + pvSplit.vrac.colis + ' colis, ' + pvSplit.vrac.weight + ' kg)</td></tr>';
+            html += '</table>';
+        }
+        html += buildMaterialSummaryHtml(data.ulds);
+        data.ulds.forEach(function(u) {
+            // D-14 mirror D-11 : titre du bloc inclut type + esc() defense en profondeur
+            var validUldType = (u.type && ['PMC','AKE','AKN','PAG','VRAC'].indexOf(u.type) >= 0) ? u.type : 'PMC';
+            var uldTitle = 'ULD : ' + esc(u.uldNumber) + ' [' + esc(validUldType) + ']';
+            if (u.weight > 0) uldTitle += ' — ' + u.weight + ' kg';
+            html += '<h3 style="color:#1a3a5c;margin-top:20px;">' + uldTitle + '</h3>';
+            html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+            html += '<tr style="background:#1a3a5c;color:#fff;"><th style="padding:6px;">LTA</th><th>Dossier</th><th>Colis</th><th>DGR</th><th>Commentaire</th></tr>';
+            u.rows.forEach(function(r, idx) {
+                var bg = idx % 2 === 0 ? '#f5f7fa' : '#fff';
+                html += '<tr style="background:' + bg + ';"><td style="padding:4px 6px;">' + esc(r.lta) + '</td><td>' + esc(r.dossier) + '</td><td style="text-align:center;">' + r.colis + '</td><td style="text-align:center;' + (r.dgr === 'O' ? 'color:red;font-weight:bold;' : '') + '">' + esc(r.dgr) + '</td><td>' + esc(r.comment) + '</td></tr>';
+            });
+            html += '<tr style="background:#e2e8f0;font-weight:bold;"><td></td><td>TOTAL</td><td style="text-align:center;">' + u.totalColis + '</td><td></td><td></td></tr>';
+            html += '</table>';
+            html += buildUldMaterialHtml(u);
+        });
+        html += '</div>';
+        return html;
+    }
+
+    // --- sendEmail HTML scission Palettes/Vrac (D-14 mirror D-12) ---
+    suite('Type ULD - email HTML scission Palettes/Vrac (D-14)');
+    (function() {
+        var data = {
+            manifestId: 'M', client: 'C', agent: 'A', destAirport: 'CDG', date: '01/01/2025',
+            ulds: [
+                { uldNumber: 'P1', type: 'PMC', rows: [{ lta: 'L', colis: 10, dgr: 'N', comment: '', dossier: '' }], totalColis: 10, weight: 500 },
+                { uldNumber: 'V1', type: 'VRAC', rows: [{ lta: 'L', colis: 12, dgr: 'N', comment: '', dossier: '' }], totalColis: 12, weight: 240 }
+            ]
+        };
+        var html = buildEmailHtmlForTest(data);
+        assert('HTML contient "dont Palettes"', html.indexOf('dont Palettes') >= 0);
+        assert('HTML contient "dont Vrac"', html.indexOf('dont Vrac') >= 0);
+        assert('HTML contient "1 (10 colis, 500 kg)" pour palettes', html.indexOf('1 (10 colis, 500 kg)') >= 0);
+        assert('HTML contient "1 (12 colis, 240 kg)" pour vrac', html.indexOf('1 (12 colis, 240 kg)') >= 0);
+    })();
+
+    // --- sendEmail HTML pas de scission si aucun VRAC ---
+    suite('Type ULD - email HTML pas de scission si aucun VRAC');
+    (function() {
+        var data = {
+            manifestId: 'M', client: '', agent: 'A', destAirport: 'CDG', date: '01/01/2025',
+            ulds: [
+                { uldNumber: 'P1', type: 'PMC', rows: [{ lta: 'L', colis: 10, dgr: 'N', comment: '', dossier: '' }], totalColis: 10 },
+                { uldNumber: 'P2', type: 'AKE', rows: [{ lta: 'L', colis: 5, dgr: 'N', comment: '', dossier: '' }], totalColis: 5 }
+            ]
+        };
+        var html = buildEmailHtmlForTest(data);
+        assert('HTML NE contient PAS "dont Palettes"', html.indexOf('dont Palettes') < 0);
+        assert('HTML NE contient PAS "dont Vrac"', html.indexOf('dont Vrac') < 0);
+    })();
+
+    // --- sendEmail HTML titre bloc ULD contient type (D-14 mirror D-11) ---
+    suite('Type ULD - email HTML titre bloc contient type (D-14)');
+    (function() {
+        var data = {
+            manifestId: 'M', client: '', agent: 'A', destAirport: 'CDG', date: '01/01/2025',
+            ulds: [{ uldNumber: 'V1', type: 'VRAC', rows: [{ lta: 'L', colis: 5, dgr: 'N', comment: '', dossier: '' }], totalColis: 5 }]
+        };
+        var html = buildEmailHtmlForTest(data);
+        // Le titre doit contenir le format "ULD : V1 [VRAC]"
+        assert('HTML contient "[VRAC]" dans le titre du bloc', html.indexOf('[VRAC]') >= 0);
+    })();
+
+    // --- sendEmail HTML type absent fallback PMC (retro-compat) ---
+    suite('Type ULD - email HTML retro-compat type absent => PMC');
+    (function() {
+        var data = {
+            manifestId: 'M', client: '', agent: 'A', destAirport: 'CDG', date: '01/01/2025',
+            ulds: [{ uldNumber: 'U1', rows: [{ lta: 'L', colis: 1, dgr: 'N', comment: '', dossier: '' }], totalColis: 1 }] // pas de type
+        };
+        var html = buildEmailHtmlForTest(data);
+        assert('HTML contient "[PMC]" (fallback)', html.indexOf('[PMC]') >= 0);
+    })();
+
+    // --- sendEmail HTML defense en profondeur XSS sur type ---
+    suite('Type ULD - email HTML defense XSS type (D-14)');
+    (function() {
+        window._xss = 0;
+        var data = {
+            manifestId: 'M', client: '', agent: 'A', destAirport: 'CDG', date: '01/01/2025',
+            ulds: [{
+                uldNumber: 'U1',
+                type: '<img src=x onerror="window._xss++">', // payload direct (ne vient PAS d'un select contraint)
+                rows: [{ lta: 'L', colis: 1, dgr: 'N', comment: '', dossier: '' }],
+                totalColis: 1
+            }]
+        };
+        var html = buildEmailHtmlForTest(data);
+        // Le type invalide doit fallback a PMC (code defensif sur la validation validUldType)
+        assert('HTML contient [PMC] (type invalide fallback)', html.indexOf('[PMC]') >= 0);
+        assert('HTML NE contient PAS <img src=x onerror=... litteral', html.indexOf('<img src=x onerror=') < 0);
+        // Injecter dans le DOM pour prouver pas d'execution
+        var testDiv = document.createElement('div');
+        testDiv.innerHTML = html;
+        document.body.appendChild(testDiv);
+        assertEqual('Aucune balise img injectee', testDiv.querySelectorAll('img').length, 0);
+        assertEqual('window._xss inchange (pas d\'execution XSS)', window._xss, 0);
+        testDiv.remove();
+    })();
+
+    // --- sendEmail HTML totaux materiel excluent planchers VRAC (D-20) ---
+    suite('Type ULD - email HTML totaux materiel excluent planchers VRAC (D-20)');
+    (function() {
+        var data = {
+            manifestId: 'M', client: '', agent: 'A', destAirport: 'CDG', date: '01/01/2025',
+            ulds: [
+                { uldNumber: 'P1', type: 'PMC', rows: [{ lta: 'L', colis: 1, dgr: 'N', comment: '', dossier: '' }], totalColis: 1, flooringEuCount: 3 },
+                { uldNumber: 'V1', type: 'VRAC', rows: [{ lta: 'L', colis: 1, dgr: 'N', comment: '', dossier: '' }], totalColis: 1, flooringEuCount: 5 } // doit etre exclu
+            ]
+        };
+        var html = buildEmailHtmlForTest(data);
+        // Les totaux materiel affichent seulement 3 (PMC), pas 8
+        assert('Totaux materiel contiennent "Planchers bois EU" label', html.indexOf('Planchers bois EU') >= 0);
+        // Extraire le contenu des totaux materiel (sous le <h4>Totaux matériel</h4>)
+        var idx = html.indexOf('Totaux matériel');
+        assert('Section Totaux materiel presente', idx >= 0);
+        var totalsSection = html.substring(idx, idx + 500);
+        assert('Totaux contiennent "3" (PMC only, pas 8=3+5)', />3</.test(totalsSection));
+        assert('Totaux NE contiennent PAS "8"', />8</.test(totalsSection) === false);
+    })();
+
+    // --- sendEmail HTML section par ULD VRAC exclut planchers (D-20) ---
+    suite('Type ULD - email HTML bloc ULD VRAC exclut planchers (D-20)');
+    (function() {
+        var data = {
+            manifestId: 'M', client: '', agent: 'A', destAirport: 'CDG', date: '01/01/2025',
+            ulds: [{
+                uldNumber: 'V1', type: 'VRAC',
+                rows: [{ lta: 'L', colis: 1, dgr: 'N', comment: '', dossier: '' }],
+                totalColis: 1,
+                strapsCount: 2, flooringEuCount: 5, flooringStdForfait: true
+            }]
+        };
+        var html = buildEmailHtmlForTest(data);
+        // Section Materiel du bloc VRAC : Sangles oui, Planchers non
+        var idxUld = html.indexOf('[VRAC]');
+        assert('Bloc VRAC present', idxUld >= 0);
+        var uldBlock = html.substring(idxUld);
+        assert('Bloc VRAC contient Sangles', uldBlock.indexOf('Sangles') >= 0);
+        assert('Bloc VRAC NE contient PAS "Planchers bois EU"', uldBlock.indexOf('Planchers bois EU') < 0);
+        assert('Bloc VRAC NE contient PAS "Planchers bois Standard"', uldBlock.indexOf('Planchers bois Standard') < 0);
+    })();
+
+    // --- sendEmail reel : verif integration via fetch spy (D-14 bout-en-bout) ---
+    suite('Type ULD - sendEmail integration htmlBody contient scission + [VRAC] (D-14)');
+    await (async function() {
+        resetDOM();
+        sessionStorage.setItem('loadsheet_auth', JSON.stringify({ expiry: Date.now() + 3600000 }));
+        sessionStorage.setItem('loadsheet_jwt', 'fake-jwt-for-test');
+
+        // Ajoute 2 ULD : 1 PMC + 1 VRAC via addUld pour activer toute la chaine collectData
+        addUld();
+        addUld();
+        document.getElementById('agentName').value = 'Ag';
+        document.getElementById('destAirport').value = 'CDG';
+        document.getElementById('recipients').value = 'test@example.com';
+        var blocks = document.querySelectorAll('.uld-block');
+        blocks[0].querySelector('.uld-number').value = 'P1';
+        blocks[0].querySelector('.lta-input').value = 'LTA1';
+        blocks[0].querySelector('.colis-input').value = '10';
+        // blocks[0] stays PMC default
+        blocks[1].querySelector('.uld-number').value = 'V1';
+        blocks[1].querySelector('.lta-input').value = 'LTA2';
+        blocks[1].querySelector('.colis-input').value = '12';
+        // Changer le type du 2e bloc en VRAC via le select (source de verite live)
+        var typeSelect = blocks[1].querySelector('.uld-type');
+        typeSelect.value = 'VRAC';
+        // Declencher changeUldType pour synchroniser data-uld-type + refresh recap
+        if (typeof changeUldType === 'function') changeUldType(typeSelect, 1);
+
+        var capturedBody = null;
+        var origFetch = window.fetch;
+        window.fetch = async function(url, opts) {
+            capturedBody = opts && opts.body ? JSON.parse(opts.body) : null;
+            return { ok: true, json: async function() { return { success: true }; } };
+        };
+
+        try {
+            await sendEmail();
+            assert('fetch appele', capturedBody !== null);
+            if (capturedBody) {
+                assert('htmlBody contient "dont Palettes"', capturedBody.htmlBody.indexOf('dont Palettes') >= 0);
+                assert('htmlBody contient "dont Vrac"', capturedBody.htmlBody.indexOf('dont Vrac') >= 0);
+                assert('htmlBody contient "[PMC]" (titre bloc PMC)', capturedBody.htmlBody.indexOf('[PMC]') >= 0);
+                assert('htmlBody contient "[VRAC]" (titre bloc VRAC)', capturedBody.htmlBody.indexOf('[VRAC]') >= 0);
+            }
+        } finally {
+            window.fetch = origFetch;
+            sessionStorage.removeItem('loadsheet_auth');
+            sessionStorage.removeItem('loadsheet_jwt');
+        }
+    })();
+
     // --- FIFO max 50 ---
     suite('Storage FIFO max 50');
     await (async function() {
