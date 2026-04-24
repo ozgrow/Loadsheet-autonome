@@ -2686,6 +2686,128 @@ localStorage.removeItem('loadsheet_manifests');
     })();
 
     // ========================================
+    // E2E anti-regression : manifeste complet lifecycle (Phase 3 D-04, D-05, D-06)
+    // Smoke test couvrant Phase 1 (materiel ULD + XSS commentaire) + Phase 2 (type VRAC + scission).
+    // Scenario 12 etapes : newManifest -> 2 ULDs (PMC materiel complet + VRAC materiel partiel + XSS)
+    //   -> LTA -> save -> reset -> load -> asserts -> buildPdf -> buildPalettesVracSplit.
+    // Si cette suite FAIL : symptome clair d'une regression majeure sur le happy path.
+    // ========================================
+    suite('E2E - manifest complet lifecycle');
+    await (async function() {
+        // --- Etape 1 : Setup ---
+        window._xss = 0;
+        resetDOM();
+        manifestId = 'MAN-E2E-LIFECYCLE';
+
+        // --- Etape 2 : Metadonnees ---
+        document.getElementById('clientName').value = 'ACME Paris';
+        document.getElementById('agentName').value = 'Jean Martin';
+        document.getElementById('destAirport').value = 'CDG';
+        document.getElementById('recipients').value = 'ops@acme.fr';
+
+        // --- Etape 3 : ULD 1 PMC avec materiel complet (sangles + forfait EU + baches + commentaire) ---
+        addUld();
+        var uld1 = document.querySelectorAll('.uld-block')[0];
+        uld1.querySelector('.uld-type').value = 'PMC';
+        uld1.querySelector('.uld-number').value = 'PMC12345LH';
+        uld1.querySelector('.uld-weight').value = '850';
+        uld1.setAttribute('data-straps', '8');
+        uld1.setAttribute('data-flooring-eu', '0');
+        uld1.setAttribute('data-flooring-eu-forfait', 'true');
+        uld1.setAttribute('data-tarps', '2');
+        uld1.setAttribute('data-uld-comment', 'Fragile - ne pas gerber');
+
+        // --- Etape 4 : ULD 2 VRAC avec materiel partiel + payload XSS dans commentaire ---
+        addUld();
+        var uld2 = document.querySelectorAll('.uld-block')[1];
+        var sel2 = uld2.querySelector('.uld-type');
+        sel2.value = 'VRAC';
+        sel2.dispatchEvent(new Event('change'));  // synchronise data-uld-type via changeUldType
+        uld2.querySelector('.uld-number').value = 'VRAC-BULK-001';
+        uld2.querySelector('.uld-weight').value = '320';
+        uld2.setAttribute('data-straps', '4');
+        uld2.setAttribute('data-dividers', '6');
+        uld2.setAttribute('data-uld-comment', '<script>window._xss++<\/script>');
+
+        // --- Etape 5 : ligne LTA sur ULD 1 (addUld ajoute deja 1 ligne par defaut, on ne rajoute pas) ---
+        // ULD 1 a deja 1 row par defaut (addUld appelle addRow) ; on remplit cette row.
+
+        // --- Etape 6 : remplir LTA + colis + DGR sur ULD 1 row 0 ---
+        var row1 = uld1.querySelector('.uld-rows tr');
+        row1.querySelector('.lta-input').value = '020-12345678';
+        row1.querySelector('.colis-input').value = '12';
+        row1.querySelector('.dgr-input').value = 'O';
+        row1.querySelector('.comment-input').value = 'DGR UN1234';
+
+        // --- Etape 7 : saveManifest (round-trip localStorage chiffre) ---
+        await saveManifest();
+
+        // --- Etape 8 : reset DOM + verifier que le DOM est vide ---
+        document.getElementById('pmcContainer').innerHTML = '';
+        document.getElementById('clientName').value = '';
+        document.getElementById('agentName').value = '';
+        document.getElementById('destAirport').value = '';
+        document.getElementById('recipients').value = '';
+        uldCount = 0;
+        assertEqual('DOM vide apres reset', document.querySelectorAll('.uld-block').length, 0);
+
+        // --- Etape 9 : loadManifest (recharge depuis localStorage chiffre) ---
+        await loadManifest('MAN-E2E-LIFECYCLE');
+
+        // --- Etape 10 : asserts round-trip ---
+        var blocks = document.querySelectorAll('.uld-block');
+        assertEqual('2 ULDs chargees apres load', blocks.length, 2);
+        assertEqual('Client restaure', document.getElementById('clientName').value, 'ACME Paris');
+        assertEqual('Agent restaure', document.getElementById('agentName').value, 'Jean Martin');
+        assertEqual('Destinataire restaure', document.getElementById('destAirport').value, 'CDG');
+        assertEqual('Recipients restaure', document.getElementById('recipients').value, 'ops@acme.fr');
+
+        assertEqual('Type ULD 1 = PMC', blocks[0].querySelector('.uld-type').value, 'PMC');
+        assertEqual('Type ULD 2 = VRAC', blocks[1].querySelector('.uld-type').value, 'VRAC');
+
+        assertEqual('Sangles ULD 1 restaurees', blocks[0].dataset.straps, '8');
+        assertEqual('Forfait EU ULD 1 restaure', blocks[0].dataset.flooringEuForfait, 'true');
+        assertEqual('Baches ULD 1 restaurees', blocks[0].dataset.tarps, '2');
+        assertEqual('Commentaire ULD 1 restaure', blocks[0].dataset.uldComment, 'Fragile - ne pas gerber');
+
+        assertEqual('Sangles ULD 2 VRAC', blocks[1].dataset.straps, '4');
+        assertEqual('Intercalaires ULD 2 VRAC', blocks[1].dataset.dividers, '6');
+
+        // Assertion securite critique (MAT-11 + Phase 3 smoke) :
+        assertEqual('XSS uldComment NON execute (window._xss reste a 0)', window._xss, 0);
+        assert('Commentaire XSS stocke brut dans dataset (defense est au rendu, pas au stockage)',
+               blocks[1].dataset.uldComment.indexOf('<script>') >= 0);
+
+        // Recap ecran contient "dont Vrac : 1"
+        updateRecap();
+        var recapTxt = document.getElementById('liveRecap').textContent;
+        assert('Recap contient "dont Vrac : 1"', recapTxt.indexOf('dont Vrac : 1') >= 0);
+
+        // --- Etape 11 : buildPdf (3 pages attendues = 1 recap + 2 ULDs) ---
+        var data = collectData();
+        var doc = null;
+        var noError = true;
+        try { doc = buildPdf(data); } catch(e) { noError = false; }
+        assert('buildPdf ne crash pas', noError);
+        assert('buildPdf retourne un doc', !!doc);
+        assertEqual('PDF a 3 pages (recap + 2 ULDs)', doc.getNumberOfPages(), 3);
+        assertEqual('XSS toujours a 0 apres buildPdf', window._xss, 0);
+
+        // --- Etape 12 : buildPalettesVracSplit ---
+        var split = buildPalettesVracSplit(data.ulds);
+        assertEqual('split.hasVrac === true', split.hasVrac, true);
+        assertEqual('split.palettes.count === 1', split.palettes.count, 1);
+        assertEqual('split.vrac.count === 1', split.vrac.count, 1);
+        assertEqual('split.palettes.colis === 12 (PMC a 12 colis)', split.palettes.colis, 12);
+        assertEqual('split.vrac.colis === 0 (VRAC sans ligne LTA)', split.vrac.colis, 0);
+
+        // --- Cleanup ---
+        document.getElementById('pmcContainer').innerHTML = '';
+        uldCount = 0;
+        localStorage.removeItem(STORAGE_KEY);
+    })();
+
+    // ========================================
     // DISPLAY RESULTS
     // ========================================
     if (currentSuite) resultsHtml += '</div>';
