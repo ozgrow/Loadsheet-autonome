@@ -1146,6 +1146,212 @@ localStorage.removeItem('loadsheet_manifests');
     })();
 
     // ============================================
+    // PLAN 02-01 Task 2 : updateRecap annotation + modal planchers + formatCondensedMaterial (D-07..D-10, D-18..D-21)
+    // ============================================
+
+    // --- updateRecap annotation "dont Vrac" presente si VRAC ---
+    suite('Type ULD - updateRecap annotation dont Vrac (VRAC-02, D-07 D-08)');
+    (function() {
+        resetDOM();
+        addUld(); // ULD 1 : PMC par defaut
+        addUld(); // ULD 2 : VRAC
+        var blocks = document.querySelectorAll('.uld-block');
+        // Remplir ULD 1 : colis=10, weight=500, PMC
+        blocks[0].querySelector('.colis-input').value = '10';
+        blocks[0].querySelector('.uld-weight').value = '500';
+        // Remplir ULD 2 : colis=12, weight=240, VRAC
+        blocks[1].querySelector('.colis-input').value = '12';
+        blocks[1].querySelector('.uld-weight').value = '240';
+        blocks[1].querySelector('.uld-type').value = 'VRAC';
+        changeUldType(blocks[1].querySelector('.uld-type'), 2);
+        updateRecap();
+        var recap = document.getElementById('liveRecap').textContent;
+        assert('Recap contient "dont Vrac : 1 (12 colis, 240 kg)"', recap.indexOf('dont Vrac : 1 (12 colis, 240 kg)') >= 0);
+    })();
+
+    // --- updateRecap pas d'annotation si aucun VRAC ---
+    suite('Type ULD - updateRecap pas annotation si aucun VRAC');
+    (function() {
+        resetDOM();
+        addUld(); addUld();
+        var blocks = document.querySelectorAll('.uld-block');
+        blocks[0].querySelector('.colis-input').value = '5';
+        blocks[1].querySelector('.colis-input').value = '7';
+        updateRecap();
+        var recap = document.getElementById('liveRecap').textContent;
+        assert('Recap NE contient PAS "dont Vrac"', recap.indexOf('dont Vrac') < 0);
+    })();
+
+    // --- updateRecap totaux globaux incluent VRAC (D-10) ---
+    suite('Type ULD - updateRecap totaux globaux incluent VRAC (D-10)');
+    (function() {
+        resetDOM();
+        addUld(); addUld();
+        var blocks = document.querySelectorAll('.uld-block');
+        blocks[0].querySelector('.colis-input').value = '10';
+        blocks[0].querySelector('.uld-weight').value = '500';
+        blocks[1].querySelector('.colis-input').value = '12';
+        blocks[1].querySelector('.uld-weight').value = '240';
+        blocks[1].querySelector('.uld-type').value = 'VRAC';
+        changeUldType(blocks[1].querySelector('.uld-type'), 2);
+        updateRecap();
+        var recap = document.getElementById('liveRecap').textContent;
+        // Total colis = 10 + 12 = 22 (incluant VRAC)
+        assert('Total Colis = 22 (global, incluant VRAC)', /Colis\s*:\s*22/.test(recap));
+        // Total poids = 500 + 240 = 740 kg (incluant VRAC)
+        assert('Total Poids = 740 kg (global, incluant VRAC)', /Poids\s*:\s*740\s*kg/.test(recap));
+    })();
+
+    // --- updateRecap plusieurs VRAC agregent ---
+    suite('Type ULD - updateRecap plusieurs VRAC agregent');
+    (function() {
+        resetDOM();
+        addUld(); addUld(); addUld();
+        var blocks = document.querySelectorAll('.uld-block');
+        var cols = [5, 3, 7]; var weights = [100, 200, 50];
+        for (var j = 0; j < 3; j++) {
+            blocks[j].querySelector('.colis-input').value = String(cols[j]);
+            blocks[j].querySelector('.uld-weight').value = String(weights[j]);
+            blocks[j].querySelector('.uld-type').value = 'VRAC';
+            changeUldType(blocks[j].querySelector('.uld-type'), j + 1);
+        }
+        updateRecap();
+        var recap = document.getElementById('liveRecap').textContent;
+        // 3 VRAC, colis total VRAC = 5+3+7 = 15, weight total VRAC = 100+200+50 = 350
+        assert('Annotation "dont Vrac : 3 (15 colis, 350 kg)" presente', recap.indexOf('dont Vrac : 3 (15 colis, 350 kg)') >= 0);
+    })();
+
+    // --- Modal masque planchers si VRAC (D-18) ---
+    suite('Type ULD - Modal masque planchers si VRAC (D-18)');
+    (function() {
+        resetDOM();
+        addUld();
+        var block = document.querySelector('.uld-block');
+        block.querySelector('.uld-type').value = 'VRAC';
+        changeUldType(block.querySelector('.uld-type'), 1);
+        openMaterialModal(1);
+        var modal = document.querySelector('.material-modal');
+        var flEuLabel = modal.querySelector('.mat-flooring-eu').closest('label');
+        var flStdLabel = modal.querySelector('.mat-flooring-std').closest('label');
+        assert('Label Planchers EU a class mat-flooring-hidden', flEuLabel.classList.contains('mat-flooring-hidden'));
+        assert('Label Planchers Std a class mat-flooring-hidden', flStdLabel.classList.contains('mat-flooring-hidden'));
+        closeMaterialModal();
+    })();
+
+    // --- Modal affiche planchers si non-VRAC (PMC par defaut) ---
+    suite('Type ULD - Modal affiche planchers si PMC');
+    (function() {
+        resetDOM();
+        addUld(); // type par defaut PMC
+        openMaterialModal(1);
+        var modal = document.querySelector('.material-modal');
+        var flEuLabel = modal.querySelector('.mat-flooring-eu').closest('label');
+        var flStdLabel = modal.querySelector('.mat-flooring-std').closest('label');
+        assert('Label Planchers EU sans mat-flooring-hidden', !flEuLabel.classList.contains('mat-flooring-hidden'));
+        assert('Label Planchers Std sans mat-flooring-hidden', !flStdLabel.classList.contains('mat-flooring-hidden'));
+        closeMaterialModal();
+    })();
+
+    // --- Modal affiche planchers pour AKE / AKN / PAG (non-VRAC) ---
+    suite('Type ULD - Modal affiche planchers pour AKE AKN PAG');
+    (function() {
+        var nonVracTypes = ['AKE', 'AKN', 'PAG'];
+        nonVracTypes.forEach(function(t) {
+            resetDOM();
+            addUld();
+            var block = document.querySelector('.uld-block');
+            block.querySelector('.uld-type').value = t;
+            changeUldType(block.querySelector('.uld-type'), 1);
+            openMaterialModal(1);
+            var modal = document.querySelector('.material-modal');
+            var flEuLabel = modal.querySelector('.mat-flooring-eu').closest('label');
+            assert('Type ' + t + ' : label Planchers EU visible (pas mat-flooring-hidden)', !flEuLabel.classList.contains('mat-flooring-hidden'));
+            closeMaterialModal();
+        });
+    })();
+
+    // --- D-19 : Persistance data-flooring-* quand toggle VRAC ---
+    suite('Type ULD - Persistance data-flooring-* quand toggle VRAC (D-19)');
+    (function() {
+        resetDOM();
+        addUld();
+        var block = document.querySelector('.uld-block');
+        // Saisir planchers en type PMC
+        openMaterialModal(1);
+        var modal = document.querySelector('.material-modal');
+        modal.querySelector('.mat-flooring-eu').value = '3';
+        modal.querySelector('.mat-flooring-std-forfait').checked = true;
+        modal.querySelector('.mat-flooring-std').disabled = true;
+        modal.querySelector('.mat-flooring-std').value = '0';
+        applyMaterialToUld(1);
+        assertEqual('data-flooring-eu = 3 apres save', block.dataset.flooringEu, '3');
+        assertEqual('data-flooring-std-forfait = true apres save', block.dataset.flooringStdForfait, 'true');
+        // Basculer vers VRAC
+        block.querySelector('.uld-type').value = 'VRAC';
+        changeUldType(block.querySelector('.uld-type'), 1);
+        // Verifier que les data-attributes planchers sont preserves (D-19 pas d'effacement destructif)
+        assertEqual('data-flooring-eu preserve = 3 apres VRAC', block.dataset.flooringEu, '3');
+        assertEqual('data-flooring-std-forfait preserve = true apres VRAC', block.dataset.flooringStdForfait, 'true');
+        // Rebasculer vers AKE (non-VRAC)
+        block.querySelector('.uld-type').value = 'AKE';
+        changeUldType(block.querySelector('.uld-type'), 1);
+        // Rouvrir le modal : les valeurs sont restorees dans les inputs
+        openMaterialModal(1);
+        modal = document.querySelector('.material-modal');
+        assertEqual('Modal reouvert : flEu input = 3', modal.querySelector('.mat-flooring-eu').value, '3');
+        assert('Modal reouvert : flStd forfait checked', modal.querySelector('.mat-flooring-std-forfait').checked);
+        closeMaterialModal();
+    })();
+
+    // --- formatCondensedMaterial exclut planchers pour VRAC (D-21) ---
+    suite('Type ULD - formatCondensedMaterial exclut planchers VRAC (D-21)');
+    (function() {
+        resetDOM();
+        addUld();
+        var block = document.querySelector('.uld-block');
+        // Simuler flooringEu=5 + straps=2 + type=VRAC
+        block.setAttribute('data-flooring-eu', '5');
+        block.setAttribute('data-straps', '2');
+        block.setAttribute('data-uld-type', 'VRAC');
+        refreshMaterialBadge(1);
+        var recap = document.getElementById('material-badge-1').textContent;
+        assert('Recap contient "Sangles: 2"', recap.indexOf('Sangles: 2') >= 0);
+        assert('Recap NE contient PAS "Planchers EU"', recap.indexOf('Planchers EU') < 0);
+        assert('Recap NE contient PAS "Planchers Std"', recap.indexOf('Planchers Std') < 0);
+    })();
+
+    // --- formatCondensedMaterial inclut planchers pour non-VRAC ---
+    suite('Type ULD - formatCondensedMaterial inclut planchers si non-VRAC');
+    (function() {
+        resetDOM();
+        addUld();
+        var block = document.querySelector('.uld-block');
+        block.setAttribute('data-flooring-eu', '5');
+        block.setAttribute('data-uld-type', 'PMC');
+        refreshMaterialBadge(1);
+        var recap = document.getElementById('material-badge-1').textContent;
+        assert('Recap contient "Planchers EU: 5" pour PMC', recap.indexOf('Planchers EU: 5') >= 0);
+    })();
+
+    // --- changeUldType declenche refreshMaterialBadge avec exclusion planchers ---
+    suite('Type ULD - changeUldType declenche refreshMaterialBadge (D-21)');
+    (function() {
+        resetDOM();
+        addUld();
+        var block = document.querySelector('.uld-block');
+        block.setAttribute('data-flooring-eu', '5');
+        block.setAttribute('data-uld-type', 'PMC');
+        refreshMaterialBadge(1);
+        var recapBefore = document.getElementById('material-badge-1').textContent;
+        assert('Avant: recap contient "Planchers EU: 5"', recapBefore.indexOf('Planchers EU: 5') >= 0);
+        // Changer a VRAC via changeUldType
+        block.querySelector('.uld-type').value = 'VRAC';
+        changeUldType(block.querySelector('.uld-type'), 1);
+        var recapAfter = document.getElementById('material-badge-1').textContent;
+        assert('Apres VRAC : recap NE contient PLUS "Planchers EU"', recapAfter.indexOf('Planchers EU') < 0);
+    })();
+
+    // ============================================
     // PLAN 01-02 : Materiel PDF (RECAP-02, D-15, D-16)
     // ============================================
 

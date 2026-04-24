@@ -161,6 +161,8 @@ td input[type="number"] { width: 80px; }
     display: flex; align-items: center; gap: 4px; margin-top: 2px;
 }
 .mat-comment-label { grid-column: 1 / -1; }
+/* Masquage conditionnel planchers (VRAC-01, D-18) - preserve le DOM, cache visuellement (D-19) */
+.material-modal-grid .mat-flooring-hidden { display: none; }
 .material-modal-actions {
     display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px;
 }

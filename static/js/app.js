@@ -45,6 +45,10 @@ function openMaterialModal(uldIndex) {
     var dividers = block.dataset.dividers || '0';
     var honeycomb = block.dataset.honeycomb || '0';
     var uldComment = block.dataset.uldComment || '';
+    // VRAC-01 / D-18 : masquer les 2 champs planchers (EU + Std) si type=VRAC.
+    // Classe CSS .mat-flooring-hidden { display: none; } preserve le DOM + les data-attributes (D-19).
+    var isVrac = block.dataset.uldType === 'VRAC';
+    var flooringHiddenClass = isVrac ? ' mat-flooring-hidden' : '';
 
     var overlay = document.createElement('div');
     overlay.className = 'material-modal-overlay';
@@ -63,9 +67,9 @@ function openMaterialModal(uldIndex) {
         '</div>' +
         '<div class="material-modal-grid">' +
             '<label>Sangles<input type="number" min="0" class="mat-straps" value="' + esc(straps) + '"></label>' +
-            '<label>Planchers bois EU<input type="number" min="0" class="mat-flooring-eu" value="' + esc(flEu) + '"' + (flEuF ? ' disabled' : '') + '>' +
+            '<label class="mat-flooring-label' + flooringHiddenClass + '">Planchers bois EU<input type="number" min="0" class="mat-flooring-eu" value="' + esc(flEu) + '"' + (flEuF ? ' disabled' : '') + '>' +
                 '<span class="mat-forfait-label"><input type="checkbox" class="mat-flooring-eu-forfait"' + (flEuF ? ' checked' : '') + ' onchange="toggleForfait(this, \'mat-flooring-eu\')"> Forfait négocié</span></label>' +
-            '<label>Planchers bois Standard<input type="number" min="0" class="mat-flooring-std" value="' + esc(flStd) + '"' + (flStdF ? ' disabled' : '') + '>' +
+            '<label class="mat-flooring-label' + flooringHiddenClass + '">Planchers bois Standard<input type="number" min="0" class="mat-flooring-std" value="' + esc(flStd) + '"' + (flStdF ? ' disabled' : '') + '>' +
                 '<span class="mat-forfait-label"><input type="checkbox" class="mat-flooring-std-forfait"' + (flStdF ? ' checked' : '') + ' onchange="toggleForfait(this, \'mat-flooring-std\')"> Forfait négocié</span></label>' +
             '<label>Bois de calage<input type="number" min="0" class="mat-blocks" value="' + esc(blocks) + '"></label>' +
             '<label>Bâches<input type="number" min="0" class="mat-tarps" value="' + esc(tarps) + '"></label>' +
@@ -146,18 +150,23 @@ function applyMaterialToUld(uldIndex) {
 function formatCondensedMaterial(block) {
     if (!block) return '';
     var parts = [];
+    // VRAC-02 / D-21 : exclusion planchers pour ULD VRAC (coherent avec D-20 PDF/email Plan 02-02)
+    var isVrac = block.dataset.uldType === 'VRAC';
     var straps = parseInt(block.dataset.straps) || 0;
     if (straps > 0) parts.push('Sangles: ' + straps);
     // Planchers EU : "forfait" si checkbox cochee, sinon le nombre (si > 0)
-    var flEuF = block.dataset.flooringEuForfait === 'true';
-    var flEu = parseInt(block.dataset.flooringEu) || 0;
-    if (flEuF) parts.push('Planchers EU: forfait');
-    else if (flEu > 0) parts.push('Planchers EU: ' + flEu);
-    // Planchers Std : symetrique
-    var flStdF = block.dataset.flooringStdForfait === 'true';
-    var flStd = parseInt(block.dataset.flooringStd) || 0;
-    if (flStdF) parts.push('Planchers Std: forfait');
-    else if (flStd > 0) parts.push('Planchers Std: ' + flStd);
+    // OMIS si isVrac (D-21)
+    if (!isVrac) {
+        var flEuF = block.dataset.flooringEuForfait === 'true';
+        var flEu = parseInt(block.dataset.flooringEu) || 0;
+        if (flEuF) parts.push('Planchers EU: forfait');
+        else if (flEu > 0) parts.push('Planchers EU: ' + flEu);
+        // Planchers Std : symetrique - OMIS si isVrac (D-21)
+        var flStdF = block.dataset.flooringStdForfait === 'true';
+        var flStd = parseInt(block.dataset.flooringStd) || 0;
+        if (flStdF) parts.push('Planchers Std: forfait');
+        else if (flStd > 0) parts.push('Planchers Std: ' + flStd);
+    }
     // Autres compteurs : omettre si 0
     var blocks = parseInt(block.dataset.blocks) || 0;
     if (blocks > 0) parts.push('Bois calage: ' + blocks);
@@ -423,15 +432,38 @@ function updateRecap() {
     var hasWeight = false;
     var ltaSet = {};
     var hasDgr = false;
+    // VRAC-02, D-07/D-08 : agregation conditionnelle des ULD VRAC (compteur + colis + poids)
+    var vracCount = 0, vracColis = 0, vracWeight = 0;
     blocks.forEach(function(block) {
-        block.querySelectorAll('.colis-input').forEach(function(inp) { totalColis += parseInt(inp.value) || 0; });
+        var blockColis = 0;
+        var blockWeight = 0;
+        var hasBlockWeight = false;
+        block.querySelectorAll('.colis-input').forEach(function(inp) { blockColis += parseInt(inp.value) || 0; });
         var w = parseFloat(block.querySelector('.uld-weight') ? block.querySelector('.uld-weight').value : '');
-        if (!isNaN(w) && w > 0) { totalWeight += w; hasWeight = true; }
+        if (!isNaN(w) && w > 0) { blockWeight = w; hasBlockWeight = true; }
+        // Accumulation globale (D-10 : totaux INCLUENT VRAC, pas de soustraction)
+        totalColis += blockColis;
+        if (hasBlockWeight) { totalWeight += blockWeight; hasWeight = true; }
         block.querySelectorAll('.lta-input').forEach(function(inp) { if (inp.value.trim()) ltaSet[inp.value.trim()] = true; });
         block.querySelectorAll('.dgr-input').forEach(function(sel) { if (sel.value === 'O') hasDgr = true; });
+        // Agregation VRAC : uniquement si le <select> vaut VRAC (source de verite live D-06)
+        var typeSel = block.querySelector('.uld-type');
+        var blockType = typeSel ? typeSel.value : 'PMC';
+        if (blockType === 'VRAC') {
+            vracCount++;
+            vracColis += blockColis;
+            if (hasBlockWeight) vracWeight += blockWeight;
+        }
     });
     var ltas = Object.keys(ltaSet);
-    var html = '<span class="recap-item">ULD : <span class="recap-value">' + nbUld + '</span></span>';
+    // D-07 / D-08 : si vracCount > 0, annoter le span ULD avec "dont Vrac : N (X colis, Y kg)".
+    // Format EXACT : "4 dont Vrac : 1 (12 colis, 240 kg)". Sans "ULD" dans l'annotation.
+    // esc() applique defense en profondeur (uldSpanContent contient uniquement des ints/litteraux).
+    var uldSpanContent = String(nbUld);
+    if (vracCount > 0) {
+        uldSpanContent = nbUld + ' dont Vrac : ' + vracCount + ' (' + vracColis + ' colis, ' + vracWeight + ' kg)';
+    }
+    var html = '<span class="recap-item">ULD : <span class="recap-value">' + esc(uldSpanContent) + '</span></span>';
     html += '<span class="recap-item">Colis : <span class="recap-value">' + totalColis + '</span></span>';
     if (hasWeight) html += '<span class="recap-item">Poids : <span class="recap-value">' + totalWeight + ' kg</span></span>';
     html += '<span class="recap-item">LTA : <span class="recap-value">' + (ltas.length > 0 ? esc(ltas.join(', ')) : '-') + '</span></span>';
