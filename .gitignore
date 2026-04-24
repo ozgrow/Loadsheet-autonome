@@ -5,8 +5,10 @@ node_modules/
 .vscode/
 api/local.settings.json
 
-# Local test harness scripts (Node + JSDOM, dev-only)
-tests/run-harness.cjs
+# Local debug scripts (Node + JSDOM, dev-only)
 tests/debug-buildpdf.cjs
-package.json
 package-lock.json
+
+# Note (Phase 3, D-07) : package.json racine + tests/run-harness.cjs sont
+# des artefacts du release gate ; committes pour que `npm run verify` soit
+# utilisable sur un clone frais.

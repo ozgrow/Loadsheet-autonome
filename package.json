@@ -1,0 +1,10 @@
+{
+  "name": "loadsheet-autonome",
+  "version": "1.7.4",
+  "private": true,
+  "description": "Outil web de creation de loadsheets pour ATH - Air Terminal Handling",
+  "scripts": {
+    "verify": "node tests/run-harness.cjs",
+    "dev": "npx serve . -l 4000"
+  }
+}
