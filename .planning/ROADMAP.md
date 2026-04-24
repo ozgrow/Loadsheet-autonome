@@ -61,7 +61,7 @@ Plans:
   4. Les anciens manifestes sauvegardés se chargent toujours correctement dans l'app locale (vérification manuelle de la rétro-compat en conditions réelles)
 **Plans**: 1 plan
 Plans:
-- [ ] 03-01-PLAN.md — Fix bug session + suite E2E lifecycle + package.json racine (verify/dev) + Release checklist CLAUDE.md (TEST-01, TEST-03)
+- [x] 03-01-PLAN.md — Fix bug session + suite E2E lifecycle + package.json racine (verify/dev) + Release checklist CLAUDE.md (TEST-01, TEST-03)
 
 ## Progress
 

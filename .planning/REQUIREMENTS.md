@@ -33,9 +33,9 @@
 
 ### Tests & validation
 
-- [ ] **TEST-01**: Les nouvelles fonctionnalités sont couvertes par des tests dans `tests/tests.html`
+- [x] **TEST-01**: Les nouvelles fonctionnalités sont couvertes par des tests dans `tests/tests.html`
 - [x] **TEST-02**: Des tests de rétro-compatibilité vérifient que les anciens manifestes (sans champs matériel) se chargent correctement
-- [ ] **TEST-03**: L'application entière est testée en local via `npx serve .` avant tout push sur `master`
+- [x] **TEST-03**: L'application entière est testée en local via `npx serve .` avant tout push sur `master`
 
 ## v2 Requirements
 
@@ -73,9 +73,9 @@
 | RECAP-01 | Phase 1 | Complete |
 | RECAP-02 | Phase 1 | Complete |
 | RECAP-03 | Phase 1 | Complete |
-| TEST-01 | Phase 3 | Pending |
+| TEST-01 | Phase 3 | Complete |
 | TEST-02 | Phase 1 | Complete |
-| TEST-03 | Phase 3 | Pending |
+| TEST-03 | Phase 3 | Complete |
 
 **Coverage:**
 - v1 requirements: 20 total
