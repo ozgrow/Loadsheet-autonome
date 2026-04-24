@@ -78,6 +78,24 @@ npx serve .
 - Couvre : fonctions metier (ULD, colis, LTA, poids, save/load, FIFO), securite (XSS, donnees corrompues, chiffrement, session), et retro-compatibilite
 - Les tests utilisant les fonctions storage doivent etre `await (async function() { ... })()`
 
+## Release checklist
+
+Avant tout push sur `master`, suivre ces 7 etapes. L'agent qui release doit pouvoir la scanner en 30 secondes.
+
+1. `npm run verify` — tous les tests passent (exige : 0 FAIL sur le harness Node+JSDOM). Si FAIL, investiguer avant de continuer.
+2. `npm run dev` (= `npx serve . -l 4000`) — l'app demarre sans erreur sur http://localhost:4000.
+3. Ouvrir http://localhost:4000 et se connecter avec le mot de passe partage (ou bypass DevTools pour tests UI rapides).
+4. Scenario E2E manuel :
+   - Creer un manifeste avec client, agent, destinataire.
+   - Ajouter 1 ULD PMC + materiel (sangles + forfait EU + commentaire libre).
+   - Ajouter 1 ULD VRAC + materiel (sangles + intercalaires).
+   - Verifier recap : `ULD : 2 dont Vrac : 1 (X colis, Y kg)` + modal VRAC masque planchers EU/Std.
+   - Sauvegarder -> Nouveau -> Recharger : round-trip OK, pas de perte de donnees.
+   - Generer PDF : page 1 contient `dont Palettes : 1 (...)` + `dont Vrac : 1 (...)` ; page ULD VRAC affiche `Type : VRAC` dans l'infoBox.
+5. Tester retro-compat : si un manifeste ancien existe dans localStorage (pre-Phase 1/2), verifier qu'il se charge sans erreur et sans perte de donnees visible.
+6. `git push origin master` — declenche le build Azure SWA automatique.
+7. **Post-deploy** : se connecter en prod, envoyer 1 email de test a soi-meme, verifier que l'email arrive avec le bon rendu (UAT #4 Phase 2).
+
 ## URL
 - Production : https://nice-smoke-0ca8eb110.6.azurestaticapps.net
 - Tests : https://nice-smoke-0ca8eb110.6.azurestaticapps.net/tests/tests.html
