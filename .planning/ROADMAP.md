@@ -59,7 +59,9 @@ Plans:
   2. Tous les tests de `tests/tests.html` passent en local via `npx serve .`
   3. Un scénario manuel end-to-end en local réussit : création d'un manifeste avec ULD matériel + ULD VRAC, sauvegarde, rechargement, génération PDF correcte, et récapitulatif affichant les deux sections (matériel + ligne Vrac)
   4. Les anciens manifestes sauvegardés se chargent toujours correctement dans l'app locale (vérification manuelle de la rétro-compat en conditions réelles)
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 03-01-PLAN.md — Fix bug session + suite E2E lifecycle + package.json racine (verify/dev) + Release checklist CLAUDE.md (TEST-01, TEST-03)
 
 ## Progress
 
@@ -70,4 +72,4 @@ Phases execute in numeric order: 1 → 2 → 3
 |-------|----------------|--------|-----------|
 | 1. Matériel ULD & rétro-compat | 0/2 | Not started | - |
 | 2. Type ULD VRAC | 0/TBD | Not started | - |
-| 3. Validation locale & release gate | 0/TBD | Not started | - |
+| 3. Validation locale & release gate | 0/1 | Not started | - |
