@@ -1490,6 +1490,215 @@ localStorage.removeItem('loadsheet_manifests');
     })();
 
     // ============================================
+    // PLAN 02-02 Task 1 : Type ULD - PDF (D-11, D-12, D-20)
+    // ============================================
+
+    // --- buildMaterialSummary exclut planchers VRAC (D-20) ---
+    suite('Type ULD - buildMaterialSummary exclut planchers VRAC (D-20)');
+    (function() {
+        var s = buildMaterialSummary([
+            { type: 'PMC', flooringEuCount: 3 },
+            { type: 'VRAC', flooringEuCount: 10, flooringEuForfait: false }, // doit etre exclu
+            { type: 'PMC', flooringEuForfait: true }
+        ]);
+        assertEqual('flooringEu.count = 3 (exclut les 10 du VRAC)', s.flooringEu.count, 3);
+        assertEqual('flooringEu.forfaits = 1 (seul PMC avec forfait est compte)', s.flooringEu.forfaits, 1);
+    })();
+
+    // --- buildMaterialSummary VRAC n'incremente pas forfaits planchers ---
+    suite('Type ULD - buildMaterialSummary VRAC ignore forfait planchers');
+    (function() {
+        var s = buildMaterialSummary([{ type: 'VRAC', flooringEuForfait: true, flooringStdForfait: true }]);
+        assertEqual('flooringEu.forfaits = 0 (VRAC exclu)', s.flooringEu.forfaits, 0);
+        assertEqual('flooringStd.forfaits = 0 (VRAC exclu)', s.flooringStd.forfaits, 0);
+    })();
+
+    // --- buildMaterialSummary VRAC conserve autres materiels ---
+    suite('Type ULD - buildMaterialSummary VRAC conserve non-planchers');
+    (function() {
+        var s = buildMaterialSummary([
+            { type: 'VRAC', strapsCount: 2, blocksCount: 3, tarpsCount: 1, dividersCount: 5, honeycombCount: 7 }
+        ]);
+        assertEqual('straps = 2 (conserve)', s.straps, 2);
+        assertEqual('blocks = 3 (conserve)', s.blocks, 3);
+        assertEqual('tarps = 1 (conserve)', s.tarps, 1);
+        assertEqual('dividers = 5 (conserve)', s.dividers, 5);
+        assertEqual('honeycomb = 7 (conserve)', s.honeycomb, 7);
+    })();
+
+    // --- buildUldMaterialRows exclut planchers VRAC (D-20) ---
+    suite('Type ULD - buildUldMaterialRows exclut planchers VRAC (D-20)');
+    (function() {
+        var rows = buildUldMaterialRows({
+            type: 'VRAC', strapsCount: 2, flooringEuCount: 5,
+            flooringStdForfait: true, blocksCount: 1
+        });
+        var labels = rows.map(function(r) { return r[0]; });
+        assert('Contient Sangles', labels.indexOf('Sangles') >= 0);
+        assert('Contient Bois de calage', labels.indexOf('Bois de calage') >= 0);
+        assert('OMET Planchers bois EU (VRAC, D-20)', labels.indexOf('Planchers bois EU') < 0);
+        assert('OMET Planchers bois Standard (VRAC, D-20)', labels.indexOf('Planchers bois Standard') < 0);
+    })();
+
+    // --- buildUldMaterialRows non-VRAC conserve planchers (regression) ---
+    suite('Type ULD - buildUldMaterialRows non-VRAC conserve planchers');
+    (function() {
+        var rows = buildUldMaterialRows({ type: 'PMC', flooringEuCount: 5 });
+        var labels = rows.map(function(r) { return r[0]; });
+        assert('PMC : contient Planchers bois EU', labels.indexOf('Planchers bois EU') >= 0);
+    })();
+
+    // --- buildUldMaterialRows retro-compat sans type (undefined) ---
+    suite('Type ULD - buildUldMaterialRows retro-compat type absent => non-VRAC');
+    (function() {
+        var rows = buildUldMaterialRows({ flooringEuCount: 5 }); // pas de type
+        var labels = rows.map(function(r) { return r[0]; });
+        assert('Sans type : contient Planchers bois EU (retro-compat)', labels.indexOf('Planchers bois EU') >= 0);
+    })();
+
+    // --- buildPalettesVracSplit avec VRAC ---
+    suite('Type ULD - buildPalettesVracSplit aggregation');
+    (function() {
+        var split = buildPalettesVracSplit([
+            { type: 'PMC', totalColis: 10, weight: 500 },
+            { type: 'VRAC', totalColis: 12, weight: 240 },
+            { type: 'PMC', totalColis: 20 }
+        ]);
+        assertEqual('hasVrac = true', split.hasVrac, true);
+        assertEqual('palettes.count = 2', split.palettes.count, 2);
+        assertEqual('palettes.colis = 30', split.palettes.colis, 30);
+        assertEqual('palettes.weight = 500', split.palettes.weight, 500);
+        assertEqual('vrac.count = 1', split.vrac.count, 1);
+        assertEqual('vrac.colis = 12', split.vrac.colis, 12);
+        assertEqual('vrac.weight = 240', split.vrac.weight, 240);
+    })();
+
+    // --- buildPalettesVracSplit sans VRAC ---
+    suite('Type ULD - buildPalettesVracSplit sans VRAC => hasVrac=false');
+    (function() {
+        var split = buildPalettesVracSplit([
+            { type: 'PMC', totalColis: 10 },
+            { type: 'AKE', totalColis: 5 }
+        ]);
+        assertEqual('hasVrac = false', split.hasVrac, false);
+        assertEqual('palettes.count = 2', split.palettes.count, 2);
+        assertEqual('vrac.count = 0', split.vrac.count, 0);
+    })();
+
+    // --- buildPalettesVracSplit retro-compat sans type ---
+    suite('Type ULD - buildPalettesVracSplit retro-compat sans type => palette');
+    (function() {
+        var split = buildPalettesVracSplit([
+            { totalColis: 10 }, // pas de type
+            { totalColis: 5 }
+        ]);
+        assertEqual('hasVrac = false (aucun VRAC)', split.hasVrac, false);
+        assertEqual('palettes.count = 2 (undefined != VRAC)', split.palettes.count, 2);
+    })();
+
+    // --- buildPdf ne crash pas avec VRAC + inclut Type dans appels doc.text (D-11) ---
+    suite('Type ULD - buildPdf entete page ULD contient Type (D-11)');
+    (function() {
+        // On monkey-patch doc.text pour tracker les appels
+        var jsPDF = window.jspdf.jsPDF;
+        var allTexts = [];
+        // Note : jsPDF.prototype.text est la methode de rendu. On sauve l'original et on la remplace temporairement.
+        var origText = jsPDF.API.text;
+        jsPDF.API.text = function() {
+            allTexts.push(arguments[0]);
+            return origText.apply(this, arguments);
+        };
+        try {
+            var data = {
+                manifestId: 'M', client: '', agent: 'A', destAirport: 'CDG', date: '01/01/2025',
+                ulds: [{
+                    uldNumber: 'V1', type: 'VRAC',
+                    rows: [{ lta: 'L', dossier: 'D', colis: 5, dgr: 'N', comment: '' }],
+                    totalColis: 5
+                }]
+            };
+            buildPdf(data);
+        } finally {
+            jsPDF.API.text = origText;
+        }
+        assert('doc.text appele avec "VRAC" (dans infoBox page ULD)', allTexts.indexOf('VRAC') >= 0);
+        assert('doc.text appele avec "Type :" label', allTexts.indexOf('Type :') >= 0);
+    })();
+
+    // --- buildPdf page 1 scission Palettes/Vrac quand VRAC present (D-12) ---
+    suite('Type ULD - buildPdf page 1 scission Palettes/Vrac (D-12)');
+    (function() {
+        var jsPDF = window.jspdf.jsPDF;
+        var allTexts = [];
+        var origText = jsPDF.API.text;
+        jsPDF.API.text = function() {
+            allTexts.push(arguments[0]);
+            return origText.apply(this, arguments);
+        };
+        // Spy aussi sur autoTable pour capturer les body rows
+        var allAutoTableBodies = [];
+        var origAutoTable = jsPDF.API.autoTable;
+        jsPDF.API.autoTable = function(opts) {
+            if (opts && opts.body) allAutoTableBodies.push(JSON.stringify(opts.body));
+            return origAutoTable.apply(this, arguments);
+        };
+        try {
+            var data = {
+                manifestId: 'M', client: '', agent: 'A', destAirport: 'CDG', date: '01/01/2025',
+                ulds: [
+                    { uldNumber: 'P1', type: 'PMC', rows: [{ lta: 'L', colis: 10, dgr: 'N', comment: '', dossier: '' }], totalColis: 10, weight: 500 },
+                    { uldNumber: 'V1', type: 'VRAC', rows: [{ lta: 'L', colis: 12, dgr: 'N', comment: '', dossier: '' }], totalColis: 12, weight: 240 }
+                ]
+            };
+            buildPdf(data);
+        } finally {
+            jsPDF.API.text = origText;
+            jsPDF.API.autoTable = origAutoTable;
+        }
+        var allBodiesJoined = allAutoTableBodies.join('||') + '||' + allTexts.join('||');
+        assert('Rendu contient "dont Palettes"', allBodiesJoined.indexOf('dont Palettes') >= 0);
+        assert('Rendu contient "dont Vrac"', allBodiesJoined.indexOf('dont Vrac') >= 0);
+    })();
+
+    // --- buildPdf sans VRAC PAS de scission (backward compat) ---
+    suite('Type ULD - buildPdf sans VRAC pas de scission (backward compat)');
+    (function() {
+        var jsPDF = window.jspdf.jsPDF;
+        var allTexts = [];
+        var allAutoTableBodies = [];
+        var origText = jsPDF.API.text;
+        var origAutoTable = jsPDF.API.autoTable;
+        jsPDF.API.text = function() { allTexts.push(arguments[0]); return origText.apply(this, arguments); };
+        jsPDF.API.autoTable = function(opts) { if (opts && opts.body) allAutoTableBodies.push(JSON.stringify(opts.body)); return origAutoTable.apply(this, arguments); };
+        try {
+            var data = {
+                manifestId: 'M', client: '', agent: 'A', destAirport: 'CDG', date: '01/01/2025',
+                ulds: [{ uldNumber: 'P1', type: 'PMC', rows: [{ lta: 'L', colis: 10, dgr: 'N', comment: '', dossier: '' }], totalColis: 10 }]
+            };
+            buildPdf(data);
+        } finally {
+            jsPDF.API.text = origText;
+            jsPDF.API.autoTable = origAutoTable;
+        }
+        var allJoined = allAutoTableBodies.join('||') + '||' + allTexts.join('||');
+        assert('Aucune mention "dont Palettes" (pas de scission)', allJoined.indexOf('dont Palettes') < 0);
+        assert('Aucune mention "dont Vrac" (pas de scission)', allJoined.indexOf('dont Vrac') < 0);
+    })();
+
+    // --- buildPdf retro-compat sans type ne crash pas ---
+    suite('Type ULD - buildPdf retro-compat sans type ne crash pas');
+    (function() {
+        var data = {
+            manifestId: 'M', client: '', agent: 'A', destAirport: 'CDG', date: '01/01/2025',
+            ulds: [{ uldNumber: 'U1', rows: [{ lta: 'L', colis: 1, dgr: 'N', comment: '', dossier: '' }], totalColis: 1 }]
+        };
+        var doc = null, err = null;
+        try { doc = buildPdf(data); } catch(e) { err = e; }
+        assert('Pas d\'erreur (retro-compat sans type)', err === null);
+        assert('Doc genere', !!doc);
+    })();
+
+    // ============================================
     // PLAN 01-02 : Materiel email HTML (RECAP-02, D-17, D-18, MAT-11)
     // ============================================
 
