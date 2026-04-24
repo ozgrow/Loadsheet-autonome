@@ -1597,16 +1597,17 @@ localStorage.removeItem('loadsheet_manifests');
     })();
 
     // --- buildPdf ne crash pas avec VRAC + inclut Type dans appels doc.text (D-11) ---
+    // Note: jsPDF attache text/autoTable sur l'INSTANCE (pas sur prototype/API).
+    // On wrappe le constructeur pour patcher chaque instance créée.
     suite('Type ULD - buildPdf entete page ULD contient Type (D-11)');
     (function() {
-        // On monkey-patch doc.text pour tracker les appels
-        var jsPDF = window.jspdf.jsPDF;
+        var OrigJsPDF = window.jspdf.jsPDF;
         var allTexts = [];
-        // Note : jsPDF.prototype.text est la methode de rendu. On sauve l'original et on la remplace temporairement.
-        var origText = jsPDF.API.text;
-        jsPDF.API.text = function() {
-            allTexts.push(arguments[0]);
-            return origText.apply(this, arguments);
+        window.jspdf.jsPDF = function(a, b, c) {
+            var doc = new OrigJsPDF(a, b, c);
+            var origText = doc.text.bind(doc);
+            doc.text = function() { allTexts.push(arguments[0]); return origText.apply(doc, arguments); };
+            return doc;
         };
         try {
             var data = {
@@ -1619,7 +1620,7 @@ localStorage.removeItem('loadsheet_manifests');
             };
             buildPdf(data);
         } finally {
-            jsPDF.API.text = origText;
+            window.jspdf.jsPDF = OrigJsPDF;
         }
         assert('doc.text appele avec "VRAC" (dans infoBox page ULD)', allTexts.indexOf('VRAC') >= 0);
         assert('doc.text appele avec "Type :" label', allTexts.indexOf('Type :') >= 0);
@@ -1628,19 +1629,18 @@ localStorage.removeItem('loadsheet_manifests');
     // --- buildPdf page 1 scission Palettes/Vrac quand VRAC present (D-12) ---
     suite('Type ULD - buildPdf page 1 scission Palettes/Vrac (D-12)');
     (function() {
-        var jsPDF = window.jspdf.jsPDF;
+        var OrigJsPDF = window.jspdf.jsPDF;
         var allTexts = [];
-        var origText = jsPDF.API.text;
-        jsPDF.API.text = function() {
-            allTexts.push(arguments[0]);
-            return origText.apply(this, arguments);
-        };
-        // Spy aussi sur autoTable pour capturer les body rows
         var allAutoTableBodies = [];
-        var origAutoTable = jsPDF.API.autoTable;
-        jsPDF.API.autoTable = function(opts) {
-            if (opts && opts.body) allAutoTableBodies.push(JSON.stringify(opts.body));
-            return origAutoTable.apply(this, arguments);
+        window.jspdf.jsPDF = function(a, b, c) {
+            var doc = new OrigJsPDF(a, b, c);
+            var origText = doc.text.bind(doc);
+            doc.text = function() { allTexts.push(arguments[0]); return origText.apply(doc, arguments); };
+            if (typeof doc.autoTable === 'function') {
+                var origAutoTable = doc.autoTable.bind(doc);
+                doc.autoTable = function(opts) { if (opts && opts.body) allAutoTableBodies.push(JSON.stringify(opts.body)); return origAutoTable.apply(doc, arguments); };
+            }
+            return doc;
         };
         try {
             var data = {
@@ -1652,8 +1652,7 @@ localStorage.removeItem('loadsheet_manifests');
             };
             buildPdf(data);
         } finally {
-            jsPDF.API.text = origText;
-            jsPDF.API.autoTable = origAutoTable;
+            window.jspdf.jsPDF = OrigJsPDF;
         }
         var allBodiesJoined = allAutoTableBodies.join('||') + '||' + allTexts.join('||');
         assert('Rendu contient "dont Palettes"', allBodiesJoined.indexOf('dont Palettes') >= 0);
@@ -1663,13 +1662,19 @@ localStorage.removeItem('loadsheet_manifests');
     // --- buildPdf sans VRAC PAS de scission (backward compat) ---
     suite('Type ULD - buildPdf sans VRAC pas de scission (backward compat)');
     (function() {
-        var jsPDF = window.jspdf.jsPDF;
+        var OrigJsPDF = window.jspdf.jsPDF;
         var allTexts = [];
         var allAutoTableBodies = [];
-        var origText = jsPDF.API.text;
-        var origAutoTable = jsPDF.API.autoTable;
-        jsPDF.API.text = function() { allTexts.push(arguments[0]); return origText.apply(this, arguments); };
-        jsPDF.API.autoTable = function(opts) { if (opts && opts.body) allAutoTableBodies.push(JSON.stringify(opts.body)); return origAutoTable.apply(this, arguments); };
+        window.jspdf.jsPDF = function(a, b, c) {
+            var doc = new OrigJsPDF(a, b, c);
+            var origText = doc.text.bind(doc);
+            doc.text = function() { allTexts.push(arguments[0]); return origText.apply(doc, arguments); };
+            if (typeof doc.autoTable === 'function') {
+                var origAutoTable = doc.autoTable.bind(doc);
+                doc.autoTable = function(opts) { if (opts && opts.body) allAutoTableBodies.push(JSON.stringify(opts.body)); return origAutoTable.apply(doc, arguments); };
+            }
+            return doc;
+        };
         try {
             var data = {
                 manifestId: 'M', client: '', agent: 'A', destAirport: 'CDG', date: '01/01/2025',
@@ -1677,8 +1682,7 @@ localStorage.removeItem('loadsheet_manifests');
             };
             buildPdf(data);
         } finally {
-            jsPDF.API.text = origText;
-            jsPDF.API.autoTable = origAutoTable;
+            window.jspdf.jsPDF = OrigJsPDF;
         }
         var allJoined = allAutoTableBodies.join('||') + '||' + allTexts.join('||');
         assert('Aucune mention "dont Palettes" (pas de scission)', allJoined.indexOf('dont Palettes') < 0);
