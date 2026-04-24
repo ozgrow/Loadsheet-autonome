@@ -720,10 +720,15 @@ function buildMaterialSummary(ulds) {
     (ulds || []).forEach(function(u) {
         if (!u) return;
         s.straps += parseInt(u.strapsCount) || 0;
-        if (u.flooringEuForfait === true) s.flooringEu.forfaits += 1;
-        else s.flooringEu.count += parseInt(u.flooringEuCount) || 0;
-        if (u.flooringStdForfait === true) s.flooringStd.forfaits += 1;
-        else s.flooringStd.count += parseInt(u.flooringStdCount) || 0;
+        // VRAC-03 / D-20 : exclusion planchers EU+Std pour ULD VRAC.
+        // Les autres materiels (sangles, bois de calage, baches, intercalaires, nids)
+        // restent comptes meme pour VRAC (D-18 Phase 2 masque uniquement les planchers).
+        if (u.type !== 'VRAC') {
+            if (u.flooringEuForfait === true) s.flooringEu.forfaits += 1;
+            else s.flooringEu.count += parseInt(u.flooringEuCount) || 0;
+            if (u.flooringStdForfait === true) s.flooringStd.forfaits += 1;
+            else s.flooringStd.count += parseInt(u.flooringStdCount) || 0;
+        }
         s.blocks += parseInt(u.blocksCount) || 0;
         s.tarps += parseInt(u.tarpsCount) || 0;
         s.dividers += parseInt(u.dividersCount) || 0;
@@ -748,14 +753,18 @@ function formatFlooringDisplay(entry) {
 function buildUldMaterialRows(u) {
     if (!u) return [];
     var rows = [];
+    // VRAC-03 / D-20 : planchers omis pour ULD VRAC (ni page PDF ULD ni email)
+    var isVrac = u.type === 'VRAC';
     var straps = parseInt(u.strapsCount) || 0;
     if (straps > 0) rows.push(['Sangles', String(straps)]);
-    // Planchers EU : forfait prime sur count (D-07 applique a la saisie, defensive ici aussi)
-    if (u.flooringEuForfait === true) rows.push(['Planchers bois EU', 'forfait']);
-    else { var fe = parseInt(u.flooringEuCount) || 0; if (fe > 0) rows.push(['Planchers bois EU', String(fe)]); }
-    // Planchers Std
-    if (u.flooringStdForfait === true) rows.push(['Planchers bois Standard', 'forfait']);
-    else { var fs = parseInt(u.flooringStdCount) || 0; if (fs > 0) rows.push(['Planchers bois Standard', String(fs)]); }
+    if (!isVrac) {
+        // Planchers EU : forfait prime sur count (D-07 applique a la saisie, defensive ici aussi)
+        if (u.flooringEuForfait === true) rows.push(['Planchers bois EU', 'forfait']);
+        else { var fe = parseInt(u.flooringEuCount) || 0; if (fe > 0) rows.push(['Planchers bois EU', String(fe)]); }
+        // Planchers Std
+        if (u.flooringStdForfait === true) rows.push(['Planchers bois Standard', 'forfait']);
+        else { var fs = parseInt(u.flooringStdCount) || 0; if (fs > 0) rows.push(['Planchers bois Standard', String(fs)]); }
+    }
     var blocks = parseInt(u.blocksCount) || 0; if (blocks > 0) rows.push(['Bois de calage', String(blocks)]);
     var tarps = parseInt(u.tarpsCount) || 0; if (tarps > 0) rows.push(['Bâches', String(tarps)]);
     var dividers = parseInt(u.dividersCount) || 0; if (dividers > 0) rows.push(['Intercalaires', String(dividers)]);
@@ -810,6 +819,38 @@ function buildUldMaterialHtml(u) {
     });
     html += '</table>';
     return html;
+}
+
+// ============================================
+// PALETTES / VRAC SPLIT (VRAC-03, D-12, D-14)
+// ============================================
+// Partitionne la liste des ULD en Palettes (non-VRAC) vs VRAC, aggrege compteurs + colis + poids.
+// Utilise en page 1 du PDF et dans l'email HTML pour afficher les scissions conditionnelles.
+// hasVrac: false => afficher le format actuel (backward compatible, pas de scission parasite).
+// Un ULD sans cle 'type' (ancien format, retro-compat D-15) est traite comme palette (undefined !== 'VRAC').
+function buildPalettesVracSplit(ulds) {
+    var split = {
+        hasVrac: false,
+        palettes: { count: 0, colis: 0, weight: 0 },
+        vrac: { count: 0, colis: 0, weight: 0 }
+    };
+    (ulds || []).forEach(function(u) {
+        if (!u) return;
+        var colis = parseInt(u.totalColis) || 0;
+        var weight = parseFloat(u.weight) || 0;
+        if (u.type === 'VRAC') {
+            split.hasVrac = true;
+            split.vrac.count++;
+            split.vrac.colis += colis;
+            if (weight > 0) split.vrac.weight += weight;
+        } else {
+            // Palettes = tout sauf VRAC (PMC, AKE, AKN, PAG, undefined — retro-compat)
+            split.palettes.count++;
+            split.palettes.colis += colis;
+            if (weight > 0) split.palettes.weight += weight;
+        }
+    });
+    return split;
 }
 
 
@@ -921,6 +962,26 @@ function buildPdf(data) {
         }
     });
 
+    // VRAC-03 / D-12 : scission Palettes/Vrac sous la table recap, conditionnelle (affichee seulement si >= 1 ULD VRAC).
+    // Format canonique (revision checker W-1) cohérent avec #liveRecap et email : "dont Palettes : N (X colis, Y kg)" / "dont Vrac : N (X colis, Y kg)".
+    var pvSplit = buildPalettesVracSplit(data.ulds);
+    if (pvSplit.hasVrac) {
+        var pvY = doc.lastAutoTable.finalY + 6;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(26, 58, 92);
+        doc.text('Detail par categorie', margin, pvY);
+        var pvRows = [
+            ['dont Palettes', pvSplit.palettes.count + ' (' + pvSplit.palettes.colis + ' colis, ' + pvSplit.palettes.weight + ' kg)'],
+            ['dont Vrac', pvSplit.vrac.count + ' (' + pvSplit.vrac.colis + ' colis, ' + pvSplit.vrac.weight + ' kg)']
+        ];
+        doc.autoTable({
+            startY: pvY + 2,
+            body: pvRows,
+            margin: { left: margin, right: margin },
+            styles: { fontSize: 9, cellPadding: 3, lineColor: [200, 210, 220], lineWidth: 0.3 },
+            columnStyles: { 0: { fontStyle: 'bold', fillColor: [240, 244, 248], cellWidth: 45 } }
+        });
+    }
+
     // Totaux materiel (RECAP-02, D-15 page 1) : inseres sous la table recap si au moins un total non nul
     var matSummary = buildMaterialSummary(data.ulds);
     var hasAnyMat = matSummary.straps > 0 ||
@@ -959,9 +1020,15 @@ function buildPdf(data) {
 
         var ltaSet = {};
         u.rows.forEach(function(r) { if (r.lta) ltaSet[r.lta] = true; });
-        var infoBoxH = u.weight > 0 ? 16 : 10;
+        // VRAC-03 / D-11 : afficher Type (VRAC/PMC/AKE/AKN/PAG) dans l'infoBox de chaque page ULD.
+        // Type affiche litteralement (D-13), fallback PMC si absent ou corrompu (retro-compat D-15 + defense en profondeur).
+        // ULD_TYPES est declare en tete du fichier (constante figee).
+        var uldType = (u.type && ULD_TYPES.indexOf(u.type) >= 0) ? u.type : ULD_TYPE_DEFAULT;
+        // Hauteur infoBox : 3 lignes si weight (LTA + Type + Poids = 22mm), 2 sinon (LTA + Type = 16mm)
+        var infoBoxH = u.weight > 0 ? 22 : 16;
         doc.setFillColor(240, 244, 248);
         doc.roundedRect(margin, y, pageW - margin * 2, infoBoxH, 2, 2, 'F');
+        // Ligne 1 : LTA concernes
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
         doc.setTextColor(26, 58, 92);
@@ -969,13 +1036,21 @@ function buildPdf(data) {
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(51, 51, 51);
         doc.text(Object.keys(ltaSet).join(', ') || 'N/A', margin + 42, y + 7);
+        // Ligne 2 : Type (D-11) — ASCII-safe (PMC/AKE/AKN/PAG/VRAC), pas de probleme glyphe jsPDF
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(26, 58, 92);
+        doc.text('Type :', margin + 4, y + 13);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(51, 51, 51);
+        doc.text(uldType, margin + 22, y + 13);
+        // Ligne 3 : Poids (optionnel)
         if (u.weight > 0) {
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(26, 58, 92);
-            doc.text('Poids :', margin + 4, y + 13);
+            doc.text('Poids :', margin + 4, y + 19);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(51, 51, 51);
-            doc.text(String(u.weight) + ' kg', margin + 22, y + 13);
+            doc.text(String(u.weight) + ' kg', margin + 22, y + 19);
         }
         y += infoBoxH + 4;
 
