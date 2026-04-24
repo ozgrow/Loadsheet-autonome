@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 02-01-PLAN.md (VRAC selector + data model + recap annotation + modal override)
-last_updated: "2026-04-24T09:39:54.202Z"
+status: verifying
+stopped_at: Completed 02-02-PLAN.md (VRAC PDF + email mirror D-11 D-12 D-14 D-20 + 21 test suites). Phase 02 complete, ready for verification.
+last_updated: "2026-04-24T09:54:11.319Z"
 last_activity: 2026-04-24
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-22)
 
 Phase: 02 (type-uld-vrac) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-24
 
 Progress: [░░░░░░░░░░] 0%
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P02 | 792 | 2 tasks | 3 files |
 | Phase 01 P03 | 262 | 2 tasks | 3 files |
 | Phase 02 P01 | 546 | 2 tasks | 3 files |
+| Phase 02 P02 | 430 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,9 @@ Recent decisions affecting current work:
 - [Phase 02]: D-15 3-point defensive validation vs ULD_TYPES (default-on-create, read-from-load, read-from-collect): XSS-safe retro-compat against tampered localStorage
 - [Phase 02]: D-06 Live DOM source of truth: <select>.value authoritative in collectData, data-uld-type attribute mirrors for helpers that can't reach the select
 - [Phase 02]: D-19 CSS-only conditional masking (.mat-flooring-hidden display:none): preserves DOM + data-attributes across type toggles, no destructive reset
+- [Phase 02]: [Phase 02]: Canonical VRAC format 'dont Palettes : N (X colis, Y kg)' / 'dont Vrac : N (X colis, Y kg)' shared across 3 surfaces (#liveRecap, PDF page 1, email HTML) — W-1 revision alignment
+- [Phase 02]: [Phase 02]: buildPalettesVracSplit(ulds) dedicated partition helper — returns { hasVrac, palettes, vrac } aggregates, single source for PDF page 1 scission + email HTML mirror (D-12/D-14)
+- [Phase 02]: [Phase 02]: D-20 strict applied — only planchers EU/Std excluded for VRAC in totals + per-ULD rows; sangles/bois/baches/intercalaires/nids restent comptes meme sur VRAC (coherent D-18 modal hiding only planchers)
 
 ### Pending Todos
 
@@ -98,6 +102,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-24T09:39:54.199Z
-Stopped at: Completed 02-01-PLAN.md (VRAC selector + data model + recap annotation + modal override)
+Last session: 2026-04-24T09:54:11.316Z
+Stopped at: Completed 02-02-PLAN.md (VRAC PDF + email mirror D-11 D-12 D-14 D-20 + 21 test suites). Phase 02 complete, ready for verification.
 Resume file: None
