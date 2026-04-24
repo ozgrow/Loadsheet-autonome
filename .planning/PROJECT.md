@@ -27,14 +27,14 @@ Outil web de création de loadsheets (feuilles de chargement) pour ATH — Air T
 - ✓ Tests anti-régression navigateur (`tests/tests.html`) — existing
 - ✓ Saisie d'infos matériel sur chaque ULD (sangles, planchers bois EU/standard, bois de calage, bâches, intercalaires, nid d'abeille, commentaire libre) via modal d'édition ULD — Validated in Phase 1 (v1.8.x)
 - ✓ Affichage des infos matériel ULD dans le récap écran (condensé inline), PDF, et email HTML — Validated in Phase 1 (v1.8.x)
+- ✓ Sélecteur de type ULD officiel (PMC / AKE / AKN / PAG / VRAC) avec default PMC et rétro-compat — Validated in Phase 2
+- ✓ Exclusion des ULD VRAC du compteur palettes via annotation `dont Vrac : N (X colis, Y kg)` dans récap écran + PDF page 1 + email HTML (format canonique harmonisé) — Validated in Phase 2
+- ✓ Masquage conditionnel des champs planchers bois dans le modal matériel pour les ULD VRAC (override partiel D-09 Phase 1) — Validated in Phase 2
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Ajouter un type ULD officiel "VRAC" dans le sélecteur de type
-- [ ] Exclure les ULD de type "VRAC" du compteur palette dans le récapitulatif
-- [ ] Afficher le VRAC sur une ligne séparée dans le récapitulatif (colis + poids, sans compter comme palette)
 - [ ] Tester l'ensemble en local (`npx serve`) avant tout déploiement production
 
 ### Out of Scope
@@ -105,4 +105,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-23 after Phase 1 completion (Matériel ULD & rétro-compat)*
+*Last updated: 2026-04-24 after Phase 2 completion (Type ULD VRAC)*

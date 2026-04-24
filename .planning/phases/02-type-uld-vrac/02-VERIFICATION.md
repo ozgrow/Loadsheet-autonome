@@ -1,8 +1,9 @@
 ---
 phase: 02-type-uld-vrac
 verified: 2026-04-24T10:20:00Z
-status: human_needed
-score: 27/27 must-haves verified (automated) — 4 items require human verification
+human_verified: 2026-04-24T11:00:00Z
+status: passed
+score: 27/27 must-haves verified (automated) + 4/4 human UAT items confirmed by user on npx serve
 re_verification: null
 human_verification:
   - test: "Visual check of <select> ordering and default in a real browser"
@@ -23,9 +24,11 @@ human_verification:
 
 **Phase Goal:** L'agent peut marquer une ULD comme type "VRAC", qui n'est pas comptée comme palette dans le récapitulatif et apparaît sur une ligne "Vrac" séparée avec son poids et son nombre de colis.
 
-**Verified:** 2026-04-24T10:20:00Z
-**Status:** human_needed (all automated checks pass, 4 items recommended for human validation before master push)
+**Verified:** 2026-04-24T10:20:00Z (automated) + 2026-04-24T11:00:00Z (human UAT)
+**Status:** passed
 **Re-verification:** No — initial verification
+
+**Human UAT outcome:** All 4 items confirmed by user on `npx serve . -l 4000` (local browser test, 2026-04-24). See `02-HUMAN-UAT.md`.
 
 ---
 
