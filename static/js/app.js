@@ -1167,12 +1167,30 @@ async function sendEmail() {
     }
     html += '</table>';
 
-    // Totaux materiel (RECAP-02 mirror D-17) — retourne '' si aucun materiel
+    // VRAC-03 / D-14 miroir D-12 : scission Palettes/Vrac si >= 1 ULD VRAC.
+    // Format canonique (revision checker W-1) : "dont Palettes : N (X colis, Y kg)" / "dont Vrac : N (X colis, Y kg)".
+    // Les valeurs sont des ints/floats via parseInt/parseFloat dans buildPalettesVracSplit -> pas de XSS possible.
+    var pvSplit = buildPalettesVracSplit(data.ulds);
+    if (pvSplit.hasVrac) {
+        html += '<h3 style="color:#1a3a5c;margin-top:14px;">Detail par categorie</h3>';
+        html += '<table style="border-collapse:collapse;font-size:13px;">';
+        html += '<tr><td style="padding:4px 10px;background:#f0f4f8;font-weight:600;">dont Palettes</td>';
+        html += '<td style="padding:4px 10px;">' + pvSplit.palettes.count + ' (' + pvSplit.palettes.colis + ' colis, ' + pvSplit.palettes.weight + ' kg)</td></tr>';
+        html += '<tr><td style="padding:4px 10px;background:#f0f4f8;font-weight:600;">dont Vrac</td>';
+        html += '<td style="padding:4px 10px;">' + pvSplit.vrac.count + ' (' + pvSplit.vrac.colis + ' colis, ' + pvSplit.vrac.weight + ' kg)</td></tr>';
+        html += '</table>';
+    }
+
+    // Totaux materiel (RECAP-02 mirror D-17) — retourne '' si aucun materiel.
+    // NB: buildMaterialSummaryHtml utilise buildMaterialSummary qui exclut deja les planchers VRAC (D-20 Task 1).
     html += buildMaterialSummaryHtml(data.ulds);
 
     // Detail per ULD
     data.ulds.forEach(function(u) {
-        var uldTitle = 'ULD : ' + esc(u.uldNumber);
+        // VRAC-03 / D-14 miroir D-11 : inclure le type dans le titre du bloc ULD.
+        // Defense en profondeur (D-14 explicite) : fallback PMC si type absent/corrompu + esc() meme si contraint par <select>.
+        var validUldType = (u.type && ULD_TYPES.indexOf(u.type) >= 0) ? u.type : ULD_TYPE_DEFAULT;
+        var uldTitle = 'ULD : ' + esc(u.uldNumber) + ' [' + esc(validUldType) + ']';
         if (u.weight > 0) uldTitle += ' — ' + u.weight + ' kg';
         html += '<h3 style="color:#1a3a5c;margin-top:20px;">' + uldTitle + '</h3>';
         html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
