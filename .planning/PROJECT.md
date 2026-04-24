@@ -30,12 +30,14 @@ Outil web de création de loadsheets (feuilles de chargement) pour ATH — Air T
 - ✓ Sélecteur de type ULD officiel (PMC / AKE / AKN / PAG / VRAC) avec default PMC et rétro-compat — Validated in Phase 2
 - ✓ Exclusion des ULD VRAC du compteur palettes via annotation `dont Vrac : N (X colis, Y kg)` dans récap écran + PDF page 1 + email HTML (format canonique harmonisé) — Validated in Phase 2
 - ✓ Masquage conditionnel des champs planchers bois dans le modal matériel pour les ULD VRAC (override partiel D-09 Phase 1) — Validated in Phase 2
+- ✓ Couverture de tests complète Phase 1 + Phase 2 (suite E2E lifecycle 26 asserts + fix bug session) — Validated in Phase 3
+- ✓ Release gate automatisé `npm run verify` + `npm run dev` + checklist 7 étapes dans CLAUDE.md — Validated in Phase 3
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Tester l'ensemble en local (`npx serve`) avant tout déploiement production
+_Milestone v1.0 complet — tous les requirements livrés. Prochain milestone à définir via `/gsd:new-milestone`._
 
 ### Out of Scope
 
@@ -105,4 +107,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-24 after Phase 2 completion (Type ULD VRAC)*
+*Last updated: 2026-04-24 after Phase 3 completion — Milestone v1.0 complete (20/20 requirements validated)*
