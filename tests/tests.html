@@ -2530,11 +2530,30 @@ localStorage.removeItem('loadsheet_manifests');
         } catch(e) { valid = false; }
         assertEqual('Session corrompue => invalide', valid, false);
 
-        // Session sans expiry
+        // Session sans expiry (Phase 3 D-01, D-02 : fix court-circuit qui retournait undefined)
         sessionStorage.setItem(AUTH_KEY, JSON.stringify({ jwt: 'fake' }));
         session = JSON.parse(sessionStorage.getItem(AUTH_KEY));
-        valid = session && session.expiry && session.expiry > Date.now();
+        valid = !!(session && typeof session.expiry === 'number' && session.expiry > Date.now());
         assertEqual('Session sans expiry => invalide', valid, false);
+
+        // Session avec expiry null (ex-NaN serialise) (Phase 3 D-03, durcissement)
+        // Note: JSON.stringify(NaN) produit "null", donc session.expiry sera null cote parse.
+        sessionStorage.setItem(AUTH_KEY, JSON.stringify({ expiry: NaN }));
+        session = JSON.parse(sessionStorage.getItem(AUTH_KEY));
+        valid = !!(session && typeof session.expiry === 'number' && session.expiry > Date.now());
+        assertEqual('Session avec expiry null (ex-NaN) => invalide', valid, false);
+
+        // Session avec expiry string (Phase 3 D-03, durcissement) - refus coercition implicite
+        sessionStorage.setItem(AUTH_KEY, JSON.stringify({ expiry: "9999999999999" }));
+        session = JSON.parse(sessionStorage.getItem(AUTH_KEY));
+        valid = !!(session && typeof session.expiry === 'number' && session.expiry > Date.now());
+        assertEqual('Session avec expiry string => invalide', valid, false);
+
+        // Session avec expiry negatif (Phase 3 D-03, durcissement) - passe tres lointain
+        sessionStorage.setItem(AUTH_KEY, JSON.stringify({ expiry: -1 }));
+        session = JSON.parse(sessionStorage.getItem(AUTH_KEY));
+        valid = !!(session && typeof session.expiry === 'number' && session.expiry > Date.now());
+        assertEqual('Session avec expiry negatif => invalide', valid, false);
 
         // Cleanup
         sessionStorage.removeItem(AUTH_KEY);

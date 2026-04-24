@@ -72,8 +72,11 @@ function isLoggedIn() {
   const session = sessionStorage.getItem(AUTH_SESSION_KEY);
   if (!session) return false;
   try {
-    const { expiry } = JSON.parse(session);
-    if (expiry <= Date.now()) return false;
+    const data = JSON.parse(session);
+    // Guard defensif (Phase 3 D-03) : rejet strict si expiry manquant, non-numerique, NaN, Infinity ou null.
+    // Evite le bug ou `undefined <= Date.now()` retourne false et isLoggedIn retourne true sans expiry valide.
+    if (!data || typeof data.expiry !== 'number' || !isFinite(data.expiry)) return false;
+    if (data.expiry <= Date.now()) return false;
     // Crypto key must be present for encrypted storage
     if (!sessionStorage.getItem('loadsheet_ck')) return false;
     return true;
