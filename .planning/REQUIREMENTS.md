@@ -70,9 +70,9 @@
 | MAT-09 | Phase 1 | Complete |
 | MAT-10 | Phase 1 | Complete |
 | MAT-11 | Phase 1 | Complete |
-| MAT-12 | Phase 1 | Pending (gap closure 01-03) |
-| MAT-13 | Phase 1 | Pending (gap closure 01-03) |
-| MAT-14 | Phase 1 | Pending (gap closure 01-03) |
+| MAT-12 | Phase 1 | Complete |
+| MAT-13 | Phase 1 | Complete |
+| MAT-14 | Phase 1 | Complete |
 | VRAC-01 | Phase 2 | Complete |
 | VRAC-02 | Phase 2 | Complete |
 | VRAC-03 | Phase 2 | Complete |
