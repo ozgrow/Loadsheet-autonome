@@ -1,5 +1,5 @@
 // --- Version ---
-var APP_VERSION = "1.7.4";
+var APP_VERSION = "1.8.0";
 
 // --- Storage ---
 var STORAGE_KEY = "loadsheet_manifests";
