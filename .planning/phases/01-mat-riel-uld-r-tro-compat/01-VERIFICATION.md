@@ -1,8 +1,8 @@
 ---
 phase: 01-mat-riel-uld-r-tro-compat
-verified: 2026-04-28T12:00:00Z
-status: human_needed
-score: 11/11 success criteria automatically verified (UAT manual still required per CLAUDE.md Release Checklist Step 4)
+verified: 2026-04-28T13:00:00Z
+status: passed
+score: 11/11 success criteria automatically verified + 7/7 UAT items approved by user (2026-04-28T13:00:00Z)
 re_verification: true
 prior_status: passed (after RECAP-01 gap closure 2026-04-23 PM — initial 2026-04-23 AM was gaps_found / 5 of 6)
 prior_iterations:

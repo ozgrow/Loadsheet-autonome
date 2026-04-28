@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 01-03-PLAN.md (gap closure étendu MAT-12/13/14 + RECAP-01 confirmé)
-last_updated: "2026-04-28T12:18:46.413Z"
+last_updated: "2026-04-28T12:39:01.437Z"
 last_activity: 2026-04-28
 progress:
   total_phases: 3
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-04-22)
 
 ## Current Position
 
-Phase: 01 (mat-riel-uld-r-tro-compat) — EXECUTING
-Plan: 2 of 3
+Phase: 02
+Plan: Not started
 Status: Ready to execute
 Last activity: 2026-04-28
 
