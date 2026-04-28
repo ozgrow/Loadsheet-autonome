@@ -49,6 +49,9 @@ function openMaterialModal(uldIndex) {
     // Classe CSS .mat-flooring-hidden { display: none; } preserve le DOM + les data-attributes (D-19).
     var isVrac = block.dataset.uldType === 'VRAC';
     var flooringHiddenClass = isVrac ? ' mat-flooring-hidden' : '';
+    // MAT-12 : lecture du flag "Rien a facturer" (default false) + suffixe disabled global a injecter
+    var noBilling = block.dataset.noBilling === 'true';
+    var disabledAttrIfNoBilling = noBilling ? ' disabled' : '';
 
     var overlay = document.createElement('div');
     overlay.className = 'material-modal-overlay';
@@ -65,17 +68,24 @@ function openMaterialModal(uldIndex) {
             '<h3>Matériel ULD</h3>' +
             '<button class="btn btn-danger btn-sm" onclick="closeMaterialModal()">Fermer</button>' +
         '</div>' +
+        // MAT-12 : zone "Rien a facturer" (raccourci facturation) AU-DESSUS du grid
+        '<div class="mat-no-billing-row">' +
+            '<label class="mat-no-billing-label">' +
+                '<input type="checkbox" id="mat-no-billing"' + (noBilling ? ' checked' : '') + ' onchange="toggleNoBilling(this)"> ' +
+                'Rien à facturer pour cette ULD' +
+            '</label>' +
+        '</div>' +
         '<div class="material-modal-grid">' +
-            '<label>Sangles<input type="number" min="0" class="mat-straps" value="' + esc(straps) + '"></label>' +
-            '<label class="mat-flooring-label' + flooringHiddenClass + '">Planchers bois EU<input type="number" min="0" class="mat-flooring-eu" value="' + esc(flEu) + '"' + (flEuF ? ' disabled' : '') + '>' +
-                '<span class="mat-forfait-label"><input type="checkbox" class="mat-flooring-eu-forfait"' + (flEuF ? ' checked' : '') + ' onchange="toggleForfait(this, \'mat-flooring-eu\')"> Forfait négocié</span></label>' +
-            '<label class="mat-flooring-label' + flooringHiddenClass + '">Planchers bois Standard<input type="number" min="0" class="mat-flooring-std" value="' + esc(flStd) + '"' + (flStdF ? ' disabled' : '') + '>' +
-                '<span class="mat-forfait-label"><input type="checkbox" class="mat-flooring-std-forfait"' + (flStdF ? ' checked' : '') + ' onchange="toggleForfait(this, \'mat-flooring-std\')"> Forfait négocié</span></label>' +
-            '<label>Bois de calage<input type="number" min="0" class="mat-blocks" value="' + esc(blocks) + '"></label>' +
-            '<label>Bâches<input type="number" min="0" class="mat-tarps" value="' + esc(tarps) + '"></label>' +
-            '<label>Intercalaires<input type="number" min="0" class="mat-dividers" value="' + esc(dividers) + '"></label>' +
-            '<label>Nids d\'abeille<input type="number" min="0" class="mat-honeycomb" value="' + esc(honeycomb) + '"></label>' +
-            '<label class="mat-comment-label">Commentaire ULD<textarea class="mat-uld-comment" rows="3" placeholder="Commentaire libre niveau ULD"></textarea></label>' +
+            '<label>Sangles<input type="number" min="0" class="mat-straps" value="' + esc(straps) + '"' + disabledAttrIfNoBilling + '></label>' +
+            '<label class="mat-flooring-label' + flooringHiddenClass + '">Planchers bois EU<input type="number" min="0" class="mat-flooring-eu" value="' + esc(flEu) + '"' + ((flEuF || noBilling) ? ' disabled' : '') + '>' +
+                '<span class="mat-forfait-label"><input type="checkbox" class="mat-flooring-eu-forfait"' + (flEuF ? ' checked' : '') + ' onchange="toggleForfait(this, \'mat-flooring-eu\')"' + disabledAttrIfNoBilling + '> Forfait négocié</span></label>' +
+            '<label class="mat-flooring-label' + flooringHiddenClass + '">Planchers bois Standard<input type="number" min="0" class="mat-flooring-std" value="' + esc(flStd) + '"' + ((flStdF || noBilling) ? ' disabled' : '') + '>' +
+                '<span class="mat-forfait-label"><input type="checkbox" class="mat-flooring-std-forfait"' + (flStdF ? ' checked' : '') + ' onchange="toggleForfait(this, \'mat-flooring-std\')"' + disabledAttrIfNoBilling + '> Forfait négocié</span></label>' +
+            '<label>Bois de calage<input type="number" min="0" class="mat-blocks" value="' + esc(blocks) + '"' + disabledAttrIfNoBilling + '></label>' +
+            '<label>Bâches<input type="number" min="0" class="mat-tarps" value="' + esc(tarps) + '"' + disabledAttrIfNoBilling + '></label>' +
+            '<label>Intercalaires<input type="number" min="0" class="mat-dividers" value="' + esc(dividers) + '"' + disabledAttrIfNoBilling + '></label>' +
+            '<label>Nids d\'abeille<input type="number" min="0" class="mat-honeycomb" value="' + esc(honeycomb) + '"' + disabledAttrIfNoBilling + '></label>' +
+            '<label class="mat-comment-label">Commentaire ULD<textarea class="mat-uld-comment" rows="3" placeholder="Commentaire libre niveau ULD"' + disabledAttrIfNoBilling + '></textarea></label>' +
         '</div>' +
         '<div class="material-modal-actions">' +
             '<button class="btn btn-secondary" onclick="closeMaterialModal()">Annuler</button>' +
@@ -98,6 +108,32 @@ function toggleForfait(checkbox, inputClass) {
     else { input.disabled = false; }
 }
 
+// MAT-12 : Cocher "Rien a facturer" desactive tous les autres champs du modal (raccourci explicite).
+// Decocher reactive sangles/blocks/tarps/dividers/honeycomb/comment, MAIS preserve l'etat
+// forfait des planchers (D-06 : input plancher reste disabled si sa checkbox forfait est cochee).
+function toggleNoBilling(checkbox) {
+    var modal = document.querySelector('.material-modal');
+    if (!modal) return;
+    var disabled = checkbox.checked;
+    // Inputs et textareas qui suivent l'etat de no-billing inconditionnellement
+    var basicSelectors = [
+        '.mat-straps', '.mat-blocks', '.mat-tarps', '.mat-dividers',
+        '.mat-honeycomb', '.mat-uld-comment',
+        '.mat-flooring-eu-forfait', '.mat-flooring-std-forfait'
+    ];
+    basicSelectors.forEach(function(sel) {
+        var el = modal.querySelector(sel);
+        if (el) el.disabled = disabled;
+    });
+    // Inputs planchers EU/Std : combinaison no-billing OU forfait coche (D-06 preserve)
+    var flEu = modal.querySelector('.mat-flooring-eu');
+    var flEuF = modal.querySelector('.mat-flooring-eu-forfait');
+    if (flEu) flEu.disabled = disabled || (flEuF && flEuF.checked);
+    var flStd = modal.querySelector('.mat-flooring-std');
+    var flStdF = modal.querySelector('.mat-flooring-std-forfait');
+    if (flStd) flStd.disabled = disabled || (flStdF && flStdF.checked);
+}
+
 // Ferme le modal materiel s'il existe (idempotent).
 function closeMaterialModal() {
     var overlay = document.getElementById('materialModalOverlay');
@@ -111,17 +147,30 @@ function applyMaterialToUld(uldIndex) {
     var block = document.getElementById('uld-' + uldIndex);
     if (!modal || !block) return;
 
-    var flEuF = modal.querySelector('.mat-flooring-eu-forfait').checked;
-    var flStdF = modal.querySelector('.mat-flooring-std-forfait').checked;
-    // D-07 : forfait coche => nombre force a 0 a la save
-    var flEu = flEuF ? 0 : (parseInt(modal.querySelector('.mat-flooring-eu').value) || 0);
-    var flStd = flStdF ? 0 : (parseInt(modal.querySelector('.mat-flooring-std').value) || 0);
-    var straps = parseInt(modal.querySelector('.mat-straps').value) || 0;
-    var blocks = parseInt(modal.querySelector('.mat-blocks').value) || 0;
-    var tarps = parseInt(modal.querySelector('.mat-tarps').value) || 0;
-    var dividers = parseInt(modal.querySelector('.mat-dividers').value) || 0;
-    var honeycomb = parseInt(modal.querySelector('.mat-honeycomb').value) || 0;
-    var uldComment = String(modal.querySelector('.mat-uld-comment').value || '');
+    // MAT-12 : lecture flag "Rien a facturer" (raccourci explicite)
+    var noBillingCb = modal.querySelector('#mat-no-billing');
+    var noBilling = !!(noBillingCb && noBillingCb.checked);
+
+    var flEuF, flStdF, flEu, flStd, straps, blocks, tarps, dividers, honeycomb, uldComment;
+    if (noBilling) {
+        // Neutralisation : forcer toutes les autres valeurs a 0/false/'' (warning #6 + #8)
+        // Les checkbox forfait sont neutralisees a 'false' meme si elles etaient cochees avant.
+        flEuF = false; flStdF = false; flEu = 0; flStd = 0;
+        straps = 0; blocks = 0; tarps = 0; dividers = 0; honeycomb = 0;
+        uldComment = '';
+    } else {
+        flEuF = modal.querySelector('.mat-flooring-eu-forfait').checked;
+        flStdF = modal.querySelector('.mat-flooring-std-forfait').checked;
+        // D-07 : forfait coche => nombre force a 0 a la save
+        flEu = flEuF ? 0 : (parseInt(modal.querySelector('.mat-flooring-eu').value) || 0);
+        flStd = flStdF ? 0 : (parseInt(modal.querySelector('.mat-flooring-std').value) || 0);
+        straps = parseInt(modal.querySelector('.mat-straps').value) || 0;
+        blocks = parseInt(modal.querySelector('.mat-blocks').value) || 0;
+        tarps = parseInt(modal.querySelector('.mat-tarps').value) || 0;
+        dividers = parseInt(modal.querySelector('.mat-dividers').value) || 0;
+        honeycomb = parseInt(modal.querySelector('.mat-honeycomb').value) || 0;
+        uldComment = String(modal.querySelector('.mat-uld-comment').value || '');
+    }
 
     block.setAttribute('data-straps', String(straps));
     block.setAttribute('data-flooring-eu', String(flEu));
@@ -133,6 +182,8 @@ function applyMaterialToUld(uldIndex) {
     block.setAttribute('data-dividers', String(dividers));
     block.setAttribute('data-honeycomb', String(honeycomb));
     block.setAttribute('data-uld-comment', uldComment);
+    // MAT-12 : flag noMaterialToBill ecrit explicitement (boolean stringifie)
+    block.setAttribute('data-no-billing', String(noBilling));
 
     refreshMaterialBadge(uldIndex);
     closeMaterialModal();
@@ -149,6 +200,11 @@ function applyMaterialToUld(uldIndex) {
 // Retourne un STRING HTML deja echappe, pret a etre injecte en innerHTML.
 function formatCondensedMaterial(block) {
     if (!block) return '';
+    // MAT-12 : Si "Rien a facturer" coche, le recap affiche literalement la chaine, pas la liste.
+    // PRECEDENCE noBilling > VRAC > champs detailles : ce court-circuit est AVANT la lecture
+    // de isVrac / des champs detailles. Une ULD VRAC marquee "Rien a facturer" affiche
+    // 'Rien a facturer' (et NON la liste filtree hors planchers, comme le ferait la branche VRAC).
+    if (block.dataset.noBilling === 'true') return 'Rien à facturer';
     var parts = [];
     // VRAC-02 / D-21 : exclusion planchers pour ULD VRAC (coherent avec D-20 PDF/email Plan 02-02)
     var isVrac = block.dataset.uldType === 'VRAC';
@@ -196,8 +252,11 @@ function refreshMaterialBadge(uldIndex) {
     var wrapper = document.getElementById('material-badge-' + uldIndex);
     if (!block || !wrapper) return;
     var content = formatCondensedMaterial(block);
+    if (!content) { wrapper.innerHTML = ''; return; }
+    // MAT-12 : variante CSS quand "Rien a facturer" pour signal visuel distinct
+    var extraClass = (block.dataset.noBilling === 'true') ? ' mat-recap-no-billing' : '';
     // content est DEJA echappe pour uldComment ; les libelles et nombres sont surs (statiques / parseInt).
-    wrapper.innerHTML = content ? '<span class="material-recap">' + content + '</span>' : '';
+    wrapper.innerHTML = '<span class="material-recap' + extraClass + '">' + content + '</span>';
 }
 
 // ============================================
@@ -362,6 +421,8 @@ function addUld() {
     div.setAttribute('data-dividers', '0');
     div.setAttribute('data-honeycomb', '0');
     div.setAttribute('data-uld-comment', '');
+    // MAT-12 : flag "Rien a facturer" - default false (raccourci facturation)
+    div.setAttribute('data-no-billing', 'false');
     // Type ULD (VRAC-01, D-05, D-06) - defaut PMC
     div.setAttribute('data-uld-type', ULD_TYPE_DEFAULT);
     div.innerHTML =
@@ -516,6 +577,8 @@ function collectData() {
         uldEntry.dividersCount = parseInt(block.dataset.dividers) || 0;
         uldEntry.honeycombCount = parseInt(block.dataset.honeycomb) || 0;
         uldEntry.uldComment = block.dataset.uldComment || '';
+        // MAT-12 : flag noMaterialToBill (raccourci facturation, boolean strict)
+        uldEntry.noMaterialToBill = block.dataset.noBilling === 'true';
         // Type ULD (VRAC-01, D-05, D-06 : source de verite live = valeur du <select>, fallback PMC)
         var typeSelect = block.querySelector('.uld-type');
         var typeValue = typeSelect ? typeSelect.value : ULD_TYPE_DEFAULT;
@@ -623,6 +686,8 @@ async function loadManifest(id) {
         div.setAttribute('data-dividers', String(parseInt(uldData.dividersCount) || 0));
         div.setAttribute('data-honeycomb', String(parseInt(uldData.honeycombCount) || 0));
         div.setAttribute('data-uld-comment', String(uldData.uldComment || ''));
+        // MAT-12 / MAT-10 retro-compat : noMaterialToBill absent => false (defense en profondeur)
+        div.setAttribute('data-no-billing', String(uldData.noMaterialToBill === true));
         // Type ULD (VRAC-01, D-05, D-15 retro-compat : type absent => PMC ; defense en profondeur vs valeurs corrompues)
         var uldType = (uldData.type && ULD_TYPES.indexOf(uldData.type) >= 0) ? uldData.type : ULD_TYPE_DEFAULT;
         div.setAttribute('data-uld-type', uldType);
@@ -752,6 +817,8 @@ function formatFlooringDisplay(entry) {
 // Forfait affiche litteralement "forfait" (D-16) au lieu d'un nombre.
 function buildUldMaterialRows(u) {
     if (!u) return [];
+    // MAT-12 : Si "Rien a facturer" => 1 seul row affiche litteralement (PDF + email)
+    if (u.noMaterialToBill === true) return [['', 'Rien à facturer']];
     var rows = [];
     // VRAC-03 / D-20 : planchers omis pour ULD VRAC (ni page PDF ULD ni email)
     var isVrac = u.type === 'VRAC';

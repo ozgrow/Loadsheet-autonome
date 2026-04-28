@@ -949,6 +949,238 @@ localStorage.removeItem('loadsheet_manifests');
     })();
 
     // ============================================
+    // PLAN 01-03 EXTENDED : MAT-12 "Rien à facturer" (case + récap + PDF/email + retro-compat)
+    // ============================================
+
+    // --- Test 1 : modal contient checkbox no-billing ---
+    suite('Materiel ULD - rien a facturer checkbox presente (MAT-12)');
+    (function() {
+        resetDOM();
+        addUld();
+        var i = uldCount;
+        // addUld auto-ouvre le modal (MAT-14 Task 3) — fermer pour test isole puis rouvrir manuellement
+        closeMaterialModal();
+        openMaterialModal(i);
+        var cb = document.querySelector('.material-modal #mat-no-billing');
+        assert('Checkbox #mat-no-billing presente', !!cb);
+        assertEqual('Type checkbox', cb.type, 'checkbox');
+        var label = cb.closest('label');
+        assert('Label parent existe', !!label);
+        assert('Label contient "Rien à facturer pour cette ULD"', label.textContent.indexOf('Rien à facturer pour cette ULD') >= 0);
+        closeMaterialModal();
+    })();
+
+    // --- Test 2 : cocher desactive tous les autres champs ---
+    suite('Materiel ULD - rien a facturer desactive autres champs (MAT-12)');
+    (function() {
+        resetDOM();
+        addUld();
+        var i = uldCount;
+        closeMaterialModal();
+        openMaterialModal(i);
+        var modal = document.querySelector('.material-modal');
+        var cb = modal.querySelector('#mat-no-billing');
+        cb.checked = true;
+        toggleNoBilling(cb);
+        ['.mat-straps','.mat-flooring-eu','.mat-flooring-eu-forfait','.mat-flooring-std','.mat-flooring-std-forfait','.mat-blocks','.mat-tarps','.mat-dividers','.mat-honeycomb','.mat-uld-comment'].forEach(function(sel) {
+            var el = modal.querySelector(sel);
+            assert(sel + ' est disabled', !!el && el.disabled === true);
+        });
+        closeMaterialModal();
+    })();
+
+    // --- Test 3 : decocher reactive (avec preservation forfait D-06) ---
+    suite('Materiel ULD - rien a facturer decoche reactive (MAT-12 + D-06)');
+    (function() {
+        resetDOM();
+        addUld();
+        var i = uldCount;
+        closeMaterialModal();
+        openMaterialModal(i);
+        var modal = document.querySelector('.material-modal');
+        // 1) Cocher forfait EU (input EU disabled par D-06)
+        var fEuF = modal.querySelector('.mat-flooring-eu-forfait');
+        fEuF.checked = true;
+        toggleForfait(fEuF, 'mat-flooring-eu');
+        // 2) Cocher no-billing (tout disabled)
+        var cb = modal.querySelector('#mat-no-billing');
+        cb.checked = true;
+        toggleNoBilling(cb);
+        // 3) Decocher no-billing
+        cb.checked = false;
+        toggleNoBilling(cb);
+        // straps/blocks reactives
+        assertEqual('mat-straps reactive', modal.querySelector('.mat-straps').disabled, false);
+        assertEqual('mat-blocks reactive', modal.querySelector('.mat-blocks').disabled, false);
+        assertEqual('mat-uld-comment reactive', modal.querySelector('.mat-uld-comment').disabled, false);
+        // forfait EU coche + input EU doit RESTER disabled (D-06 preserve)
+        assertEqual('mat-flooring-eu reste disabled (forfait coche)', modal.querySelector('.mat-flooring-eu').disabled, true);
+        closeMaterialModal();
+    })();
+
+    // --- Test 4 : applyMaterialToUld ecrit data-no-billing + neutralise autres + forfait ---
+    suite('Materiel ULD - rien a facturer applyMaterialToUld (MAT-12 + warning #6)');
+    (function() {
+        resetDOM();
+        addUld();
+        var i = uldCount;
+        closeMaterialModal();
+        openMaterialModal(i);
+        var modal = document.querySelector('.material-modal');
+        // Saisir un nombre AVANT de cocher no-billing pour verifier la neutralisation
+        modal.querySelector('.mat-straps').value = '5';
+        modal.querySelector('.mat-uld-comment').value = 'Test';
+        // Cocher AUSSI les forfait EU et Std avant no-billing pour verifier neutralisation forfait (warning #6)
+        modal.querySelector('.mat-flooring-eu-forfait').checked = true;
+        modal.querySelector('.mat-flooring-std-forfait').checked = true;
+        modal.querySelector('#mat-no-billing').checked = true;
+        applyMaterialToUld(i);
+        var block = document.getElementById('uld-' + i);
+        assertEqual('data-no-billing = "true"', block.dataset.noBilling, 'true');
+        // Neutralisation : autres data-attributes a 0/''
+        assertEqual('data-straps neutralise a 0', block.dataset.straps, '0');
+        assertEqual('data-uld-comment neutralise vide', block.dataset.uldComment, '');
+        // WARNING #6 : data-flooring-eu-forfait et data-flooring-std-forfait neutralises a 'false'
+        assertEqual('data-flooring-eu-forfait neutralise a "false"', block.dataset.flooringEuForfait, 'false');
+        assertEqual('data-flooring-std-forfait neutralise a "false"', block.dataset.flooringStdForfait, 'false');
+    })();
+
+    // --- Test 5 : recap inline affiche 'Rien a facturer' + classe CSS distincte ---
+    suite('Materiel ULD - rien a facturer recap inline + classe CSS (MAT-12 + RECAP-01)');
+    (function() {
+        resetDOM();
+        addUld();
+        var i = uldCount;
+        closeMaterialModal();
+        var block = document.getElementById('uld-' + i);
+        block.setAttribute('data-no-billing', 'true');
+        refreshMaterialBadge(i);
+        var wrap = document.getElementById('material-badge-' + i);
+        var recap = wrap.querySelector('.material-recap');
+        assert('Recap present', !!recap);
+        assertEqual('Recap textContent = "Rien à facturer"', recap.textContent, 'Rien à facturer');
+        // BLOCKER #2 : classe CSS .mat-recap-no-billing emise par refreshMaterialBadge
+        assert('Classe CSS .mat-recap-no-billing presente', recap.classList.contains('mat-recap-no-billing'));
+    })();
+
+    // --- Test 6 : recap normal si no-billing decoche (pas de regression RECAP-01) ---
+    suite('Materiel ULD - rien a facturer decoche recap normal (MAT-12)');
+    (function() {
+        resetDOM();
+        addUld();
+        var i = uldCount;
+        closeMaterialModal();
+        var block = document.getElementById('uld-' + i);
+        block.setAttribute('data-no-billing', 'false');
+        block.setAttribute('data-straps', '3');
+        refreshMaterialBadge(i);
+        var recap = document.getElementById('material-badge-' + i).querySelector('.material-recap');
+        assertEqual('Recap = "Sangles: 3" (pas Rien a facturer)', recap.textContent, 'Sangles: 3');
+        assertEqual('Pas de classe .mat-recap-no-billing', recap.classList.contains('mat-recap-no-billing'), false);
+    })();
+
+    // --- Test 7 : loadManifest restaure noMaterialToBill ---
+    suite('Materiel ULD - rien a facturer loadManifest restore (MAT-12 + TEST-02)');
+    await (async function() {
+        resetDOM();
+        await deriveAndStoreKey('test-password-for-unit-tests');
+        var manifests = [{
+            manifestId: 'TEST-NOBILL-RESTORE',
+            date: '2026-04-28', client: '', agent: 'A', destAirport: 'CDG',
+            recipients: '', cc: '',
+            ulds: [{
+                uldNumber: 'U1',
+                rows: [{ lta: 'L', dossier: 'D', colis: 1, dgr: 'N', comment: '' }],
+                totalColis: 1,
+                strapsCount: 0, flooringEuCount: 0, flooringEuForfait: false,
+                flooringStdCount: 0, flooringStdForfait: false,
+                blocksCount: 0, tarpsCount: 0, dividersCount: 0, honeycombCount: 0,
+                uldComment: '',
+                noMaterialToBill: true
+            }]
+        }];
+        await writeSavedManifests(manifests);
+        await loadManifest('TEST-NOBILL-RESTORE');
+        var block = document.querySelector('.uld-block');
+        assertEqual('data-no-billing restaure = "true"', block.dataset.noBilling, 'true');
+        var recap = document.querySelector('.material-recap');
+        assert('Recap rendu apres loadManifest', !!recap);
+        assertEqual('Recap = "Rien à facturer"', recap.textContent, 'Rien à facturer');
+    })();
+
+    // --- Test 8 : retro-compat ancien format (noMaterialToBill absent => false) ---
+    suite('Materiel ULD - rien a facturer retro-compat absente => false (MAT-12 + MAT-10)');
+    await (async function() {
+        resetDOM();
+        await deriveAndStoreKey('test-password-for-unit-tests');
+        var manifests = [{
+            manifestId: 'TEST-NOBILL-LEGACY',
+            date: '2026-04-28', client: '', agent: 'A', destAirport: 'CDG',
+            recipients: '', cc: '',
+            ulds: [{
+                uldNumber: 'U1',
+                rows: [{ lta: 'L', dossier: 'D', colis: 1, dgr: 'N', comment: '' }],
+                totalColis: 1
+                // PAS de cle noMaterialToBill (ancien format avant MAT-12)
+            }]
+        }];
+        await writeSavedManifests(manifests);
+        await loadManifest('TEST-NOBILL-LEGACY');
+        var block = document.querySelector('.uld-block');
+        assertEqual('data-no-billing default "false" (retro-compat)', block.dataset.noBilling, 'false');
+    })();
+
+    // --- Test 9 : collectData inclut noMaterialToBill ---
+    suite('Materiel ULD - rien a facturer collectData inclut flag (MAT-12)');
+    (function() {
+        resetDOM();
+        addUld();
+        var i = uldCount;
+        closeMaterialModal();
+        var block = document.getElementById('uld-' + i);
+        block.setAttribute('data-no-billing', 'true');
+        var data = collectData();
+        assertEqual('noMaterialToBill = true (boolean strict)', data.ulds[0].noMaterialToBill, true);
+    })();
+
+    // --- Test 10 : buildUldMaterialRows court-circuit Rien a facturer ---
+    suite('Materiel PDF - rien a facturer court-circuit row (MAT-12)');
+    (function() {
+        var rows = buildUldMaterialRows({ noMaterialToBill: true, strapsCount: 5, blocksCount: 3 });
+        assertEqual('1 seul row', rows.length, 1);
+        assertEqual('Row[0] label vide', rows[0][0], '');
+        assertEqual('Row[0] valeur = "Rien à facturer"', rows[0][1], 'Rien à facturer');
+    })();
+
+    // --- Test 11 : buildUldMaterialHtml HTML "Rien a facturer" + esc defense ---
+    suite('Materiel email HTML - rien a facturer affiche litteralement (MAT-12 + MAT-11)');
+    (function() {
+        var html = buildUldMaterialHtml({ noMaterialToBill: true, uldComment: '<img onerror="window._xss++">' });
+        assert('HTML contient "Rien à facturer"', html.indexOf('Rien à facturer') >= 0);
+        assert('HTML ne contient pas <img litteral (defense MAT-11)', html.indexOf('<img onerror') < 0);
+    })();
+
+    // --- Test 12 : applyMaterialToUld neutralise visuellement les checkbox forfait (warning #8) ---
+    suite('Materiel ULD - rien a facturer applyMaterialToUld neutralise forfait (MAT-12 + behavior 12)');
+    (function() {
+        resetDOM();
+        addUld();
+        var i = uldCount;
+        closeMaterialModal();
+        openMaterialModal(i);
+        var modal = document.querySelector('.material-modal');
+        // Pre-conditions : forfait EU coche + saisie planchers Std + no-billing coche
+        modal.querySelector('.mat-flooring-eu-forfait').checked = true;
+        modal.querySelector('.mat-flooring-std').value = '7';
+        modal.querySelector('#mat-no-billing').checked = true;
+        applyMaterialToUld(i);
+        var block = document.getElementById('uld-' + i);
+        // Forfait EU et planchers Std saisis sont TOUS deux neutralises
+        assertEqual('data-flooring-eu-forfait = "false" (neutralise)', block.dataset.flooringEuForfait, 'false');
+        assertEqual('data-flooring-std = "0" (neutralise)', block.dataset.flooringStd, '0');
+    })();
+
+    // ============================================
     // PLAN 02-01 Task 1 : Type ULD VRAC - selecteur + data model + retro-compat (VRAC-01, D-01..D-06, D-15..D-17)
     // ============================================
 
