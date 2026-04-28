@@ -404,7 +404,13 @@ function newManifest() {
 }
 
 // --- ULD ---
-function addUld() {
+// MAT-14 : autoOpen (default true) ouvre automatiquement le modal materiel en fin de fonction.
+// MAT-13 / BLOCKER #1 : skipValidation (default false) court-circuite la validation MAT-13
+//   (usage interne / tests uniquement - les boutons utilisateur appellent addUld() sans args).
+function addUld(autoOpen, skipValidation) {
+    // Defaut autoOpen=true (clic utilisateur). loadManifest n'utilise PAS addUld
+    // donc le modal ne s'ouvre PAS au rechargement (par construction MAT-14).
+    if (autoOpen === undefined) autoOpen = true;
     uldCount++;
     var i = uldCount;
     var div = document.createElement('div');
@@ -451,6 +457,10 @@ function addUld() {
         '<div style="margin-top:8px"><button class="btn btn-secondary" onclick="addRow(' + i + ')">+ Ajouter ligne</button></div>';
     document.getElementById('pmcContainer').appendChild(div);
     addRow(i);
+    // MAT-14 : ouvrir le modal materiel pour saisie immediate (UX)
+    if (autoOpen) {
+        openMaterialModal(i);
+    }
 }
 
 function addRow(uldIndex) {

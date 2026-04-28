@@ -1181,6 +1181,97 @@ localStorage.removeItem('loadsheet_manifests');
     })();
 
     // ============================================
+    // PLAN 01-03 EXTENDED : MAT-14 auto-ouverture du modal sur creation ULD
+    // ============================================
+
+    // --- Test 1 : addUld() autoOpen=true par defaut ---
+    suite('Materiel ULD - addUld autoOpen defaut true ouvre modal (MAT-14)');
+    (function() {
+        resetDOM();
+        addUld();
+        var modal = document.querySelector('.material-modal');
+        assert('Modal ouvert apres addUld()', !!modal);
+        // Verifier que c'est bien le modal de l'ULD nouvellement creee
+        assertEqual('data-uld-index = "1"', modal.getAttribute('data-uld-index'), '1');
+        closeMaterialModal();
+    })();
+
+    // --- Test 2 : addUld(false) ne l'ouvre pas ---
+    suite('Materiel ULD - addUld(false) n\'ouvre pas modal (MAT-14)');
+    (function() {
+        resetDOM();
+        addUld(false);
+        var modal = document.querySelector('.material-modal');
+        assertEqual('Modal absent', modal, null);
+    })();
+
+    // --- Test 3 : loadManifest n'auto-ouvre pas ---
+    suite('Materiel ULD - loadManifest n\'ouvre pas modal (MAT-14 + TEST-02)');
+    await (async function() {
+        resetDOM();
+        await deriveAndStoreKey('test-password-for-unit-tests');
+        var manifests = [{
+            manifestId: 'TEST-MAT14-LOAD',
+            date: '2026-04-28', client: '', agent: 'A', destAirport: 'CDG',
+            recipients: '', cc: '',
+            ulds: [{
+                uldNumber: 'U1',
+                rows: [{ lta: 'L', dossier: 'D', colis: 1, dgr: 'N', comment: '' }],
+                totalColis: 1,
+                strapsCount: 2,
+                noMaterialToBill: false
+            }]
+        }];
+        await writeSavedManifests(manifests);
+        // Fermer un eventuel modal residuel
+        closeMaterialModal();
+        await loadManifest('TEST-MAT14-LOAD');
+        var modal = document.querySelector('.material-modal');
+        assertEqual('Modal absent apres loadManifest (action utilisateur uniquement)', modal, null);
+    })();
+
+    // --- Test 4 : newManifest ouvre le modal pour la 1ere ULD ---
+    suite('Materiel ULD - newManifest ouvre modal pour 1ere ULD (MAT-14)');
+    (function() {
+        resetDOM();
+        // newManifest reset le DOM puis appelle addUld() (sans argument)
+        // Pour ne pas casser les autres tests, on isole : cleanup apres
+        newManifest();
+        var modal = document.querySelector('.material-modal');
+        assert('Modal ouvert apres newManifest()', !!modal);
+        closeMaterialModal();
+    })();
+
+    // --- Test 5 : addUld bloque par MAT-13 n'ouvre pas un 2e modal ---
+    suite('Materiel ULD - addUld bloque par MAT-13 n\'ouvre pas un 2e modal (MAT-14 + MAT-13)');
+    (function() {
+        resetDOM();
+        addUld(); // ULD #1 vide, modal #1 ouvert (auto-open MAT-14)
+        // ULD #1 reste vide (modal pas valide)
+        // Tenter addUld() — bloque par MAT-13, devrait reouvrir modal #1 (pas creer #2)
+        _alertLog.length = 0;
+        addUld();
+        var modals = document.querySelectorAll('.material-modal');
+        assertEqual('1 seul modal au total (#1 reouvert, pas #2 cree)', modals.length, 1);
+        // Verifier que c'est le modal #1 (data-uld-index="1")
+        assertEqual('Modal correspond a ULD #1', modals[0].getAttribute('data-uld-index'), '1');
+        // Verifier qu'il n'y a qu'1 ULD dans le DOM
+        assertEqual('1 seule ULD dans le DOM', document.querySelectorAll('.uld-block').length, 1);
+        closeMaterialModal();
+    })();
+
+    // --- Test 6 : addUld(false, true) ne valide pas ET ne l'ouvre pas (BLOCKER #1) ---
+    suite('Materiel ULD - addUld(false, true) skipValidation + autoOpen=false (MAT-13 + MAT-14)');
+    (function() {
+        resetDOM();
+        addUld(false, true); // ULD #1 vide, pas de modal
+        addUld(false, true); // ULD #2 — MAT-13 bypass
+        assertEqual('uldCount = 2', document.querySelectorAll('.uld-block').length, 2);
+        var modal = document.querySelector('.material-modal');
+        assertEqual('Aucun modal ouvert', modal, null);
+    })();
+
+    // ============================================
     // PLAN 02-01 Task 1 : Type ULD VRAC - selecteur + data model + retro-compat (VRAC-01, D-01..D-06, D-15..D-17)
     // ============================================
 
