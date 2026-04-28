@@ -188,8 +188,8 @@ localStorage.removeItem('loadsheet_manifests');
     suite('removeUld');
     (function() {
         resetDOM();
-        addUld();
-        addUld();
+        addUld(false, true);
+        addUld(false, true);
         var countBefore = document.querySelectorAll('.uld-block').length;
         removeUld(1);
         var countAfter = document.querySelectorAll('.uld-block').length;
@@ -1320,8 +1320,8 @@ localStorage.removeItem('loadsheet_manifests');
     suite('Type ULD - collectData inclut type');
     (function() {
         resetDOM();
-        addUld();
-        addUld();
+        addUld(false, true);
+        addUld(false, true);
         var blocks = document.querySelectorAll('.uld-block');
         // Changer le type de la 2eme ULD a VRAC via le select
         blocks[1].querySelector('.uld-type').value = 'VRAC';
@@ -1476,8 +1476,8 @@ localStorage.removeItem('loadsheet_manifests');
     suite('Type ULD - updateRecap annotation dont Vrac (VRAC-02, D-07 D-08)');
     (function() {
         resetDOM();
-        addUld(); // ULD 1 : PMC par defaut
-        addUld(); // ULD 2 : VRAC
+        addUld(false, true); // ULD 1 : PMC par defaut
+        addUld(false, true); // ULD 2 : VRAC
         var blocks = document.querySelectorAll('.uld-block');
         // Remplir ULD 1 : colis=10, weight=500, PMC
         blocks[0].querySelector('.colis-input').value = '10';
@@ -1496,7 +1496,7 @@ localStorage.removeItem('loadsheet_manifests');
     suite('Type ULD - updateRecap pas annotation si aucun VRAC');
     (function() {
         resetDOM();
-        addUld(); addUld();
+        addUld(false, true); addUld(false, true);
         var blocks = document.querySelectorAll('.uld-block');
         blocks[0].querySelector('.colis-input').value = '5';
         blocks[1].querySelector('.colis-input').value = '7';
@@ -1509,7 +1509,7 @@ localStorage.removeItem('loadsheet_manifests');
     suite('Type ULD - updateRecap totaux globaux incluent VRAC (D-10)');
     (function() {
         resetDOM();
-        addUld(); addUld();
+        addUld(false, true); addUld(false, true);
         var blocks = document.querySelectorAll('.uld-block');
         blocks[0].querySelector('.colis-input').value = '10';
         blocks[0].querySelector('.uld-weight').value = '500';
@@ -1529,7 +1529,7 @@ localStorage.removeItem('loadsheet_manifests');
     suite('Type ULD - updateRecap plusieurs VRAC agregent');
     (function() {
         resetDOM();
-        addUld(); addUld(); addUld();
+        addUld(false, true); addUld(false, true); addUld(false, true);
         var blocks = document.querySelectorAll('.uld-block');
         var cols = [5, 3, 7]; var weights = [100, 200, 50];
         for (var j = 0; j < 3; j++) {
@@ -2343,8 +2343,8 @@ localStorage.removeItem('loadsheet_manifests');
         sessionStorage.setItem('loadsheet_jwt', 'fake-jwt-for-test');
 
         // Ajoute 2 ULD : 1 PMC + 1 VRAC via addUld pour activer toute la chaine collectData
-        addUld();
-        addUld();
+        addUld(false, true);
+        addUld(false, true);
         document.getElementById('agentName').value = 'Ag';
         document.getElementById('destAirport').value = 'CDG';
         document.getElementById('recipients').value = 'test@example.com';
@@ -2449,8 +2449,8 @@ localStorage.removeItem('loadsheet_manifests');
     suite('updateRecap - multi ULD');
     (function() {
         resetDOM();
-        addUld();
-        addUld();
+        addUld(false, true);
+        addUld(false, true);
         var blocks = document.querySelectorAll('.uld-block');
         blocks[0].querySelector('.colis-input').value = '3';
         blocks[0].querySelector('.uld-weight').value = '10';
