@@ -18,9 +18,9 @@
 - [x] **MAT-09**: Les champs matériel sont disponibles sur tous les types d'ULD (palettes + conteneurs)
 - [x] **MAT-10**: Les manifestes sauvegardés avant cette évolution se chargent sans erreur (rétro-compat localStorage chiffré)
 - [x] **MAT-11**: Le commentaire libre est échappé via `esc()` partout où il est affiché (anti-XSS)
-- [ ] **MAT-12**: Une case à cocher "Rien à facturer" est disponible dans le modal matériel (alternative explicite à la saisie de champs)
-- [ ] **MAT-13**: La saisie matériel est obligatoire pour chaque ULD avant ajout d'une nouvelle ULD ET avant génération PDF/email — au moins un champ matériel rempli OU la case "Rien à facturer" cochée
-- [ ] **MAT-14**: Le modal matériel s'ouvre automatiquement à chaque création d'une nouvelle ULD (sauf au rechargement d'un manifeste sauvegardé)
+- [x] **MAT-12**: Une case à cocher "Rien à facturer" est disponible dans le modal matériel (alternative explicite à la saisie de champs)
+- [x] **MAT-13**: La saisie matériel est obligatoire pour chaque ULD avant ajout d'une nouvelle ULD ET avant génération PDF/email — au moins un champ matériel rempli OU la case "Rien à facturer" cochée
+- [x] **MAT-14**: Le modal matériel s'ouvre automatiquement à chaque création d'une nouvelle ULD (sauf au rechargement d'un manifeste sauvegardé)
 
 ### VRAC
 

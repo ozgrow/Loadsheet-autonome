@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 03-01-PLAN.md (last plan of milestone v1.0)
-last_updated: "2026-04-24T14:09:22.899Z"
-last_activity: 2026-04-24
+status: executing
+stopped_at: Completed 01-03-PLAN.md (gap closure étendu MAT-12/13/14 + RECAP-01 confirmé)
+last_updated: "2026-04-28T12:18:46.413Z"
+last_activity: 2026-04-28
 progress:
   total_phases: 3
   completed_phases: 3
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-22)
 
 **Core value:** La saisie d'un manifeste doit aboutir à un PDF correct envoyé aux bons destinataires, sans perte de données.
-**Current focus:** Phase 03 — validation-locale-release-gate
+**Current focus:** Phase 01 — mat-riel-uld-r-tro-compat
 
 ## Current Position
 
-Phase: 03
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-24
+Phase: 01 (mat-riel-uld-r-tro-compat) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-04-28
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02 P01 | 546 | 2 tasks | 3 files |
 | Phase 02 P02 | 430 | 2 tasks | 2 files |
 | Phase 03 P01 | 508 | 4 tasks | 5 files |
+| Phase 01 P03 | 4500 | 5 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,10 @@ Recent decisions affecting current work:
 - [Phase 03]: Phase 03: Suite E2E smoke test 'manifest complet lifecycle' (26 asserts, happy path complet Phase 1+2)
 - [Phase 03]: Phase 03: Release gate process-driven — package.json verify/dev + CLAUDE.md Release checklist 7 etapes, pas de hook git ni CI (D-08, D-11)
 - [Phase 03]: Phase 03: Deviation Rule 3 — un-gitignore package.json + tests/run-harness.cjs (release gate artifacts doivent etre committes pour clone frais)
+- [Phase 01]: MAT-12 case 'Rien à facturer': checkbox modal + flag noMaterialToBill propagated DOM/JSON/recap/PDF/email + classe CSS .mat-recap-no-billing
+- [Phase 01]: MAT-13 saisie matériel obligatoire: helpers uldHasMaterial + findIncompleteUlds (1-based), validation EN TOUT DÉBUT de generatePdf/sendEmail (avant validateRequired/saveManifest pour éviter pollution _alertLog en test)
+- [Phase 01]: MAT-14 auto-open modal: addUld(autoOpen=true, skipValidation=false) — autoOpen=true par défaut (UX), skipValidation pour bypass interne tests; loadManifest n'utilise pas addUld donc le modal ne s'ouvre pas au rechargement (par construction)
+- [Phase 01]: 8 sites pré-existants tests.html migrés addUld(); addUld(); → addUld(false, true); pour préserver les tests existants tout en activant MAT-13 (BLOCKER #1 du plan)
 
 ### Pending Todos
 
@@ -107,6 +112,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-24T13:52:13.309Z
-Stopped at: Completed 03-01-PLAN.md (last plan of milestone v1.0)
+Last session: 2026-04-28T12:18:46.409Z
+Stopped at: Completed 01-03-PLAN.md (gap closure étendu MAT-12/13/14 + RECAP-01 confirmé)
 Resume file: None
