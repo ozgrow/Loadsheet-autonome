@@ -73,3 +73,13 @@ Phases execute in numeric order: 1 → 2 → 3
 | 1. Matériel ULD & rétro-compat | 0/2 | Not started | - |
 | 2. Type ULD VRAC | 0/TBD | Not started | - |
 | 3. Validation locale & release gate | 0/1 | Not started | - |
+
+### Phase 4: Listes de distribution emails (Cosmos/Blob backend) — dev local d'abord
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 3
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 4 to break down)

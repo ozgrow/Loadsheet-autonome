@@ -100,6 +100,10 @@ Recent decisions affecting current work:
 - [Phase 01]: MAT-14 auto-open modal: addUld(autoOpen=true, skipValidation=false) — autoOpen=true par défaut (UX), skipValidation pour bypass interne tests; loadManifest n'utilise pas addUld donc le modal ne s'ouvre pas au rechargement (par construction)
 - [Phase 01]: 8 sites pré-existants tests.html migrés addUld(); addUld(); → addUld(false, true); pour préserver les tests existants tout en activant MAT-13 (BLOCKER #1 du plan)
 
+### Roadmap Evolution
+
+- Phase 4 added (2026-04-28): Listes de distribution emails — backend JSON Blob (Azure Blob Storage), dev local d'abord. Cosmos DB free tier disponible mais JSON Blob retenu pour simplicité (10x/jour, ~25 lignes Function vs 60).
+
 ### Pending Todos
 
 None yet.
