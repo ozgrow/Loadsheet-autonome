@@ -243,6 +243,49 @@ function formatCondensedMaterial(block) {
     return parts.join(' | ');
 }
 
+// ============================================
+// MAT-13 : Validation materiel obligatoire (saisie OU "Rien a facturer")
+// ============================================
+// Retourne true si l'ULD a au moins une indication de saisie materiel :
+//  - flag noMaterialToBill explicitement coche (raccourci MAT-12), OU
+//  - au moins un compteur numerique > 0 (sangles, planchers EU/Std, bois, baches, intercalaires, nids), OU
+//  - une checkbox forfait cochee (planchers EU ou Std), OU
+//  - un commentaire non-vide
+// L'ordre des checks fait court-circuiter aussi vite que possible (perf + lisibilite).
+function uldHasMaterial(block) {
+    if (!block) return false;
+    if (block.dataset.noBilling === 'true') return true;
+    if ((parseInt(block.dataset.straps) || 0) > 0) return true;
+    if ((parseInt(block.dataset.flooringEu) || 0) > 0) return true;
+    if (block.dataset.flooringEuForfait === 'true') return true;
+    if ((parseInt(block.dataset.flooringStd) || 0) > 0) return true;
+    if (block.dataset.flooringStdForfait === 'true') return true;
+    if ((parseInt(block.dataset.blocks) || 0) > 0) return true;
+    if ((parseInt(block.dataset.tarps) || 0) > 0) return true;
+    if ((parseInt(block.dataset.dividers) || 0) > 0) return true;
+    if ((parseInt(block.dataset.honeycomb) || 0) > 0) return true;
+    if (String(block.dataset.uldComment || '').length > 0) return true;
+    return false;
+}
+
+// MAT-13 : retourne la liste des indices 1-based des ULD qui n'ont PAS de materiel saisi.
+// Utilise par addUld (avant creation), generatePdf, sendEmail (avant action).
+// L'index visible commence a 1 (pas 0) pour rester coherent avec ce que voit l'utilisateur
+// (i.e. block.id = "uld-1" pour la 1ere ULD creee, conforme uldCount).
+function findIncompleteUlds() {
+    var blocks = document.querySelectorAll('.uld-block');
+    var incomplete = [];
+    blocks.forEach(function(block) {
+        if (!uldHasMaterial(block)) {
+            // L'index dans uld-{N} = la valeur visible
+            var idMatch = block.id.match(/^uld-(\d+)$/);
+            var n = idMatch ? idMatch[1] : '?';
+            incomplete.push(n);
+        }
+    });
+    return incomplete;
+}
+
 // Affiche/masque le recap condense inline sous le header ULD.
 // Remplace le badge neutre 'Materiel saisi' (D-14 OVERRIDDEN par 01-VERIFICATION.md Option A).
 // Note : la fonction garde son nom historique 'refreshMaterialBadge' pour ne pas casser
@@ -411,6 +454,19 @@ function addUld(autoOpen, skipValidation) {
     // Defaut autoOpen=true (clic utilisateur). loadManifest n'utilise PAS addUld
     // donc le modal ne s'ouvre PAS au rechargement (par construction MAT-14).
     if (autoOpen === undefined) autoOpen = true;
+    // MAT-13 / BLOCKER #1 : Bloquer l'ajout d'une nouvelle ULD si une ULD existante
+    // n'a PAS de materiel saisi. Premiere ULD du manifeste : pas de blocage.
+    // skipValidation=true bypass MAT-13 (usage interne / tests uniquement)
+    if (!skipValidation) {
+        var incomplete = findIncompleteUlds();
+        if (incomplete.length > 0) {
+            var firstIncomplete = incomplete[0];
+            alert('ULD N°' + firstIncomplete + ' : matériel non saisi. Cochez "Rien à facturer" ou remplissez au moins un champ avant d\'ajouter une nouvelle ULD.');
+            // Reouvrir le modal de l'ULD incomplete pour faciliter la correction
+            openMaterialModal(parseInt(firstIncomplete) || 1);
+            return;
+        }
+    }
     uldCount++;
     var i = uldCount;
     var div = document.createElement('div');
@@ -1178,6 +1234,14 @@ function buildPdf(data) {
 }
 
 async function generatePdf() {
+    // MAT-13 : Bloquer la generation PDF si une ULD n'a pas de materiel saisi.
+    // Place EN TETE (avant validateRequired et saveManifest) pour eviter pollution _alertLog en test.
+    var incompletePdf = findIncompleteUlds();
+    if (incompletePdf.length > 0) {
+        var listPdf = incompletePdf.map(function(n) { return 'ULD N°' + n; }).join(', ');
+        alert('Matériel non saisi pour : ' + listPdf + '. Veuillez remplir le matériel ou cocher "Rien à facturer" pour ces ULD.');
+        return;
+    }
     if (!validateRequired()) return;
     var data = collectData();
     if (data.ulds.length === 0) { alert('Veuillez ajouter au moins une ULD.'); return; }
@@ -1196,6 +1260,14 @@ async function generatePdf() {
 // EMAIL SENDING
 // ============================================
 async function sendEmail() {
+    // MAT-13 : Bloquer l'envoi email si une ULD n'a pas de materiel saisi
+    // (verifie EN TETE, AVANT validateRequired/saveManifest/JWT/fetch).
+    var incompleteEmail = findIncompleteUlds();
+    if (incompleteEmail.length > 0) {
+        var listEmail = incompleteEmail.map(function(n) { return 'ULD N°' + n; }).join(', ');
+        alert('Matériel non saisi pour : ' + listEmail + '. Veuillez remplir le matériel ou cocher "Rien à facturer" pour ces ULD.');
+        return;
+    }
     if (!validateRequired()) return;
     var data = collectData();
     if (data.ulds.length === 0) { alert('Rien a envoyer.'); return; }

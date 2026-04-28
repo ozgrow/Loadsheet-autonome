@@ -135,7 +135,7 @@ localStorage.removeItem('loadsheet_manifests');
     suite('addUld / addRow');
     (function() {
         resetDOM();
-        addUld();
+        addUld(false, true);
         var blocks = document.querySelectorAll('.uld-block');
         assertEqual('addUld cree 1 bloc ULD', blocks.length, 1);
         assert('Le bloc a un champ uld-number', !!blocks[0].querySelector('.uld-number'));
@@ -152,7 +152,7 @@ localStorage.removeItem('loadsheet_manifests');
         rows = blocks[0].querySelectorAll('.uld-rows tr');
         assertEqual('addRow ajoute une 2e ligne', rows.length, 2);
 
-        addUld();
+        addUld(false, true);
         blocks = document.querySelectorAll('.uld-block');
         assertEqual('2e addUld => 2 blocs', blocks.length, 2);
     })();
@@ -1178,6 +1178,161 @@ localStorage.removeItem('loadsheet_manifests');
         // Forfait EU et planchers Std saisis sont TOUS deux neutralises
         assertEqual('data-flooring-eu-forfait = "false" (neutralise)', block.dataset.flooringEuForfait, 'false');
         assertEqual('data-flooring-std = "0" (neutralise)', block.dataset.flooringStd, '0');
+    })();
+
+    // ============================================
+    // PLAN 01-03 EXTENDED : MAT-13 saisie materiel obligatoire (validation bloquante)
+    // ============================================
+
+    // --- Test 1 : uldHasMaterial - aucun champ ---
+    suite('Materiel ULD - uldHasMaterial vide => false (MAT-13)');
+    (function() {
+        resetDOM();
+        addUld(false, true);
+        var block = document.querySelector('.uld-block');
+        assertEqual('uldHasMaterial(block) = false (defauts addUld)', uldHasMaterial(block), false);
+    })();
+
+    // --- Test 2 : uldHasMaterial - noMaterialToBill suffit ---
+    suite('Materiel ULD - uldHasMaterial noMaterialToBill => true (MAT-13 + MAT-12)');
+    (function() {
+        resetDOM();
+        addUld(false, true);
+        var block = document.querySelector('.uld-block');
+        block.setAttribute('data-no-billing', 'true');
+        assertEqual('uldHasMaterial = true', uldHasMaterial(block), true);
+    })();
+
+    // --- Test 3 : uldHasMaterial - 1 champ numerique > 0 ---
+    suite('Materiel ULD - uldHasMaterial straps>0 => true (MAT-13)');
+    (function() {
+        resetDOM();
+        addUld(false, true);
+        var block = document.querySelector('.uld-block');
+        block.setAttribute('data-straps', '2');
+        assertEqual('uldHasMaterial = true', uldHasMaterial(block), true);
+    })();
+
+    // --- Test 4 : uldHasMaterial - forfait coche ---
+    suite('Materiel ULD - uldHasMaterial forfait => true (MAT-13)');
+    (function() {
+        resetDOM();
+        addUld(false, true);
+        var block = document.querySelector('.uld-block');
+        block.setAttribute('data-flooring-eu-forfait', 'true');
+        assertEqual('uldHasMaterial = true', uldHasMaterial(block), true);
+    })();
+
+    // --- Test 5 : uldHasMaterial - uldComment non-vide ---
+    suite('Materiel ULD - uldHasMaterial comment non-vide => true (MAT-13)');
+    (function() {
+        resetDOM();
+        addUld(false, true);
+        var block = document.querySelector('.uld-block');
+        block.setAttribute('data-uld-comment', 'hello');
+        assertEqual('uldHasMaterial = true', uldHasMaterial(block), true);
+    })();
+
+    // --- Test 6 : addUld bloque si ULD existante vide ---
+    suite('Materiel ULD - addUld bloque si ULD existante vide (MAT-13)');
+    (function() {
+        resetDOM();
+        addUld(false, true); // ULD #1 vide, skip validation pour le 1er addUld (legitime)
+        var countBefore = document.querySelectorAll('.uld-block').length;
+        _alertLog.length = 0;
+        addUld(); // doit etre bloque (autoOpen=undefined => true, skipValidation=undefined => false)
+        var countAfter = document.querySelectorAll('.uld-block').length;
+        assertEqual('Pas d\'ajout (count inchange)', countAfter, countBefore);
+        // BLOCKER #4 : filtrage par substring au lieu de pop()
+        var matAlert = _alertLog.find(function(m) { return m.indexOf('matériel non saisi') >= 0; });
+        assert('Alert "matériel non saisi" presente', !!matAlert);
+        assert('Alert mentionne ULD N°1', matAlert && matAlert.indexOf('ULD N°1') >= 0);
+        // Modal reouvert pour faciliter correction
+        var modal = document.querySelector('.material-modal');
+        assert('Modal de l\'ULD incomplete reouvert', !!modal);
+        closeMaterialModal();
+    })();
+
+    // --- Test 7 : addUld passe si ULD existante a noMaterialToBill ---
+    suite('Materiel ULD - addUld OK si ULD existante a noMaterialToBill (MAT-13)');
+    (function() {
+        resetDOM();
+        addUld(false, true); // ULD #1 (skip validation pour setup)
+        document.querySelector('.uld-block').setAttribute('data-no-billing', 'true');
+        var countBefore = document.querySelectorAll('.uld-block').length;
+        _alertLog.length = 0;
+        addUld(false); // ULD #2 doit etre cree (autoOpen=false, skipValidation=undefined => false, mais ULD #1 a no-billing donc passe)
+        var countAfter = document.querySelectorAll('.uld-block').length;
+        assertEqual('ULD ajoutee', countAfter, countBefore + 1);
+        var hasMatAlert = _alertLog.some(function(m) { return m.indexOf('matériel') >= 0; });
+        assertEqual('Pas d\'alert materiel', hasMatAlert, false);
+    })();
+
+    // --- Test 8 : generatePdf bloque (async, filtre _alertLog par substring) ---
+    suite('Materiel ULD - generatePdf bloque si ULD vide (MAT-13)');
+    await (async function() {
+        resetDOM();
+        // BLOCKER #1 : addUld(false, true) pour bypass MAT-13 et autoOpen
+        addUld(false, true); // ULD #1
+        document.querySelector('.uld-block').setAttribute('data-straps', '2');
+        addUld(false, true); // ULD #2 - laissee vide
+        document.getElementById('agentName').value = 'AGENT';
+        document.getElementById('destAirport').value = 'CDG';
+        _alertLog.length = 0;
+        var statusEl = document.getElementById('manifestStatus');
+        statusEl.textContent = 'Brouillon';
+        // BLOCKER #4 : await generatePdf (la fonction est async)
+        await generatePdf();
+        // BLOCKER #4 : filtrage par substring (evite capture de "Manifeste sauvegarde")
+        var matAlert = _alertLog.find(function(m) { return m.indexOf('Matériel non saisi') >= 0; });
+        assert('Alert "Matériel non saisi" presente', !!matAlert);
+        assert('Alert mentionne ULD N°2', matAlert && matAlert.indexOf('ULD N°2') >= 0);
+        assertEqual('Status reste Brouillon', statusEl.textContent, 'Brouillon');
+    })();
+
+    // --- Test 9 : sendEmail bloque (async, warning #7) ---
+    suite('Materiel ULD - sendEmail bloque si ULD vide (MAT-13)');
+    await (async function() {
+        resetDOM();
+        addUld(false, true);
+        document.querySelector('.uld-block').setAttribute('data-straps', '2');
+        addUld(false, true);
+        document.getElementById('agentName').value = 'AGENT';
+        document.getElementById('destAirport').value = 'CDG';
+        document.getElementById('recipients').value = 'test@example.com';
+        // Spy fetch pour verifier qu'il N'est PAS appele
+        var fetchCalled = false;
+        var origFetch = window.fetch;
+        window.fetch = function() { fetchCalled = true; return Promise.resolve({ ok: false, json: function() { return Promise.resolve({}); } }); };
+        _alertLog.length = 0;
+        // WARNING #7 : await sendEmail (idem fix #4)
+        await sendEmail();
+        window.fetch = origFetch;
+        var matAlert = _alertLog.find(function(m) { return m.indexOf('Matériel non saisi') >= 0; });
+        assert('Alert "Matériel non saisi" presente', !!matAlert);
+        assert('Alert mentionne ULD N°2', matAlert && matAlert.indexOf('ULD N°2') >= 0);
+        assertEqual('fetch NON appele', fetchCalled, false);
+    })();
+
+    // --- Test 10 : generatePdf liste plusieurs ULD incompletes (warning #9 : setup avec skipValidation) ---
+    suite('Materiel ULD - generatePdf liste toutes ULD incompletes (MAT-13)');
+    await (async function() {
+        resetDOM();
+        // WARNING #9 : utiliser addUld(false, true) pour creer 3 ULDs sans manipulations no-billing alambiquees
+        addUld(false, true); // ULD #1 - vide
+        addUld(false, true); // ULD #2 - on lui met du materiel
+        document.querySelector('#uld-2').setAttribute('data-straps', '1');
+        addUld(false, true); // ULD #3 - vide
+        document.getElementById('agentName').value = 'AGENT';
+        document.getElementById('destAirport').value = 'CDG';
+        _alertLog.length = 0;
+        await generatePdf();
+        var matAlert = _alertLog.find(function(m) { return m.indexOf('Matériel non saisi') >= 0; });
+        assert('Alert "Matériel non saisi" presente', !!matAlert);
+        assert('Alert mentionne ULD N°1', matAlert && matAlert.indexOf('ULD N°1') >= 0);
+        assert('Alert mentionne ULD N°3', matAlert && matAlert.indexOf('ULD N°3') >= 0);
+        // Note : ULD N°2 NE doit PAS etre listee (elle a du materiel)
+        assert('Alert ne mentionne pas "N°2"', matAlert && matAlert.indexOf('N°2') < 0);
     })();
 
     // ============================================
@@ -2356,6 +2511,10 @@ localStorage.removeItem('loadsheet_manifests');
         blocks[1].querySelector('.uld-number').value = 'V1';
         blocks[1].querySelector('.lta-input').value = 'LTA2';
         blocks[1].querySelector('.colis-input').value = '12';
+        // MAT-13 : satisfaire la validation materiel obligatoire (le test verifie l'integration
+        // sendEmail HTML, pas la validation MAT-13 elle-meme)
+        blocks[0].setAttribute('data-no-billing', 'true');
+        blocks[1].setAttribute('data-no-billing', 'true');
         // Changer le type du 2e bloc en VRAC via le select (source de verite live)
         var typeSelect = blocks[1].querySelector('.uld-type');
         typeSelect.value = 'VRAC';
