@@ -18,6 +18,9 @@
 - [x] **MAT-09**: Les champs matériel sont disponibles sur tous les types d'ULD (palettes + conteneurs)
 - [x] **MAT-10**: Les manifestes sauvegardés avant cette évolution se chargent sans erreur (rétro-compat localStorage chiffré)
 - [x] **MAT-11**: Le commentaire libre est échappé via `esc()` partout où il est affiché (anti-XSS)
+- [ ] **MAT-12**: Une case à cocher "Rien à facturer" est disponible dans le modal matériel (alternative explicite à la saisie de champs)
+- [ ] **MAT-13**: La saisie matériel est obligatoire pour chaque ULD avant ajout d'une nouvelle ULD ET avant génération PDF/email — au moins un champ matériel rempli OU la case "Rien à facturer" cochée
+- [ ] **MAT-14**: Le modal matériel s'ouvre automatiquement à chaque création d'une nouvelle ULD (sauf au rechargement d'un manifeste sauvegardé)
 
 ### VRAC
 
@@ -67,6 +70,9 @@
 | MAT-09 | Phase 1 | Complete |
 | MAT-10 | Phase 1 | Complete |
 | MAT-11 | Phase 1 | Complete |
+| MAT-12 | Phase 1 | Pending (gap closure 01-03) |
+| MAT-13 | Phase 1 | Pending (gap closure 01-03) |
+| MAT-14 | Phase 1 | Pending (gap closure 01-03) |
 | VRAC-01 | Phase 2 | Complete |
 | VRAC-02 | Phase 2 | Complete |
 | VRAC-03 | Phase 2 | Complete |
@@ -78,15 +84,15 @@
 | TEST-03 | Phase 3 | Complete |
 
 **Coverage:**
-- v1 requirements: 20 total
-- Mapped to phases: 20 ✓
+- v1 requirements: 23 total (20 initial + 3 ajoutés en gap closure Phase 1 — MAT-12/13/14)
+- Mapped to phases: 23 ✓
 - Unmapped: 0
 
 **Distribution:**
-- Phase 1 (Matériel ULD & rétro-compat): 15 requirements (MAT-01..11, RECAP-01..03, TEST-02)
+- Phase 1 (Matériel ULD & rétro-compat): 18 requirements (MAT-01..14, RECAP-01..03, TEST-02)
 - Phase 2 (Type ULD VRAC): 3 requirements (VRAC-01..03)
 - Phase 3 (Validation locale & release gate): 2 requirements (TEST-01, TEST-03)
 
 ---
 *Requirements defined: 2026-04-22*
-*Last updated: 2026-04-22 after roadmap creation — traceability filled*
+*Last updated: 2026-04-28 — added MAT-12/13/14 (gap closure Phase 1, validation matériel obligatoire avant prod)*
