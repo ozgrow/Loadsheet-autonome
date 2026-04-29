@@ -157,3 +157,194 @@ function listsSorted(all) {
     );
   });
 }
+
+// ============================================
+// UI HANDLERS — Phase 4 plan 04-02 (LST-05, LST-06, LST-11, LST-13)
+// ============================================
+// esc() est defini dans static/js/app.js (charge apres lists.js).
+// Defensive fallback inline si lists.js execute avant app.js (ex: tests harness order).
+function _listsEsc(str) {
+  if (typeof esc === 'function') return esc(str);
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function closeListsModal() {
+  var ov = document.querySelector('.lists-modal-overlay');
+  if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+}
+
+async function openListsModal() {
+  closeListsModal();
+  var overlay = document.createElement('div');
+  overlay.className = 'lists-modal-overlay';
+  overlay.innerHTML =
+    '<div class="lists-modal">' +
+      '<div class="lists-modal-header">' +
+        '<h3>Listes de distribution</h3>' +
+        '<button type="button" class="btn btn-secondary btn-sm" onclick="closeListsModal()">✕</button>' +
+      '</div>' +
+      '<div id="lists-modal-body"></div>' +
+      '<div class="lists-modal-actions">' +
+        '<button type="button" class="btn btn-primary" onclick="listsOpenCreate()">+ Nouvelle liste</button>' +
+      '</div>' +
+      '<div id="lists-modal-form-zone"></div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  try {
+    var all = await listsGetAll();
+    renderListsTable(all);
+  } catch (e) {
+    var body = document.getElementById('lists-modal-body');
+    if (body) body.innerHTML = '<div class="lists-modal-empty">Erreur chargement: ' + _listsEsc(e.message) + '</div>';
+  }
+}
+
+function renderListsTable(lists) {
+  var sorted = listsSorted(lists);
+  _listIds = sorted.map(function(l) { return l.id; });
+  var body = document.getElementById('lists-modal-body');
+  if (!body) return;
+  if (sorted.length === 0) {
+    body.innerHTML = '<div class="lists-modal-empty">Aucune liste de distribution.</div>';
+    return;
+  }
+  var rowsHtml = sorted.map(function(l, idx) {
+    var preview = l.recipients.length > 30 ? l.recipients.slice(0, 30) + '…' : l.recipients;
+    return '<tr>' +
+      '<td>' + _listsEsc(l.name) + '</td>' +
+      '<td>' + _listsEsc(preview) + '</td>' +
+      '<td style="text-align:right;white-space:nowrap;">' +
+        '<button type="button" onclick="listsOpenEdit(_listIds[' + idx + '])">✎</button>' +
+        '<button type="button" onclick="listsConfirmDelete(_listIds[' + idx + '])">🗑</button>' +
+      '</td></tr>';
+  }).join('');
+  body.innerHTML =
+    '<table class="lists-modal-table">' +
+      '<thead><tr><th>Nom</th><th>Aperçu destinataires</th><th></th></tr></thead>' +
+      '<tbody>' + rowsHtml + '</tbody>' +
+    '</table>';
+}
+
+function _renderListsForm(liste) {
+  var zone = document.getElementById('lists-modal-form-zone');
+  if (!zone) return;
+  var titre = liste ? 'Modifier la liste' : 'Nouvelle liste';
+  zone.innerHTML =
+    '<div class="lists-modal-form">' +
+      '<input type="hidden" id="lists-form-id">' +
+      '<h4 style="margin:0;color:#1a3a5c;">' + _listsEsc(titre) + '</h4>' +
+      '<label>Nom :<input type="text" id="lists-form-name" maxlength="60"></label>' +
+      '<label>Destinataires (emails séparés par virgules) :' +
+        '<textarea id="lists-form-recipients" rows="4"></textarea>' +
+      '</label>' +
+      '<div class="lists-modal-actions">' +
+        '<button type="button" class="btn btn-secondary" onclick="_listsCloseForm()">Annuler</button>' +
+        '<button type="button" class="btn btn-success" onclick="listsSubmitForm()">Enregistrer</button>' +
+      '</div>' +
+    '</div>';
+  // Anti-XSS pattern : .value = data, JAMAIS innerHTML pour les valeurs utilisateur
+  document.getElementById('lists-form-id').value = liste ? liste.id : '';
+  document.getElementById('lists-form-name').value = liste ? liste.name : '';
+  document.getElementById('lists-form-recipients').value = liste ? liste.recipients : '';
+}
+
+function _listsCloseForm() {
+  var zone = document.getElementById('lists-modal-form-zone');
+  if (zone) zone.innerHTML = '';
+}
+
+function listsOpenCreate() {
+  _renderListsForm(null);
+}
+
+async function listsOpenEdit(id) {
+  try {
+    var all = await listsGetAll();
+    var liste = all.find(function(l) { return l && l.id === id; });
+    if (!liste) { alert('Liste introuvable.'); return; }
+    _renderListsForm(liste);
+  } catch (e) { alert('Erreur: ' + e.message); }
+}
+
+async function listsSubmitForm() {
+  var idEl = document.getElementById('lists-form-id');
+  var nameEl = document.getElementById('lists-form-name');
+  var rcptsEl = document.getElementById('lists-form-recipients');
+  if (!nameEl || !rcptsEl) return;
+  var id = idEl ? idEl.value : '';
+  var name = nameEl.value;
+  var recipients = rcptsEl.value;
+  try {
+    if (id) await listsUpdate(id, name, recipients);
+    else await listsCreate(name, recipients);
+    _listsCloseForm();
+    await refreshListsDropdown();
+    var all = await listsGetAll();
+    renderListsTable(all);
+  } catch (e) {
+    alert(e.message);
+    if (rcptsEl && rcptsEl.focus) rcptsEl.focus();
+  }
+}
+
+async function listsConfirmDelete(id) {
+  try {
+    var all = await listsGetAll();
+    var liste = all.find(function(l) { return l && l.id === id; });
+    if (!liste) { alert('Liste introuvable.'); return; }
+    if (!confirm('Supprimer la liste "' + liste.name + '" ?')) return;
+    await listsDelete(id);
+    await refreshListsDropdown();
+    var fresh = await listsGetAll();
+    renderListsTable(fresh);
+  } catch (e) { alert('Erreur: ' + e.message); }
+}
+
+async function applyListToRecipients(id) {
+  if (!id) return; // option default
+  try {
+    var all = await listsGetAll();
+    var liste = all.find(function(l) { return l && l.id === id; });
+    if (!liste) return;
+    var input = document.getElementById('recipients');
+    if (input) input.value = liste.recipients;
+    // Reset dropdown to default option
+    var dd = document.getElementById('lists-dropdown');
+    if (dd) dd.value = '';
+  } catch (e) { alert('Erreur: ' + e.message); }
+}
+
+async function refreshListsDropdown() {
+  var dd = document.getElementById('lists-dropdown');
+  if (!dd) return; // pas de dropdown sur cette page (ex: tests unit)
+  try {
+    var all = await listsGetAll();
+    var sorted = listsSorted(all);
+    while (dd.firstChild) dd.removeChild(dd.firstChild);
+    var opt0 = document.createElement('option');
+    opt0.value = '';
+    opt0.textContent = '— Choisir une liste —';
+    dd.appendChild(opt0);
+    // Une option par liste — textContent gere l'esc nativement (anti-XSS)
+    sorted.forEach(function(l) {
+      var opt = document.createElement('option');
+      opt.value = l.id;
+      opt.textContent = l.name;
+      dd.appendChild(opt);
+    });
+  } catch (e) {
+    // En mode dev avec localStorage vide, pas d'erreur attendue.
+    // En mode remote, log silencieux pour ne pas bloquer la page (W-3 race condition getJwt acceptable).
+    if (typeof console !== 'undefined') console.warn('refreshListsDropdown:', e.message);
+  }
+}
+
+// Init au chargement (LST-05) — auto-refresh dropdown si present
+if (typeof document !== 'undefined' && document.addEventListener) {
+  document.addEventListener('DOMContentLoaded', function() {
+    // Delai minimal pour permettre a app.js de s'initialiser et getJwt d'etre dispo
+    setTimeout(function() { refreshListsDropdown(); }, 0);
+  });
+}
