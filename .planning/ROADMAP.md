@@ -74,12 +74,22 @@ Phases execute in numeric order: 1 → 2 → 3
 | 2. Type ULD VRAC | 0/TBD | Not started | - |
 | 3. Validation locale & release gate | 0/1 | Not started | - |
 
-### Phase 4: Listes de distribution emails (Cosmos/Blob backend) — dev local d'abord
+### Phase 4: Listes de distribution emails (JSON Blob backend) — dev local d'abord
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** L'agent ATH peut gérer (CRUD) des listes de distribution nommées d'adresses email partagées entre tous les agents, et appliquer une liste en un clic pour pré-remplir le champ #recipients lors de l'envoi de la loadsheet. Stockage centralisé Azure Blob Storage en production, stub localStorage pendant le développement.
+
+**Requirements**: LST-01, LST-02, LST-03, LST-04, LST-05, LST-06, LST-07, LST-08, LST-09, LST-10, LST-11, LST-12, LST-13, LST-14, LST-15
 **Depends on:** Phase 3
 **Plans:** 0 plans
+**Success Criteria** (what must be TRUE):
+  1. L'agent ouvre le modal "Listes de distribution" depuis la section "Envoi de la Loadsheet" et peut créer / modifier / supprimer des listes nommées
+  2. Un dropdown à côté du champ #recipients permet de sélectionner une liste qui remplace intégralement la valeur du champ
+  3. Pendant le développement, les listes sont persistées en localStorage (clé `recipients-lists-dev`) ; en production via Azure Function `/api/recipients` (GET + PUT) qui lit/écrit `recipients-lists.json` dans Azure Blob Storage
+  4. Les emails saisis sont validés (regex) au moment de la sauvegarde, côté client ET serveur ; les listes affichées sont triées alphabétiquement
+  5. Les noms et adresses sont anti-XSS (`esc()`) partout en innerHTML ; le modal reste utilisable mobile ≤ 768px
+  6. Le premier accès au Blob inexistant retourne `[]` sans erreur ; tests anti-régression couvrent CRUD, validation, XSS, tri, sélection, mobile, E2E lifecycle
+
+**UI hint**: yes (modal CRUD + dropdown selection)
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 4 to break down)

@@ -40,6 +40,24 @@
 - [x] **TEST-02**: Des tests de rétro-compatibilité vérifient que les anciens manifestes (sans champs matériel) se chargent correctement
 - [x] **TEST-03**: L'application entière est testée en local via `npx serve .` avant tout push sur `master`
 
+### Listes de distribution emails (Phase 4)
+
+- [ ] **LST-01**: L'utilisateur peut créer une liste de distribution avec un nom et une string d'emails séparés par virgules
+- [ ] **LST-02**: L'utilisateur peut lire/lister toutes les listes existantes (triées alphabétiquement)
+- [ ] **LST-03**: L'utilisateur peut modifier une liste existante (nom et/ou recipients)
+- [ ] **LST-04**: L'utilisateur peut supprimer une liste avec confirmation native `confirm()`
+- [ ] **LST-05**: Un bouton "≡ Listes" ouvre le modal CRUD depuis la section #generateSection
+- [ ] **LST-06**: Un dropdown `<select>` à côté de #recipients permet d'appliquer une liste (remplace intégralement la valeur)
+- [ ] **LST-07**: Pendant le développement, le stub localStorage (clé `recipients-lists-dev`) sert de backend ; switch vers vrai endpoint via constante `LISTS_API_MODE`
+- [ ] **LST-08**: En production, l'endpoint `/api/recipients` (GET + PUT) persiste les listes dans Azure Blob Storage (`recipients-lists.json`)
+- [ ] **LST-09**: L'API `/api/recipients` exige un JWT envoyé via header `x-auth-token` (cohérent `/api/send-email`)
+- [ ] **LST-10**: Les emails sont validés au save (regex), côté client ET serveur. Si invalide → alert listant adresses invalides
+- [ ] **LST-11**: Les champs `name` et `recipients` sont anti-XSS : passés par `esc()` partout en innerHTML
+- [ ] **LST-12**: Le premier GET sur un Blob inexistant retourne `[]` sans erreur (404 BlobNotFound traité comme état initial vide)
+- [ ] **LST-13**: Le modal CRUD reste utilisable et lisible sur mobile (≤ 768px)
+- [ ] **LST-14**: Tests anti-régression dans `tests/tests.html` : CRUD round-trip localStorage stub, validation, XSS, tri, sélection, mobile
+- [ ] **LST-15**: Test E2E lifecycle : créer une liste, l'utiliser pour pré-remplir #recipients avant envoi email simulé
+
 ## v2 Requirements
 
 *(Aucun pour ce cycle — scope volontairement resserré sur les 2 features.)*
@@ -82,17 +100,33 @@
 | TEST-01 | Phase 3 | Complete |
 | TEST-02 | Phase 1 | Complete |
 | TEST-03 | Phase 3 | Complete |
+| LST-01 | Phase 4 | Pending |
+| LST-02 | Phase 4 | Pending |
+| LST-03 | Phase 4 | Pending |
+| LST-04 | Phase 4 | Pending |
+| LST-05 | Phase 4 | Pending |
+| LST-06 | Phase 4 | Pending |
+| LST-07 | Phase 4 | Pending |
+| LST-08 | Phase 4 | Pending |
+| LST-09 | Phase 4 | Pending |
+| LST-10 | Phase 4 | Pending |
+| LST-11 | Phase 4 | Pending |
+| LST-12 | Phase 4 | Pending |
+| LST-13 | Phase 4 | Pending |
+| LST-14 | Phase 4 | Pending |
+| LST-15 | Phase 4 | Pending |
 
 **Coverage:**
-- v1 requirements: 23 total (20 initial + 3 ajoutés en gap closure Phase 1 — MAT-12/13/14)
-- Mapped to phases: 23 ✓
+- v1 requirements: 38 total (20 initial + 3 gap closure Phase 1 + 15 Phase 4 listes de distribution)
+- Mapped to phases: 38 ✓
 - Unmapped: 0
 
 **Distribution:**
 - Phase 1 (Matériel ULD & rétro-compat): 18 requirements (MAT-01..14, RECAP-01..03, TEST-02)
 - Phase 2 (Type ULD VRAC): 3 requirements (VRAC-01..03)
 - Phase 3 (Validation locale & release gate): 2 requirements (TEST-01, TEST-03)
+- Phase 4 (Listes de distribution emails): 15 requirements (LST-01..15)
 
 ---
 *Requirements defined: 2026-04-22*
-*Last updated: 2026-04-28 — added MAT-12/13/14 (gap closure Phase 1, validation matériel obligatoire avant prod)*
+*Last updated: 2026-04-29 — added LST-01..15 (Phase 4 listes de distribution, JSON Blob backend)*
