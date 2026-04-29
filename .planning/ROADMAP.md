@@ -93,4 +93,4 @@ Phases execute in numeric order: 1 → 2 → 3
 
 Plans:
 - [x] 04-01-PLAN.md — Backend Function /api/recipients + frontend module lists.js mode-switchable + tests CRUD localStorage stub (LST-01..04, 07..12, 14)
-- [ ] 04-02-PLAN.md — UI integration: bouton + dropdown + modal CRUD + tests UI + E2E lifecycle (LST-02, 05, 06, 11, 13, 14, 15)
+- [x] 04-02-PLAN.md — UI integration: bouton + dropdown + modal CRUD + tests UI + E2E lifecycle (LST-02, 05, 06, 11, 13, 14, 15)

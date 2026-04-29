@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-04-29T07:05:32.084Z"
+status: verifying
+stopped_at: Completed 04-02-PLAN.md (Phase 04 complete - 15/15 LST requirements done)
+last_updated: "2026-04-29T07:15:33.975Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-22)
 
 Phase: 04 (listes-de-distribution-emails-cosmos-blob-backend-dev-local-d-abord) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-29
 
 Progress: [░░░░░░░░░░] 0%
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P01 | 508 | 4 tasks | 5 files |
 | Phase 01 P03 | 4500 | 5 tasks | 3 files |
 | Phase 04 P01 | 289 | 2 tasks | 7 files |
+| Phase 04 P02 | 330 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,10 @@ Recent decisions affecting current work:
 - [Phase 04]: Phase 04 P01: 404 BlobNotFound traite explicitement (D-19/LST-12) — premiere lecture jamais en erreur, retourne []
 - [Phase 04]: Phase 04 P01: Buffer.byteLength UTF-8 au upload (Pitfall 5) — evite troncature noms accentues Élite/Étoile
 - [Phase 04]: Phase 04 P01: _listIds module-scoped expose (anti-XSS) — contract pour plan 04-02 onclick=_listIds[idx]
+- [Phase 04]: Phase 04 P02: pattern modal CRUD vanilla — copie .material-modal-* avec prefixe distinct .lists-modal-* (isolation comportementale)
+- [Phase 04]: Phase 04 P02: anti-XSS strict — _listIds[idx] dans onclick, esc()/_listsEsc() partout en innerHTML, textarea via .value, dropdown via textContent
+- [Phase 04]: Phase 04 P02: test E2E LST-15 chaine data isolee (PAS sendEmail() complet) — stub fetch direct vers /api/send-email pour eviter couplage invariants Phase 1/2
+- [Phase 04]: Phase 04 P02: _listsEsc() fallback inline si esc() pas charge — module lists.js robuste au load order DOMContentLoaded
 
 ### Roadmap Evolution
 
@@ -123,6 +128,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-29T07:05:19.228Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-04-29T07:15:33.970Z
+Stopped at: Completed 04-02-PLAN.md (Phase 04 complete - 15/15 LST requirements done)
 Resume file: None

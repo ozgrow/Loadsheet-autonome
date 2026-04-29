@@ -46,17 +46,17 @@
 - [x] **LST-02**: L'utilisateur peut lire/lister toutes les listes existantes (triées alphabétiquement)
 - [x] **LST-03**: L'utilisateur peut modifier une liste existante (nom et/ou recipients)
 - [x] **LST-04**: L'utilisateur peut supprimer une liste avec confirmation native `confirm()`
-- [ ] **LST-05**: Un bouton "≡ Listes" ouvre le modal CRUD depuis la section #generateSection
-- [ ] **LST-06**: Un dropdown `<select>` à côté de #recipients permet d'appliquer une liste (remplace intégralement la valeur)
+- [x] **LST-05**: Un bouton "≡ Listes" ouvre le modal CRUD depuis la section #generateSection
+- [x] **LST-06**: Un dropdown `<select>` à côté de #recipients permet d'appliquer une liste (remplace intégralement la valeur)
 - [x] **LST-07**: Pendant le développement, le stub localStorage (clé `recipients-lists-dev`) sert de backend ; switch vers vrai endpoint via constante `LISTS_API_MODE`
 - [x] **LST-08**: En production, l'endpoint `/api/recipients` (GET + PUT) persiste les listes dans Azure Blob Storage (`recipients-lists.json`)
 - [x] **LST-09**: L'API `/api/recipients` exige un JWT envoyé via header `x-auth-token` (cohérent `/api/send-email`)
 - [x] **LST-10**: Les emails sont validés au save (regex), côté client ET serveur. Si invalide → alert listant adresses invalides
-- [ ] **LST-11**: Les champs `name` et `recipients` sont anti-XSS : passés par `esc()` partout en innerHTML
+- [x] **LST-11**: Les champs `name` et `recipients` sont anti-XSS : passés par `esc()` partout en innerHTML
 - [x] **LST-12**: Le premier GET sur un Blob inexistant retourne `[]` sans erreur (404 BlobNotFound traité comme état initial vide)
-- [ ] **LST-13**: Le modal CRUD reste utilisable et lisible sur mobile (≤ 768px)
+- [x] **LST-13**: Le modal CRUD reste utilisable et lisible sur mobile (≤ 768px)
 - [x] **LST-14**: Tests anti-régression dans `tests/tests.html` : CRUD round-trip localStorage stub, validation, XSS, tri, sélection, mobile
-- [ ] **LST-15**: Test E2E lifecycle : créer une liste, l'utiliser pour pré-remplir #recipients avant envoi email simulé
+- [x] **LST-15**: Test E2E lifecycle : créer une liste, l'utiliser pour pré-remplir #recipients avant envoi email simulé
 
 ## v2 Requirements
 
@@ -104,17 +104,17 @@
 | LST-02 | Phase 4 | Complete |
 | LST-03 | Phase 4 | Complete |
 | LST-04 | Phase 4 | Complete |
-| LST-05 | Phase 4 | Pending |
-| LST-06 | Phase 4 | Pending |
+| LST-05 | Phase 4 | Complete |
+| LST-06 | Phase 4 | Complete |
 | LST-07 | Phase 4 | Complete |
 | LST-08 | Phase 4 | Complete |
 | LST-09 | Phase 4 | Complete |
 | LST-10 | Phase 4 | Complete |
-| LST-11 | Phase 4 | Pending |
+| LST-11 | Phase 4 | Complete |
 | LST-12 | Phase 4 | Complete |
-| LST-13 | Phase 4 | Pending |
+| LST-13 | Phase 4 | Complete |
 | LST-14 | Phase 4 | Complete |
-| LST-15 | Phase 4 | Pending |
+| LST-15 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 38 total (20 initial + 3 gap closure Phase 1 + 15 Phase 4 listes de distribution)
