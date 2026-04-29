@@ -111,7 +111,13 @@
     <div class="generate-section" id="generateSection">
         <h2>Envoi de la Loadsheet</h2>
         <label for="recipients">Destinataires (A) :</label>
-        <input type="text" id="recipients" placeholder="email1@example.com, email2@example.com">
+        <div class="recipients-row">
+            <input type="text" id="recipients" placeholder="email1@example.com, email2@example.com">
+            <select id="lists-dropdown" onchange="applyListToRecipients(this.value)">
+                <option value="">— Choisir une liste —</option>
+            </select>
+            <button type="button" id="lists-btn" class="btn btn-secondary btn-sm" onclick="openListsModal()">≡ Listes</button>
+        </div>
         <label for="cc">CC :</label>
         <input type="text" id="cc" placeholder="CC supplementaires (CC par defaut cote serveur)">
         <div class="actions">
@@ -124,6 +130,7 @@
 
 <div style="text-align:center;padding:10px 0 4px;"><a href="/tests/tests.html" style="font-size:0.7em;color:#a0aec0;text-decoration:none;">Tests</a></div>
 <script src="/static/js/logo.js"></script>
+<script src="/static/js/lists.js"></script>
 <script src="/static/js/app.js"></script>
 <script src="/static/js/auth.js"></script>
 </body>

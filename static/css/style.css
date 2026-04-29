@@ -203,6 +203,61 @@ td input[type="number"] { width: 80px; }
     display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px;
 }
 
+/* ==========================================
+   LISTES DE DISTRIBUTION — Phase 4 (LST-05, LST-06, LST-13)
+   Pattern: copie .material-modal-* avec prefixe .lists-modal-*
+   ========================================== */
+.recipients-row {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    margin-bottom: 6px;
+}
+.recipients-row #recipients { flex: 1 1 280px; min-width: 200px; }
+.recipients-row #lists-dropdown {
+    padding: 6px 8px; border: 1px solid #cbd5e0; border-radius: 4px;
+    font-size: 0.95em; background: #fff; min-width: 180px;
+}
+.recipients-row #lists-btn { white-space: nowrap; }
+
+.lists-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 2000;
+}
+.lists-modal {
+    background: #fff; border-radius: 8px; padding: 20px 24px;
+    width: 600px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+.lists-modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;
+}
+.lists-modal-header h3 { margin: 0; color: #1a3a5c; }
+.lists-modal-table {
+    width: 100%; border-collapse: collapse; font-size: 0.92em; margin-bottom: 12px;
+}
+.lists-modal-table th {
+    text-align: left; padding: 8px 6px; background: #f7fafc;
+    color: #1a3a5c; border-bottom: 2px solid #cbd5e0;
+}
+.lists-modal-table td { padding: 6px; border-bottom: 1px solid #edf2f7; vertical-align: middle; }
+.lists-modal-table button { padding: 4px 8px; font-size: 0.85em; margin-left: 4px; }
+.lists-modal-empty { padding: 20px; text-align: center; color: #a0aec0; font-style: italic; }
+.lists-modal-form {
+    display: flex; flex-direction: column; gap: 10px;
+    background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 6px;
+    padding: 14px; margin-top: 10px;
+}
+.lists-modal-form label { font-weight: 600; font-size: 0.9em; color: #4a5568; }
+.lists-modal-form input[type="text"], .lists-modal-form textarea {
+    padding: 6px 8px; border: 1px solid #cbd5e0; border-radius: 4px;
+    font-size: 1em; width: 100%; font-family: inherit;
+}
+.lists-modal-form textarea { resize: vertical; min-height: 80px; }
+.lists-modal-actions {
+    display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;
+}
+
 /* Material badge (RECAP-01) — ancienne classe conservee pour retro-compat visuelle, plus emise par refreshMaterialBadge */
 .material-badge-wrapper { margin-top: 4px; margin-bottom: 4px; }
 .material-badge {
@@ -310,4 +365,17 @@ td input[type="number"] { width: 80px; }
     .mat-no-billing-label {
         font-size: 0.85em;
     }
+
+    /* Listes de distribution mobile (LST-13, D-28) — full-screen modal + recipients-row stacked */
+    .lists-modal-overlay { align-items: stretch; }
+    .lists-modal {
+        width: 100%; max-width: 100%; max-height: 100vh;
+        border-radius: 0; padding: 16px;
+    }
+    .lists-modal-table { font-size: 0.88em; }
+    .lists-modal-table td:nth-child(2) { word-break: break-word; }
+    .recipients-row { flex-direction: column; align-items: stretch; }
+    .recipients-row #recipients,
+    .recipients-row #lists-dropdown,
+    .recipients-row #lists-btn { width: 100%; min-width: 0; }
 }
