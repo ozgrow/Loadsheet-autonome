@@ -8,12 +8,16 @@ const { JSDOM, ResourceLoader } = require('jsdom');
 
 const root = path.resolve(__dirname, '..');
 const appJs = fs.readFileSync(path.join(root, 'static/js/app.js'), 'utf8');
+const listsJs = fs.readFileSync(path.join(root, 'static/js/lists.js'), 'utf8');
 const testsHtml = fs.readFileSync(path.join(root, 'tests/tests.html'), 'utf8');
 
-// Strip the auth gate + CDN scripts; inject jsPDF/autotable via require + window assignment
+// Strip the auth gate + CDN scripts; inject jsPDF/autotable via require + window assignment.
+// lists.js (Phase 4) is replaced inline before app.js so its functions are available in JSDOM
+// sandbox without needing JSDOM's resource loader (which doesn't resolve relative file paths).
 let html = testsHtml
   .replace(/<script>\s*\/\/ Auth gate[\s\S]*?\}\)\(\);\s*<\/script>/, '')
   .replace(/<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/jspdf[^"]+"><\/script>/g, '')
+  .replace('<script src="../static/js/lists.js"></script>', `<script>${listsJs}<\/` + `script>`)
   .replace('<script src="../static/js/app.js"></script>', `<script>${appJs}<\/` + `script>`);
 
 (async () => {

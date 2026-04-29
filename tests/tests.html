@@ -65,6 +65,7 @@ localStorage.removeItem('loadsheet_manifests');
 <!-- jsPDF + autotable : necessaire pour les tests buildPdf (Materiel PDF) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="../static/js/lists.js"></script>
 <script src="../static/js/app.js"></script>
 <script>
 (async function() {
@@ -3287,6 +3288,190 @@ localStorage.removeItem('loadsheet_manifests');
         document.getElementById('pmcContainer').innerHTML = '';
         uldCount = 0;
         localStorage.removeItem(STORAGE_KEY);
+    })();
+
+    // ========================================
+    // PHASE 4 — LISTES DE DISTRIBUTION (LST-01..15)
+    // ========================================
+    suite('Listes de distribution - localStorage stub');
+    await (async function() {
+        // Verifie que le module lists.js est charge et expose son API publique
+        var hasLists = typeof listsCreate === 'function'
+            && typeof listsUpdate === 'function'
+            && typeof listsDelete === 'function'
+            && typeof listsGetAll === 'function'
+            && typeof listsSorted === 'function'
+            && typeof listValidateEmails === 'function'
+            && typeof listInvalidEmails === 'function'
+            && typeof listUuid === 'function';
+        assert('Module lists.js charge (8 fonctions exportees)', hasLists);
+
+        // Reset helper
+        function resetLists() { localStorage.removeItem('recipients-lists-dev'); }
+
+        // T1 - listsCreate roundtrip (LST-01)
+        await (async function() {
+            resetLists();
+            await listsCreate('Cargolux Paris', 'ops@cargolux.fr, manager@cargolux.fr');
+            var all = await listsGetAll();
+            assertEqual('T1: 1 entree apres listsCreate', all.length, 1);
+            assertEqual('T1: name correct', all[0].name, 'Cargolux Paris');
+            assertEqual('T1: recipients correct', all[0].recipients, 'ops@cargolux.fr, manager@cargolux.fr');
+            assert('T1: id est string non vide', typeof all[0].id === 'string' && all[0].id.length > 0);
+        })();
+
+        // T2 - listsUpdate roundtrip (LST-03)
+        await (async function() {
+            resetLists();
+            await listsCreate('AvantUpdate', 'a@b.com');
+            var pre = await listsGetAll();
+            var id = pre[0].id;
+            await listsUpdate(id, 'Cargolux PAR', 'ops@cargolux.fr');
+            var post = await listsGetAll();
+            assertEqual('T2: name modifie', post[0].name, 'Cargolux PAR');
+            assertEqual('T2: recipients modifie', post[0].recipients, 'ops@cargolux.fr');
+            assertEqual('T2: id preserve', post[0].id, id);
+        })();
+
+        // T3 - listsDelete roundtrip (LST-04)
+        await (async function() {
+            resetLists();
+            await listsCreate('Liste1', 'a@b.com');
+            await listsCreate('Liste2', 'c@d.com');
+            var pre = await listsGetAll();
+            assertEqual('T3: 2 entrees avant delete', pre.length, 2);
+            var idToDel = pre[0].id;
+            await listsDelete(idToDel);
+            var post = await listsGetAll();
+            assertEqual('T3: 1 entree apres delete', post.length, 1);
+            assert('T3: liste supprimee absente', post.every(function(l) { return l.id !== idToDel; }));
+        })();
+
+        // T4 - listValidateEmails OK (LST-10)
+        (function() {
+            var valid = listValidateEmails('a@b.com, c@d.com');
+            assertEqual('T4: 2 emails valides', valid.length, 2);
+            assertEqual('T4: 1er email', valid[0], 'a@b.com');
+            assertEqual('T4: 2eme email', valid[1], 'c@d.com');
+        })();
+
+        // T5 - listInvalidEmails detecte invalides (LST-10)
+        (function() {
+            var inv = listInvalidEmails('a@b.com, INVALID, c@d.com');
+            assertEqual('T5: 1 email invalide', inv.length, 1);
+            assertEqual('T5: valeur invalide', inv[0], 'INVALID');
+        })();
+
+        // T6 - listsCreate throw sur email invalide (LST-10)
+        await (async function() {
+            resetLists();
+            var threw = false;
+            var msg = '';
+            try {
+                await listsCreate('Test', 'a@b.com, INVALID');
+            } catch (e) {
+                threw = true;
+                msg = e.message || '';
+            }
+            assert('T6: throw sur email invalide', threw);
+            assert('T6: message contient INVALID', /INVALID/.test(msg));
+            var all = await listsGetAll();
+            assertEqual('T6: aucune liste creee apres throw', all.length, 0);
+        })();
+
+        // T7 - listsCreate throw sur nom vide (LST-01)
+        await (async function() {
+            resetLists();
+            var threw = false;
+            var msg = '';
+            try {
+                await listsCreate('', 'a@b.com');
+            } catch (e) {
+                threw = true;
+                msg = e.message || '';
+            }
+            assert('T7: throw sur nom vide', threw);
+            assert('T7: message Nom requis', /Nom requis/.test(msg));
+        })();
+
+        // T8 - Tri alphabetique francais avec accents (LST-02)
+        (function() {
+            var sorted = listsSorted([
+                { id: '1', name: 'Etoile', recipients: '' },
+                { id: '2', name: 'Cargolux', recipients: '' },
+                { id: '3', name: 'Elite', recipients: '' }
+            ]);
+            assertEqual('T8: 1er element apres tri', sorted[0].name, 'Cargolux');
+            assertEqual('T8: 2eme element apres tri', sorted[1].name, 'Elite');
+            assertEqual('T8: 3eme element apres tri', sorted[2].name, 'Etoile');
+        })();
+
+        // T8b - Tri avec accents reels (Élite avant Étoile via localeCompare 'fr')
+        (function() {
+            var sorted = listsSorted([
+                { id: '1', name: 'Étoile', recipients: '' },
+                { id: '2', name: 'Cargolux', recipients: '' },
+                { id: '3', name: 'Élite', recipients: '' }
+            ]);
+            assertEqual('T8b: Cargolux en premier', sorted[0].name, 'Cargolux');
+            assertEqual('T8b: Elite avant Etoile (accents)', sorted[1].name, 'Élite');
+            assertEqual('T8b: Etoile en dernier', sorted[2].name, 'Étoile');
+        })();
+
+        // T9 - UUID unicite (LST-01)
+        (function() {
+            var ids = {};
+            var allString = true;
+            for (var i = 0; i < 1000; i++) {
+                var id = listUuid();
+                if (typeof id !== 'string' || id.length === 0) { allString = false; }
+                ids[id] = true;
+            }
+            assert('T9: 1000 listUuid retournent strings non-vides', allString);
+            assertEqual('T9: 1000 listUuid distincts', Object.keys(ids).length, 1000);
+        })();
+
+        // T10 - listsGetAll vide retourne [] (LST-12)
+        await (async function() {
+            localStorage.removeItem('recipients-lists-dev');
+            var all = await listsGetAll();
+            assert('T10: Array.isArray([])', Array.isArray(all));
+            assertEqual('T10: longueur 0', all.length, 0);
+        })();
+
+        // T11 - Persistence localStorage cle correcte (LST-07)
+        await (async function() {
+            resetLists();
+            await listsCreate('TestKey', 'a@b.com');
+            var raw = localStorage.getItem('recipients-lists-dev');
+            assert('T11: cle recipients-lists-dev existe', raw !== null);
+            var parsed = JSON.parse(raw);
+            assert('T11: contenu est array', Array.isArray(parsed));
+            assertEqual('T11: 1 entree persistee', parsed.length, 1);
+            assertEqual('T11: name persiste', parsed[0].name, 'TestKey');
+        })();
+
+        // T12 - JSON corrompu localStorage retourne [] (LST-12 robust)
+        await (async function() {
+            localStorage.setItem('recipients-lists-dev', '{not json');
+            var all = await listsGetAll();
+            assert('T12: Array sur JSON corrompu', Array.isArray(all));
+            assertEqual('T12: longueur 0 sur corruption', all.length, 0);
+            localStorage.removeItem('recipients-lists-dev');
+        })();
+
+        // T13 - _listIds expose module-scoped (LST-11 prep pour 04-02)
+        (function() {
+            assert('T13: _listIds est un Array', Array.isArray(_listIds));
+        })();
+
+        // T14 - Mode dev par defaut (LST-07)
+        (function() {
+            assertEqual('T14: LISTS_API_MODE === localStorage par defaut', LISTS_API_MODE, 'localStorage');
+        })();
+
+        // Cleanup
+        localStorage.removeItem('recipients-lists-dev');
     })();
 
     // ========================================
