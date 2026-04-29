@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-04-28T18:25:29.526Z"
-last_activity: 2026-04-28
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-04-29T07:05:32.084Z"
+last_activity: 2026-04-29
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 8
+  completed_plans: 7
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-22)
 
 **Core value:** La saisie d'un manifeste doit aboutir à un PDF correct envoyé aux bons destinataires, sans perte de données.
-**Current focus:** Phase 01 — mat-riel-uld-r-tro-compat
+**Current focus:** Phase 04 — listes-de-distribution-emails-cosmos-blob-backend-dev-local-d-abord
 
 ## Current Position
 
-Phase: 02
-Plan: Not started
+Phase: 04 (listes-de-distribution-emails-cosmos-blob-backend-dev-local-d-abord) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-04-28
+Last activity: 2026-04-29
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02 P02 | 430 | 2 tasks | 2 files |
 | Phase 03 P01 | 508 | 4 tasks | 5 files |
 | Phase 01 P03 | 4500 | 5 tasks | 3 files |
+| Phase 04 P01 | 289 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,12 @@ Recent decisions affecting current work:
 - [Phase 01]: MAT-13 saisie matériel obligatoire: helpers uldHasMaterial + findIncompleteUlds (1-based), validation EN TOUT DÉBUT de generatePdf/sendEmail (avant validateRequired/saveManifest pour éviter pollution _alertLog en test)
 - [Phase 01]: MAT-14 auto-open modal: addUld(autoOpen=true, skipValidation=false) — autoOpen=true par défaut (UX), skipValidation pour bypass interne tests; loadManifest n'utilise pas addUld donc le modal ne s'ouvre pas au rechargement (par construction)
 - [Phase 01]: 8 sites pré-existants tests.html migrés addUld(); addUld(); → addUld(false, true); pour préserver les tests existants tout en activant MAT-13 (BLOCKER #1 du plan)
+- [Phase 04]: Phase 04 P01: regex emails dupliquee KISS frontend/backend (D-12) — pas de bundler, pas de module shared
+- [Phase 04]: Phase 04 P01: validateLists defense in depth backend (D-14) — rejette PUT si raw.length !== valid.length
+- [Phase 04]: Phase 04 P01: LISTS_API_MODE constante source-controlled (D-17) — switch en remote = etape Release Phase 4
+- [Phase 04]: Phase 04 P01: 404 BlobNotFound traite explicitement (D-19/LST-12) — premiere lecture jamais en erreur, retourne []
+- [Phase 04]: Phase 04 P01: Buffer.byteLength UTF-8 au upload (Pitfall 5) — evite troncature noms accentues Élite/Étoile
+- [Phase 04]: Phase 04 P01: _listIds module-scoped expose (anti-XSS) — contract pour plan 04-02 onclick=_listIds[idx]
 
 ### Roadmap Evolution
 
@@ -116,6 +123,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-28T18:25:29.519Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-listes-de-distribution-emails-cosmos-blob-backend-dev-local-d-abord/04-CONTEXT.md
+Last session: 2026-04-29T07:05:19.228Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None
