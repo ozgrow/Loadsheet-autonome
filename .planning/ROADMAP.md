@@ -80,7 +80,7 @@ Phases execute in numeric order: 1 → 2 → 3
 
 **Requirements**: LST-01, LST-02, LST-03, LST-04, LST-05, LST-06, LST-07, LST-08, LST-09, LST-10, LST-11, LST-12, LST-13, LST-14, LST-15
 **Depends on:** Phase 3
-**Plans:** 0 plans
+**Plans:** 2 plans
 **Success Criteria** (what must be TRUE):
   1. L'agent ouvre le modal "Listes de distribution" depuis la section "Envoi de la Loadsheet" et peut créer / modifier / supprimer des listes nommées
   2. Un dropdown à côté du champ #recipients permet de sélectionner une liste qui remplace intégralement la valeur du champ
@@ -92,4 +92,5 @@ Phases execute in numeric order: 1 → 2 → 3
 **UI hint**: yes (modal CRUD + dropdown selection)
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 4 to break down)
+- [ ] 04-01-PLAN.md — Backend Function /api/recipients + frontend module lists.js mode-switchable + tests CRUD localStorage stub (LST-01..04, 07..12, 14)
+- [ ] 04-02-PLAN.md — UI integration: bouton + dropdown + modal CRUD + tests UI + E2E lifecycle (LST-02, 05, 06, 11, 13, 14, 15)
