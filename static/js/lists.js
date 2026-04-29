@@ -1,14 +1,17 @@
 // ============================================
 // LISTES DE DISTRIBUTION (LST-01..15) — Phase 4
 // ============================================
-// !!! AVANT PUSH PROD : verifier LISTS_API_MODE === 'remote' (Release checklist Phase 4)
-// !!! Necessite STORAGE_CONNECTION_STRING configuree dans Azure SWA Settings.
+// Mode auto-detecte par hostname :
+//   localhost / 127.0.0.1 -> 'localStorage' (dev sans Azure Functions, harness Node JSDOM)
+//   autre hostname        -> 'remote' (prod Azure SWA, fetch /api/recipients + JWT)
+// Necessite STORAGE_CONNECTION_STRING configuree dans Azure SWA Settings (mode remote).
 // ============================================
 
 // --- Mode switch (D-17, LST-07) ---
-// 'localStorage' = dev local sans Azure Functions (cle 'recipients-lists-dev')
-// 'remote'       = appel /api/recipients via fetch + JWT (production)
-var LISTS_API_MODE = 'localStorage'; // 'localStorage' | 'remote'
+var LISTS_API_MODE = (typeof window !== 'undefined' && window.location
+  && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+  ? 'localStorage'
+  : 'remote';
 var LISTS_LOCAL_KEY = 'recipients-lists-dev';
 var LISTS_API_URL = '/api/recipients';
 
