@@ -208,15 +208,33 @@ td input[type="number"] { width: 80px; }
    Pattern: copie .material-modal-* avec prefixe .lists-modal-*
    ========================================== */
 .recipients-row {
-    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
-    margin-bottom: 6px;
+    display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap;
+    margin-bottom: 12px;
 }
-.recipients-row #recipients { flex: 1 1 280px; min-width: 200px; }
+.recipients-row #recipients,
+.recipients-row #lists-dropdown,
+.recipients-row #lists-btn {
+    height: 36px;
+    box-sizing: border-box;
+    font-size: 0.95em;
+    line-height: 1.2;
+    margin: 0;
+}
+.recipients-row #recipients {
+    flex: 1 1 280px; min-width: 200px;
+    padding: 6px 10px; border: 1px solid #cbd5e0; border-radius: 4px;
+}
 .recipients-row #lists-dropdown {
-    padding: 6px 8px; border: 1px solid #cbd5e0; border-radius: 4px;
-    font-size: 0.95em; background: #fff; min-width: 180px;
+    padding: 6px 28px 6px 10px;
+    border: 1px solid #cbd5e0; border-radius: 4px;
+    background: #fff; min-width: 200px; cursor: pointer;
 }
-.recipients-row #lists-btn { white-space: nowrap; }
+.recipients-row #lists-btn {
+    padding: 0 14px;
+    white-space: nowrap;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
 
 .lists-modal-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.5);
