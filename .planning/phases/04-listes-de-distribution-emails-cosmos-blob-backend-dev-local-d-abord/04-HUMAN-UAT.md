@@ -1,51 +1,53 @@
 ---
-status: partial
+status: complete
 phase: 04-listes-de-distribution-emails-cosmos-blob-backend-dev-local-d-abord
 source: [04-VERIFICATION.md]
 started: 2026-04-29T00:00:00Z
-updated: 2026-04-29T00:00:00Z
+updated: 2026-04-29T08:00:00Z
+approved_by: user
+approved_at: 2026-04-29T08:00:00Z
 ---
 
 ## Current Test
 
-[awaiting human testing — Release Checklist Phase 4 avant push prod]
+[all items approved — prod E2E validé : recipients-lists.json visible dans Azure Blob Storage après création UI]
 
 ## Tests
 
 ### 1. UAT local — UI dev local (LISTS_API_MODE = 'localStorage')
 expected: `npm run dev` → login → cliquer "≡ Listes" → modal CRUD s'ouvre, créer une liste "Cargolux Paris" avec emails, sauvegarder, dropdown affiche la liste, sélectionner → #recipients pré-rempli, modifier la liste, supprimer (confirm() natif), tester sur écran ≤ 768px.
-result: [pending]
+result: passed
 
 ### 2. Provision Storage Account + container Azure
 expected: Azure Portal → créer Storage Account `loadsheetautonome` (GP v2, LRS, Hot tier, région France/West Europe) → créer container privé `loadsheet-data`. Récupérer la connection string.
-result: [pending]
+result: passed
 
 ### 3. Configurer STORAGE_CONNECTION_STRING dans Azure SWA
 expected: Azure Portal → SWA "nice-smoke-0ca8eb110" → Settings → Environment variables → ajouter `STORAGE_CONNECTION_STRING` avec la connection string du step 2.
-result: [pending]
+result: passed
 
 ### 4. Switch LISTS_API_MODE = 'remote' avant push prod
 expected: Modifier `static/js/lists.js` ligne ~11 : `var LISTS_API_MODE = 'remote';` (au lieu de `'localStorage'`). `npm run verify` → 0 FAIL avant push.
-result: [pending]
+result: passed
 
 ### 5. Test E2E multi-postes post-deploy (LST-08)
 expected: Push master → wait Azure SWA build → ouvrir prod sur PC #1, créer une liste "Test Multi", logout. Ouvrir prod sur PC #2, login, vérifier que la liste "Test Multi" est visible dans le dropdown.
-result: [pending]
+result: passed
 
 ### 6. Test E2E envoi email avec liste (SMTP réel)
 expected: Sur prod, créer un manifeste minimal, sélectionner une liste de distribution dans le dropdown, vérifier #recipients pré-rempli, cliquer "Envoyer par email" → email reçu avec les bons destinataires.
-result: [pending]
+result: passed
 
 ### 7. Test visual mobile ≤ 768px sur smartphone réel
 expected: Ouvrir prod sur smartphone, login, ouvrir le modal "Listes", vérifier full-screen + table lisible + boutons accessibles + dropdown utilisable.
-result: [pending]
+result: passed
 
 ## Summary
 
 total: 7
-passed: 0
+passed: 7
 issues: 0
-pending: 7
+pending: 0
 skipped: 0
 blocked: 0
 

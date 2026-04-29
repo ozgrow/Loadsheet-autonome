@@ -1,8 +1,8 @@
 ---
 phase: 04-listes-de-distribution-emails-cosmos-blob-backend-dev-local-d-abord
-verified: 2026-04-29T00:00:00Z
-status: human_needed
-score: 6/6 success criteria verified (automated) — UAT manuel requis avant push prod
+verified: 2026-04-29T08:00:00Z
+status: passed
+score: 6/6 success criteria automated + 7/7 UAT items approved by user (2026-04-29T08:00:00Z) — prod E2E validé (recipients-lists.json visible dans Azure Blob Storage après création UI)
 human_verification:
   - test: "Provision Azure Storage Account `loadsheetautonome` (GPv2 / LRS / Hot) + container privé `loadsheet-data`"
     expected: "Storage Account créé, container Private créé, key1 disponible"
