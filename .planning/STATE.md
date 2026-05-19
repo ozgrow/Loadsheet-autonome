@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 6 context gathered
-last_updated: "2026-05-19T15:58:09.357Z"
+status: executing
+stopped_at: Completed 06-02-PLAN.md
+last_updated: "2026-05-19T18:56:46.619Z"
 last_activity: 2026-05-19
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 16
+  completed_plans: 11
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-22)
 
 **Core value:** La saisie d'un manifeste doit aboutir à un PDF correct envoyé aux bons destinataires, sans perte de données.
-**Current focus:** Phase 05 — codes-client-en-dropdown-maintenable-backend-partage
+**Current focus:** Phase 06 — materiel-global-refactor-saisie-unique
 
 ## Current Position
 
-Phase: 06
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 06 (materiel-global-refactor-saisie-unique) — EXECUTING
+Plan: 2 of 6
+Status: Ready to execute
 Last activity: 2026-05-19
 
 Progress: [░░░░░░░░░░] 0%
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04 P02 | 330 | 2 tasks | 4 files |
 | Phase 05 P01 | 180 | 2 tasks | 5 files |
 | Phase 05-codes-client-en-dropdown-maintenable-backend-partage P02 | 1200 | 2 tasks | 5 files |
+| Phase 06 P02 | 510 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -122,6 +123,9 @@ Recent decisions affecting current work:
 - [Phase 05-codes-client-en-dropdown-maintenable-backend-partage]: Phase 05 P02: option ephemere data-legacy='true' injectee dans loadManifest si data.client inconnu (CLI-08 / D-14) — modif chirurgicale +15 lignes uniquement
 - [Phase 05-codes-client-en-dropdown-maintenable-backend-partage]: Phase 05 P02: anti-XSS triple defense — _clientIds[idx] dans onclick + _clientsEsc partout en innerHTML + textContent sur options dropdown/legacy (D-23/D-24)
 - [Phase 05-codes-client-en-dropdown-maintenable-backend-partage]: Phase 05 P02: [Rule 1 - Bug auto-fix] shim setter sur l'instance #clientName dans tests.html (Object.defineProperty + auto-inject option data-legacy si .value=X inconnu) — mirror prod CLI-08, preserve anti-regression Phase 1/2/3/4 sans modifier le code production
+- [Phase 06]: Phase 06 P02: migrateLegacyMaterial pure helper isole (no DOM, no side effects) AVANT cablage loadManifest (Plan 03) — testable directement, decouple integration
+- [Phase 06]: Phase 06 P02: [Rule 1 - Bug auto-fix] plan code utilisait test()/assertEq() API inexistante — adapte au pattern existant suite()+IIFE+assertEqual(desc,actual,expected), 18 scenarios devenus 34 asserts
+- [Phase 06]: Phase 06 P02: D-13 sommes inconditionnelles (incl. VRAC) pour sangles/blocks/tarps/dividers/honeycomb — coherent avec buildMaterialSummary existant (D-20 strict Phase 2)
 
 ### Roadmap Evolution
 
@@ -141,6 +145,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-19T15:58:09.351Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-materiel-global-refactor-saisie-unique/06-CONTEXT.md
+Last session: 2026-05-19T18:56:46.616Z
+Stopped at: Completed 06-02-PLAN.md
+Resume file: None
