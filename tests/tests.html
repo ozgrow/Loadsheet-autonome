@@ -1431,16 +1431,18 @@ localStorage.removeItem('loadsheet_manifests');
         assertEqual('Modal absent apres loadManifest (action utilisateur uniquement)', modal, null);
     })();
 
-    // --- Test 4 : newManifest ouvre le modal pour la 1ere ULD ---
-    suite('Materiel ULD - newManifest ouvre modal pour 1ere ULD (MAT-14)');
+    // --- Test 4 : newManifest n'ouvre PAS le modal pour la 1ere ULD ---
+    // MAT-14 amendement : a l'init de l'app (newManifest), le modal materiel
+    // ne s'ouvre pas automatiquement. Il s'ouvre uniquement sur clic '+ Ajouter ULD'.
+    suite('Materiel ULD - newManifest n\'ouvre PAS modal pour 1ere ULD (MAT-14 amendement)');
     (function() {
         resetDOM();
-        // newManifest reset le DOM puis appelle addUld() (sans argument)
-        // Pour ne pas casser les autres tests, on isole : cleanup apres
+        // newManifest reset le DOM puis appelle addUld(false) (autoOpen=false a l'init)
         newManifest();
         var modal = document.querySelector('.material-modal');
-        assert('Modal ouvert apres newManifest()', !!modal);
-        closeMaterialModal();
+        assertEqual('Modal absent apres newManifest() (pas de popup au demarrage)', modal, null);
+        // Verifier qu'1 ULD est bien creee
+        assertEqual('1 ULD creee', document.querySelectorAll('.uld-block').length, 1);
     })();
 
     // --- Test 5 : addUld bloque par MAT-13 n'ouvre pas un 2e modal ---

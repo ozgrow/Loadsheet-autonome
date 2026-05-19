@@ -444,7 +444,9 @@ function newManifest() {
     document.getElementById('manifestStatus').textContent = 'Brouillon';
     document.getElementById('manifestStatus').className = 'status status-draft';
     uldCount = 0;
-    addUld();
+    // MAT-14 : autoOpen=false a l'init de l'app. Le modal materiel s'ouvre
+    // uniquement quand l'utilisateur clique '+ Ajouter ULD' (UX : pas de popup au demarrage).
+    addUld(false);
 }
 
 // --- ULD ---
