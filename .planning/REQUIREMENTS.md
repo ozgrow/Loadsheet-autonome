@@ -58,6 +58,21 @@
 - [x] **LST-14**: Tests anti-régression dans `tests/tests.html` : CRUD round-trip localStorage stub, validation, XSS, tri, sélection, mobile
 - [x] **LST-15**: Test E2E lifecycle : créer une liste, l'utiliser pour pré-remplir #recipients avant envoi email simulé
 
+### Clients (Phase 5)
+
+- [ ] **CLI-01**: Modèle de données plat `{ id, code }` — un seul champ texte libre `code` par client. Persistance en Azure Blob Storage (fichier `clients.json` dans container `loadsheet-data`) en prod ; stub localStorage (clé `clients-dev`) en dev. Schéma racine = array JSON
+- [ ] **CLI-02**: Azure Function `/api/clients` (GET + PUT) avec auth JWT (header `x-auth-token`, secret `JWT_SECRET` partagé avec `/api/send-email` et `/api/recipients`). GET retourne le contenu du Blob ; PUT remplace intégralement (last-write-wins)
+- [ ] **CLI-03**: Module frontend `static/js/clients.js` avec auto-détection du mode par hostname (`localhost`/`127.0.0.1` → `'localStorage'`, autre → `'remote'`). Expose `clientsCreate/Update/Delete/GetAll/SaveAll`, helpers `clientsSorted/clientUuid`, et l'array module-scoped `_clientIds` pour onclick anti-XSS
+- [ ] **CLI-04**: Modal CRUD `.clients-modal-*` (clone structurel de `.lists-modal-*` Phase 4) permettant créer / éditer / supprimer un client, avec tri alphabétique français (`localeCompare('fr', { sensitivity: 'base' })`). Bouton "≡ Clients" placé à côté du `<select id="clientName">` ouvre le modal
+- [ ] **CLI-05**: Validation défense-en-profondeur : `code` non-vide après `trim()` ET unicité case-sensitive (refus si doublon), enforced côté frontend ET côté backend. Message d'erreur : `'Code déjà existant : "X"'`
+- [ ] **CLI-06**: Le champ `<input type="text" id="clientName">` (index.html ligne 75) est remplacé par `<select id="clientName">` (l'id est conservé pour préserver les hooks `app.js` aux lignes 437/657/725). Première option : `<option value="">— Choisir un client —</option>`
+- [ ] **CLI-07**: Seed initial : si `clientsGetAll()` retourne `[]` à l'init (premier accès Blob ou localStorage vide), le frontend appelle automatiquement `clientsSaveAll(INITIAL_CLIENTS)` une seule fois avec `INITIAL_CLIENTS = [{id, code: '1DAC-CDW'}, {id, code: '2SET-CDG'}]`
+- [ ] **CLI-08**: Rétro-compatibilité manifestes legacy : quand `loadManifest` trouve un `data.client` (texte libre) qui ne matche aucune option du `<select>`, ajout d'une option éphémère `<option value="{legacy}" data-legacy="true">{legacy}</option>` sélectionnée par défaut. Aucune modification destructive du manifeste
+- [ ] **CLI-09**: Anti-XSS strict : tous les `code` injectés en DOM (table modal, options dropdown, option legacy éphémère) passent par `_clientsEsc()` / `esc()` (innerHTML) ou `.textContent` (dropdown options). Les onclick utilisent `_clientIds[idx]` (pattern Phase 4 `_listIds`), jamais la string utilisateur
+- [ ] **CLI-10**: Tests anti-régression dans `tests/tests.html` : suite `Clients - *` couvrant CRUD round-trip, validation (code vide + doublon), anti-XSS, tri alphabétique français, sélection, rétro-compat option éphémère, seed initial, mode dev (D-28 a→h)
+- [ ] **CLI-11**: Le modal CRUD `.clients-modal-*` reste utilisable et lisible sur mobile (≤ 768px) — full-screen via media query (clone du pattern Phase 4 D-28)
+- [ ] **CLI-12**: Test E2E lifecycle (D-29) : créer un client → recharger le module → vérifier qu'il est dans le dropdown → l'utiliser dans un manifeste → vérifier que `collectData().client === code`
+
 ## v2 Requirements
 
 *(Aucun pour ce cycle — scope volontairement resserré sur les 2 features.)*
@@ -72,6 +87,13 @@
 | Azure Functions Core Tools pour tests locaux | Les features touchent uniquement le frontend — API non modifiée |
 | Migration forcée des anciens manifestes vers nouveau format | Rétro-compatibilité suffit, pas besoin d'upgrade destructif |
 | Multi-tenant, RBAC, stockage cloud | Hors scope projet (cf. PROJECT.md) |
+| Modèle riche client `{ code, name, notes, address, contact }` | Déféré Phase 5 (D-01) — schéma plat suffit ; nouvelle phase si demande agents |
+| Normalisation case clients (toUpperCase) | Déféré Phase 5 (D-04, D-05) — code brut tel que saisi, unicité case-sensitive |
+| Regex stricte format code client | Déféré Phase 5 (D-04) — souplesse libre pour évolutions futures |
+| Migration auto des manifestes legacy vers code | Déféré Phase 5 — rétro-compat read-only via option éphémère D-14 suffit |
+| Recherche/filtre dans dropdown clients | Déféré Phase 5 — tri alphabétique suffit (< 50 entrées) |
+| ETag/lock optimiste sur Blob clients | Déféré Phase 5 — last-write-wins acceptable (10x/jour, 1 agent à la fois) |
+| Factorisation `lists.js` + `clients.js` en module générique | Déféré Phase 5 — prématuré, possible Phase 7+ si plus de cas d'usage |
 
 ## Traceability
 
@@ -115,10 +137,22 @@
 | LST-13 | Phase 4 | Complete |
 | LST-14 | Phase 4 | Complete |
 | LST-15 | Phase 4 | Complete |
+| CLI-01 | Phase 5 | Not started |
+| CLI-02 | Phase 5 | Not started |
+| CLI-03 | Phase 5 | Not started |
+| CLI-04 | Phase 5 | Not started |
+| CLI-05 | Phase 5 | Not started |
+| CLI-06 | Phase 5 | Not started |
+| CLI-07 | Phase 5 | Not started |
+| CLI-08 | Phase 5 | Not started |
+| CLI-09 | Phase 5 | Not started |
+| CLI-10 | Phase 5 | Not started |
+| CLI-11 | Phase 5 | Not started |
+| CLI-12 | Phase 5 | Not started |
 
 **Coverage:**
-- v1 requirements: 38 total (20 initial + 3 gap closure Phase 1 + 15 Phase 4 listes de distribution)
-- Mapped to phases: 38 ✓
+- v1 requirements: 50 total (20 initial + 3 gap closure Phase 1 + 15 Phase 4 listes de distribution + 12 Phase 5 clients dropdown)
+- Mapped to phases: 50 ✓
 - Unmapped: 0
 
 **Distribution:**
@@ -126,7 +160,8 @@
 - Phase 2 (Type ULD VRAC): 3 requirements (VRAC-01..03)
 - Phase 3 (Validation locale & release gate): 2 requirements (TEST-01, TEST-03)
 - Phase 4 (Listes de distribution emails): 15 requirements (LST-01..15)
+- Phase 5 (Codes client en dropdown maintenable): 12 requirements (CLI-01..12)
 
 ---
 *Requirements defined: 2026-04-22*
-*Last updated: 2026-04-29 — added LST-01..15 (Phase 4 listes de distribution, JSON Blob backend)*
+*Last updated: 2026-05-19 — added CLI-01..12 (Phase 5 codes client en dropdown maintenable, calque Phase 4 Blob backend)*

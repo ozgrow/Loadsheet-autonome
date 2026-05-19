@@ -94,3 +94,37 @@ Phases execute in numeric order: 1 → 2 → 3
 Plans:
 - [x] 04-01-PLAN.md — Backend Function /api/recipients + frontend module lists.js mode-switchable + tests CRUD localStorage stub (LST-01..04, 07..12, 14)
 - [x] 04-02-PLAN.md — UI integration: bouton + dropdown + modal CRUD + tests UI + E2E lifecycle (LST-02, 05, 06, 11, 13, 14, 15)
+
+### Phase 5: Codes client en dropdown maintenable (backend partage)
+
+**Goal:** Remplacer le champ libre `<input id="clientName">` par un dropdown `<select>` maintenable dont les valeurs sont gérées via un modal CRUD, persistées dans un JSON Blob Azure (`clients.json`) partagé entre tous les agents ATH, avec rétro-compatibilité des manifestes legacy (option éphémère pour anciennes valeurs texte libre) et seed initial de 2 codes (1DAC-CDW, 2SET-CDG). Calque structurel direct de Phase 4 (clone API + module + modal).
+
+**Requirements**: CLI-01, CLI-02, CLI-03, CLI-04, CLI-05, CLI-06, CLI-07, CLI-08, CLI-09, CLI-10, CLI-11, CLI-12
+**Depends on:** Phase 4
+**Plans:** 2 plans
+**Success Criteria** (what must be TRUE):
+  1. L'agent ouvre le modal "Clients" depuis la section manifeste (bouton "≡ Clients" à côté du dropdown) et peut créer / modifier / supprimer des codes client. Le dropdown trié alphabétiquement (français) se rafraîchit après chaque CRUD
+  2. Au premier lancement (Blob vide ou localStorage stub vide), les 2 codes `1DAC-CDW` et `2SET-CDG` sont automatiquement disponibles dans le dropdown
+  3. Le champ `<input id="clientName">` est remplacé par `<select id="clientName">` (id conservé, hooks app.js aux lignes 437/657/725 intacts). Première option : `<option value="">— Choisir un client —</option>`
+  4. Un manifeste legacy sauvegardé (avec `data.client` en texte libre inconnu du Blob) se charge sans erreur et affiche la valeur legacy comme `<option data-legacy="true">` éphémère sélectionnée par défaut
+  5. Pendant le développement, les clients sont persistés en localStorage (clé `clients-dev`) ; en production via Azure Function `/api/clients` (GET + PUT) qui lit/écrit `clients.json` dans le container Azure Blob `loadsheet-data` (réutilise STORAGE_CONNECTION_STRING Phase 4)
+  6. Validation défense-en-profondeur : code non-vide après trim ET unicité case-sensitive (refus doublon), enforced frontend ET backend. Message : `'Code déjà existant : "X"'`
+  7. Aucun XSS exécutable depuis le champ `code` (rendu littéral via `_clientsEsc()`/`textContent` dans modal, dropdown, PDF, email). Onclick utilisent `_clientIds[idx]` (jamais string utilisateur)
+  8. Modal CRUD utilisable mobile ≤ 768px (full-screen via media query, classes `.clients-modal-*`)
+  9. Tests anti-régression `tests/tests.html` suite `Clients - *` (≥ 8 tests couvrant D-28 a→h) + 1 test E2E lifecycle (D-29). `npm run verify` passe avec 0 FAIL
+
+**UI hint**: yes (modal CRUD + dropdown selection)
+
+Plans:
+- [ ] 05-01-PLAN.md — Backend Function /api/clients + frontend module clients.js mode-switchable (auto-détection hostname) + seed INITIAL_CLIENTS + tests CRUD localStorage stub (CLI-01, CLI-02, CLI-03, CLI-05, CLI-07, CLI-09, CLI-10 partiel)
+- [ ] 05-02-PLAN.md — UI integration: remplacement input→select dans index.html + bouton + modal CRUD + CSS clients-modal + hook loadManifest legacy + tests UI + E2E lifecycle (CLI-04, CLI-06, CLI-08, CLI-09, CLI-10 complet, CLI-11, CLI-12)
+
+### Phase 6: Materiel global (refactor saisie unique)
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 5
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 6 to break down)
