@@ -66,6 +66,7 @@ localStorage.removeItem('loadsheet_manifests');
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="../static/js/lists.js"></script>
+<script src="../static/js/clients.js"></script>
 <script src="../static/js/app.js"></script>
 <script>
 (async function() {
@@ -3682,6 +3683,211 @@ localStorage.removeItem('loadsheet_manifests');
         // Cleanup
         localStorage.removeItem('recipients-lists-dev');
         document.getElementById('recipients').value = '';
+    })();
+
+    // ========================================
+    // PHASE 5 — CODES CLIENT EN DROPDOWN MAINTENABLE (Plan 05-01, CLI-01 CLI-03 CLI-05 CLI-07 CLI-09 CLI-10)
+    // ========================================
+    suite('Clients - localStorage stub');
+    await (async function() {
+
+        // T1 — clientsCreate roundtrip (CLI-01)
+        await (async function() {
+            localStorage.removeItem('clients-dev');
+            await clientsCreate('1DAC-CDW');
+            var all = await clientsGetAll();
+            assertEqual('T1: 1 client cree', all.length, 1);
+            assertEqual('T1: code correct', all[0].code, '1DAC-CDW');
+            assert('T1: id genere', typeof all[0].id === 'string' && all[0].id.length > 0);
+        })();
+
+        // T2 — clientsUpdate roundtrip (CLI-03)
+        await (async function() {
+            localStorage.removeItem('clients-dev');
+            await clientsCreate('1DAC-CDW');
+            var idT2 = (await clientsGetAll())[0].id;
+            await clientsUpdate(idT2, '1DAC-XYZ');
+            var t2After = await clientsGetAll();
+            assertEqual('T2: code mis a jour', t2After[0].code, '1DAC-XYZ');
+            assertEqual('T2: id preserve', t2After[0].id, idT2);
+        })();
+
+        // T3 — clientsDelete roundtrip (CLI-03)
+        await (async function() {
+            localStorage.removeItem('clients-dev');
+            await clientsCreate('A');
+            await clientsCreate('B');
+            var allT3 = await clientsGetAll();
+            var idT3 = allT3[0].id;
+            await clientsDelete(idT3);
+            var afterT3 = await clientsGetAll();
+            assertEqual('T3: 1 client restant', afterT3.length, 1);
+            assertEqual('T3: code B preserve', afterT3[0].code, 'B');
+        })();
+
+        // T4 — clientsCreate throw sur code vide (CLI-05 — D-04)
+        await (async function() {
+            localStorage.removeItem('clients-dev');
+            var t4Threw = false;
+            try { await clientsCreate(''); } catch (e) { t4Threw = /Code requis/.test(e.message); }
+            assert('T4: code vide rejete', t4Threw);
+        })();
+
+        // T5 — clientsCreate throw sur whitespace seulement (CLI-05 — D-04 trim)
+        await (async function() {
+            var t5Threw = false;
+            try { await clientsCreate('   '); } catch (e) { t5Threw = /Code requis/.test(e.message); }
+            assert('T5: whitespace rejete (trim applique)', t5Threw);
+        })();
+
+        // T6 — clientsCreate throw sur doublon case-sensitive (CLI-05 — D-05)
+        await (async function() {
+            localStorage.removeItem('clients-dev');
+            await clientsCreate('1DAC-CDW');
+            var t6Threw = false;
+            try { await clientsCreate('1DAC-CDW'); }
+            catch (e) { t6Threw = /Code deja existant/.test(e.message) && /1DAC-CDW/.test(e.message); }
+            assert('T6: doublon rejete avec code dans message', t6Threw);
+        })();
+
+        // T7 — case-sensitivity : '1dac-cdw' et '1DAC-CDW' sont deux clients distincts (CLI-05 — D-05)
+        await (async function() {
+            localStorage.removeItem('clients-dev');
+            await clientsCreate('1DAC-CDW');
+            await clientsCreate('1dac-cdw'); // case different -> accepte
+            var allT7 = await clientsGetAll();
+            assertEqual('T7: case-sensitive — 2 clients distincts', allT7.length, 2);
+        })();
+
+        // T8 — clientsUpdate ne collide pas avec son propre code (CLI-05)
+        await (async function() {
+            localStorage.removeItem('clients-dev');
+            await clientsCreate('A');
+            var idT8 = (await clientsGetAll())[0].id;
+            // Update avec le meme code -> ne doit PAS throw "deja existant"
+            await clientsUpdate(idT8, 'A');
+            var allT8 = await clientsGetAll();
+            assertEqual('T8: update avec meme code OK', allT8[0].code, 'A');
+        })();
+
+        // T9 — clientsUpdate throw si collision avec autre id (CLI-05)
+        await (async function() {
+            localStorage.removeItem('clients-dev');
+            await clientsCreate('A');
+            await clientsCreate('B');
+            var allT9 = await clientsGetAll();
+            var idAT9 = allT9.find(function(c){return c.code==='A';}).id;
+            var t9Threw = false;
+            try { await clientsUpdate(idAT9, 'B'); }
+            catch (e) { t9Threw = /Code deja existant/.test(e.message); }
+            assert('T9: update vers code existant rejete', t9Threw);
+        })();
+
+        // T10 — Anti-XSS : code avec caracteres HTML stocke litteralement (CLI-09)
+        await (async function() {
+            localStorage.removeItem('clients-dev');
+            // Split 'scr' + 'ipt' pour eviter parsing HTML du <script> literal dans tests.html
+            var xssCode = '<scr' + 'ipt>window._xss=1<\/scr' + 'ipt>';
+            window._xss = 0;
+            await clientsCreate(xssCode);
+            // Verifier que le code stocke est la string brute (pas executee)
+            assertEqual('T10: XSS pas execute au stockage', window._xss, 0);
+            var allT10 = await clientsGetAll();
+            assertEqual('T10: code XSS stocke litteralement', allT10[0].code, xssCode);
+            // Verifier que _clientsEsc l'echappe correctement
+            var escaped = _clientsEsc(xssCode);
+            assert('T10: _clientsEsc echappe <', escaped.indexOf('&lt;') !== -1);
+            assert('T10: _clientsEsc echappe >', escaped.indexOf('&gt;') !== -1);
+            assert('T10: pas de script tag brut dans escape', escaped.indexOf('<scr' + 'ipt>') === -1);
+        })();
+
+        // T11 — Tri alphabetique francais avec accents (CLI-04 — D-11)
+        (function() {
+            var t11Sorted = clientsSorted([
+                { id:'1', code:'Étoile' },
+                { id:'2', code:'Cargolux' },
+                { id:'3', code:'Élite' }
+            ]);
+            assertEqual('T11: 1er = Cargolux', t11Sorted[0].code, 'Cargolux');
+            assertEqual('T11: 2eme = Elite', t11Sorted[1].code, 'Élite');
+            assertEqual('T11: 3eme = Etoile', t11Sorted[2].code, 'Étoile');
+        })();
+
+        // T12 — UUID unicite (CLI-01)
+        (function() {
+            var ids = {};
+            var allString = true;
+            for (var i = 0; i < 1000; i++) {
+                var id = clientUuid();
+                if (typeof id !== 'string' || id.length === 0) { allString = false; }
+                ids[id] = true;
+            }
+            assert('T12: 1000 clientUuid retournent strings non-vides', allString);
+            assertEqual('T12: 1000 UUIDs distincts', Object.keys(ids).length, 1000);
+        })();
+
+        // T13 — clientsGetAll vide retourne [] (CLI-01 — premier acces)
+        await (async function() {
+            localStorage.removeItem('clients-dev');
+            var allEmpty = await clientsGetAll();
+            assert('T13: Array.isArray', Array.isArray(allEmpty));
+            assertEqual('T13: vide', allEmpty.length, 0);
+        })();
+
+        // T14 — JSON corrompu localStorage -> [] (CLI-03 robustesse)
+        await (async function() {
+            localStorage.setItem('clients-dev', '{not json');
+            var allCorrupt = await clientsGetAll();
+            assert('T14: Array sur JSON corrompu', Array.isArray(allCorrupt));
+            assertEqual('T14: vide sur corruption', allCorrupt.length, 0);
+            localStorage.removeItem('clients-dev');
+        })();
+
+        // T15 — Persistence localStorage cle correcte (CLI-03 — D-16)
+        await (async function() {
+            localStorage.removeItem('clients-dev');
+            await clientsCreate('TEST-PERSIST');
+            var raw = localStorage.getItem('clients-dev');
+            assert('T15: cle clients-dev existe', raw !== null);
+            var parsedRaw = JSON.parse(raw);
+            assert('T15: parsed est array', Array.isArray(parsedRaw));
+            assertEqual('T15: 1 entree persistee', parsedRaw.length, 1);
+            assertEqual('T15: code persiste', parsedRaw[0].code, 'TEST-PERSIST');
+        })();
+
+        // T16 — _clientIds expose module-scoped (CLI-09 — prep pour 05-02)
+        (function() {
+            assert('T16: _clientIds est un Array', Array.isArray(_clientIds));
+        })();
+
+        // T17 — Mode auto-detect dev en localhost (CLI-03 — D-18)
+        // run-harness.cjs use url 'http://localhost/tests/' -> hostname === 'localhost' -> 'localStorage'
+        (function() {
+            assertEqual('T17: mode auto-detect localStorage en localhost', CLIENTS_API_MODE, 'localStorage');
+        })();
+
+        // T18 — Seed INITIAL_CLIENTS contient les 2 codes attendus (CLI-07 — D-15)
+        (function() {
+            assertEqual('T18: INITIAL_CLIENTS 2 entrees', INITIAL_CLIENTS.length, 2);
+            var seedCodes = INITIAL_CLIENTS.map(function(c){return c.code;});
+            assert('T18: 1DAC-CDW dans seed', seedCodes.indexOf('1DAC-CDW') !== -1);
+            assert('T18: 2SET-CDG dans seed', seedCodes.indexOf('2SET-CDG') !== -1);
+            assert('T18: chaque seed a un id', INITIAL_CLIENTS.every(function(c){return typeof c.id === 'string' && c.id.length>0;}));
+        })();
+
+        // T19 — Auto-seed comportement : si store vide, _clientsAutoSeed le peuple (CLI-07)
+        // (test de la mecanique du DOMContentLoaded handler — appel direct equivalent)
+        await (async function() {
+            localStorage.removeItem('clients-dev');
+            var emptyBefore = await clientsGetAll();
+            assertEqual('T19a: store vide avant seed', emptyBefore.length, 0);
+            if (emptyBefore.length === 0) await clientsSaveAll(INITIAL_CLIENTS);
+            var afterSeed = await clientsGetAll();
+            assertEqual('T19b: 2 clients apres seed manuel', afterSeed.length, 2);
+        })();
+
+        // Cleanup
+        localStorage.removeItem('clients-dev');
     })();
 
     // ========================================
