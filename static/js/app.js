@@ -427,6 +427,7 @@ async function initApp() {
     await migrateStorageIfNeeded();
     newManifest();
     await refreshSavedList();
+    await refreshListsDropdown();
 }
 
 function newManifest() {
