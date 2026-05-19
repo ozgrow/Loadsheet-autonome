@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 04-02-PLAN.md (Phase 04 complete - 15/15 LST requirements done)
-last_updated: "2026-04-29T07:57:09.757Z"
+stopped_at: Phase 5 context gathered
+last_updated: "2026-05-19T13:08:26.214Z"
 last_activity: 2026-04-29
 progress:
-  total_phases: 4
+  total_phases: 6
   completed_phases: 4
   total_plans: 8
   completed_plans: 8
@@ -115,6 +115,8 @@ Recent decisions affecting current work:
 ### Roadmap Evolution
 
 - Phase 4 added (2026-04-28): Listes de distribution emails — backend JSON Blob (Azure Blob Storage), dev local d'abord. Cosmos DB free tier disponible mais JSON Blob retenu pour simplicité (10x/jour, ~25 lignes Function vs 60).
+- Phase 5 added (2026-05-19): Codes client en dropdown maintenable — calque direct de Phase 04 (api/clients + Blob Storage + modal CRUD), remplace le champ libre #clientName par un dropdown maintenable côté backend. Seed initial 1DAC-CDW et 2SET-CDG.
+- Phase 6 added (2026-05-19): Matériel global (refactor saisie unique) — le matériel est déplacé d'une saisie par ULD à une saisie unique totale pour le manifeste, positionnée entre la liste des ULD et le bouton "Générer". Migration auto au loadManifest (fusion ancien matériel par-ULD en total global). Impact PDF + récap + tests rétro-compat.
 
 ### Pending Todos
 
@@ -128,6 +130,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-29T07:15:33.970Z
-Stopped at: Completed 04-02-PLAN.md (Phase 04 complete - 15/15 LST requirements done)
-Resume file: None
+Last session: 2026-05-19T13:08:26.209Z
+Stopped at: Phase 5 context gathered
+Resume file: .planning/phases/05-codes-client-en-dropdown-maintenable-backend-partage/05-CONTEXT.md
