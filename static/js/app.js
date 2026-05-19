@@ -1258,6 +1258,8 @@ async function generatePdf() {
     if (incompletePdf.length > 0) {
         var listPdf = incompletePdf.map(function(n) { return 'ULD N°' + n; }).join(', ');
         alert('Matériel non saisi pour : ' + listPdf + '. Veuillez remplir le matériel ou cocher "Rien à facturer" pour ces ULD.');
+        // Re-ouvrir le modal materiel sur la 1ere ULD incomplete pour faciliter la saisie
+        openMaterialModal(parseInt(incompletePdf[0]) || 1);
         return;
     }
     if (!validateRequired()) return;
@@ -1284,6 +1286,8 @@ async function sendEmail() {
     if (incompleteEmail.length > 0) {
         var listEmail = incompleteEmail.map(function(n) { return 'ULD N°' + n; }).join(', ');
         alert('Matériel non saisi pour : ' + listEmail + '. Veuillez remplir le matériel ou cocher "Rien à facturer" pour ces ULD.');
+        // Re-ouvrir le modal materiel sur la 1ere ULD incomplete pour faciliter la saisie
+        openMaterialModal(parseInt(incompleteEmail[0]) || 1);
         return;
     }
     if (!validateRequired()) return;

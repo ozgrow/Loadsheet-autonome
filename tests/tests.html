@@ -1381,6 +1381,43 @@ localStorage.removeItem('loadsheet_manifests');
         assert('Alert ne mentionne pas "N°2"', matAlert && matAlert.indexOf('N°2') < 0);
     })();
 
+    // --- Test 11 : generatePdf re-ouvre le modal sur la 1ere ULD incomplete ---
+    suite('Materiel ULD - generatePdf re-ouvre modal sur 1ere ULD incomplete (MAT-13 + MAT-14)');
+    await (async function() {
+        resetDOM();
+        addUld(false, true); // ULD #1 - vide (1ere incomplete)
+        addUld(false, true); // ULD #2 - aussi vide
+        document.getElementById('agentName').value = 'AGENT';
+        document.getElementById('destAirport').value = 'CDG';
+        closeMaterialModal();
+        await generatePdf();
+        var modal = document.querySelector('.material-modal');
+        assert('Modal materiel ouvert apres generatePdf bloque', !!modal);
+        assertEqual('Modal cible ULD #1 (1ere incomplete)', modal && modal.getAttribute('data-uld-index'), '1');
+        closeMaterialModal();
+    })();
+
+    // --- Test 12 : sendEmail re-ouvre le modal sur la 1ere ULD incomplete ---
+    suite('Materiel ULD - sendEmail re-ouvre modal sur 1ere ULD incomplete (MAT-13 + MAT-14)');
+    await (async function() {
+        resetDOM();
+        addUld(false, true); // ULD #1 - on lui met du materiel
+        document.querySelector('#uld-1').setAttribute('data-straps', '1');
+        addUld(false, true); // ULD #2 - vide (1ere incomplete)
+        document.getElementById('agentName').value = 'AGENT';
+        document.getElementById('destAirport').value = 'CDG';
+        document.getElementById('recipients').value = 'test@example.com';
+        var origFetch = window.fetch;
+        window.fetch = function() { return Promise.resolve({ ok: false, json: function() { return Promise.resolve({}); } }); };
+        closeMaterialModal();
+        await sendEmail();
+        window.fetch = origFetch;
+        var modal = document.querySelector('.material-modal');
+        assert('Modal materiel ouvert apres sendEmail bloque', !!modal);
+        assertEqual('Modal cible ULD #2 (1ere incomplete)', modal && modal.getAttribute('data-uld-index'), '2');
+        closeMaterialModal();
+    })();
+
     // ============================================
     // PLAN 01-03 EXTENDED : MAT-14 auto-ouverture du modal sur creation ULD
     // ============================================
