@@ -1536,6 +1536,135 @@ localStorage.removeItem('loadsheet_manifests');
     })();
 
     // ============================================
+    // PLAN 06-02 : migrateLegacyMaterial helper purs (D-12..D-19, D-45)
+    // ============================================
+    // Helper pur testé en isolation (pas de DOM). Couvre les 7 scénarios D-45 a-g
+    // + idempotence D-19 + defensive (data null/vide). 18 tests dans 8 suites.
+
+    suite('Materiel global - Migration helper purs (D-45a defaults)');
+    (function() {
+        var result = migrateLegacyMaterial({ ulds: [{}, {}, {}] });
+        assertEqual('strapsCount default', result.strapsCount, 0);
+        assertEqual('flooringEuCount default', result.flooringEuCount, 0);
+        assertEqual('flooringEuForfait default', result.flooringEuForfait, false);
+        assertEqual('flooringStdCount default', result.flooringStdCount, 0);
+        assertEqual('flooringStdForfait default', result.flooringStdForfait, false);
+        assertEqual('blocksCount default', result.blocksCount, 0);
+        assertEqual('tarpsCount default', result.tarpsCount, 0);
+        assertEqual('dividersCount default', result.dividersCount, 0);
+        assertEqual('honeycombCount default', result.honeycombCount, 0);
+        assertEqual('manifestComment default', result.manifestComment, '');
+        // D-18 : AND sur toutes ULDs ; ULDs vides (sans noMaterialToBill) => false
+        assertEqual('noMaterialToBill default (AND vide)', result.noMaterialToBill, false);
+    })();
+
+    suite('Materiel global - Migration helper purs (D-45b sum simple)');
+    (function() {
+        var r1 = migrateLegacyMaterial({ ulds: [{ strapsCount: 5 }] });
+        assertEqual('1 ULD strapsCount:5 => strapsCount global 5', r1.strapsCount, 5);
+        var r2 = migrateLegacyMaterial({ ulds: [
+            { strapsCount: 2, blocksCount: 1 },
+            { strapsCount: 3, blocksCount: 0 },
+            { strapsCount: 0, blocksCount: 4 }
+        ]});
+        assertEqual('3 ULDs sangles sommees', r2.strapsCount, 5);
+        assertEqual('3 ULDs blocks sommes', r2.blocksCount, 5);
+    })();
+
+    suite('Materiel global - Migration helper purs (D-45c exclusion VRAC planchers)');
+    (function() {
+        var r1 = migrateLegacyMaterial({ ulds: [
+            { type: 'PMC', flooringEuCount: 2 },
+            { type: 'VRAC', flooringEuCount: 3 }
+        ]});
+        assertEqual('PMC+VRAC planchers EU => 2 (VRAC exclu D-14)', r1.flooringEuCount, 2);
+        var r2 = migrateLegacyMaterial({ ulds: [
+            { type: 'PMC' },
+            { type: 'VRAC', flooringEuForfait: true }
+        ]});
+        assertEqual('VRAC forfait EU ne contribue pas au OR (D-15)', r2.flooringEuForfait, false);
+        var r3 = migrateLegacyMaterial({ ulds: [
+            { type: 'PMC', strapsCount: 2 },
+            { type: 'VRAC', strapsCount: 3 }
+        ]});
+        assertEqual('Sangles VRAC sommees (D-13 incl. VRAC)', r3.strapsCount, 5);
+    })();
+
+    suite('Materiel global - Migration helper purs (D-45d exclusivité forfait/count)');
+    (function() {
+        var r1 = migrateLegacyMaterial({ ulds: [
+            { type: 'PMC', flooringEuForfait: true },
+            { type: 'PMC', flooringEuCount: 5 }
+        ]});
+        assertEqual('forfait EU true OR (D-15)', r1.flooringEuForfait, true);
+        assertEqual('count EU force a 0 (D-16 exclusivite)', r1.flooringEuCount, 0);
+        var r2 = migrateLegacyMaterial({ ulds: [
+            { type: 'PMC', flooringStdForfait: true, flooringStdCount: 0 },
+            { type: 'PMC', flooringStdCount: 7 }
+        ]});
+        assertEqual('forfait Std true OR (D-15)', r2.flooringStdForfait, true);
+        assertEqual('count Std force a 0 (D-16)', r2.flooringStdCount, 0);
+    })();
+
+    suite('Materiel global - Migration helper purs (D-45e concaténation commentaires)');
+    (function() {
+        var r1 = migrateLegacyMaterial({ ulds: [
+            { uldComment: 'fragile' },
+            { uldComment: 'haut' },
+            { uldComment: 'froid' }
+        ]});
+        assertEqual('concat indexee 1-based newline (D-17)', r1.manifestComment, 'ULD N°1 : fragile\nULD N°2 : haut\nULD N°3 : froid');
+        var r2 = migrateLegacyMaterial({ ulds: [{ uldComment: 'attention' }] });
+        assertEqual('prefixe ULD N°1 meme seule (D-17)', r2.manifestComment, 'ULD N°1 : attention');
+        var r3 = migrateLegacyMaterial({ ulds: [
+            { uldComment: '' },
+            { uldComment: 'second' },
+            { uldComment: '' }
+        ]});
+        assertEqual('omission commentaires vides (D-17)', r3.manifestComment, 'ULD N°2 : second');
+    })();
+
+    suite('Materiel global - Migration helper purs (D-45f-g AND noBilling)');
+    (function() {
+        var r1 = migrateLegacyMaterial({ ulds: [
+            { noMaterialToBill: true },
+            { noMaterialToBill: true }
+        ]});
+        assertEqual('AND true si toutes true (D-18)', r1.noMaterialToBill, true);
+        var r2 = migrateLegacyMaterial({ ulds: [
+            { noMaterialToBill: true },
+            { noMaterialToBill: false }
+        ]});
+        assertEqual('AND false si au moins une false (D-18)', r2.noMaterialToBill, false);
+        var r3 = migrateLegacyMaterial({ ulds: [
+            { noMaterialToBill: true },
+            {}
+        ]});
+        assertEqual('AND : ULD sans flag = false (D-18 semantique sure)', r3.noMaterialToBill, false);
+    })();
+
+    suite('Materiel global - Migration helper purs (idempotence D-19)');
+    (function() {
+        var existing = { strapsCount: 99, manifestComment: 'deja migre', noMaterialToBill: false };
+        var result = migrateLegacyMaterial({ material: existing, ulds: [{ strapsCount: 5 }] });
+        assertEqual('pas de recalcul si data.material existe (D-19)', result.strapsCount, 99);
+        assertEqual('manifestComment existant preserve', result.manifestComment, 'deja migre');
+    })();
+
+    suite('Materiel global - Migration helper purs (defensive)');
+    (function() {
+        var r1 = migrateLegacyMaterial(null);
+        assertEqual('data null safe strapsCount', r1.strapsCount, 0);
+        assertEqual('data null safe noBilling', r1.noMaterialToBill, false);
+        var r2 = migrateLegacyMaterial({});
+        assertEqual('data sans ulds ni pmcs safe', r2.strapsCount, 0);
+        var r3 = migrateLegacyMaterial({ ulds: [] });
+        assertEqual('data.ulds vide [] safe', r3.strapsCount, 0);
+        var r4 = migrateLegacyMaterial({ pmcs: [{ strapsCount: 4 }] });
+        assertEqual('fallback data.pmcs (retro-compat ancien nom)', r4.strapsCount, 4);
+    })();
+
+    // ============================================
     // PLAN 02-01 Task 1 : Type ULD VRAC - selecteur + data model + retro-compat (VRAC-01, D-01..D-06, D-15..D-17)
     // ============================================
 
