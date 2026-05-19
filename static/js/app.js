@@ -140,6 +140,64 @@ function closeMaterialModal() {
     if (overlay) overlay.remove();
 }
 
+// ============================================
+// MATÉRIEL GLOBAL — Section inline (Phase 6, D-08, D-37)
+// ============================================
+
+// Clone de toggleForfait pour la section globale (scope #material-section au lieu de .material-modal).
+// Cocher forfait => input count disabled + value forcée à 0 (D-08 / D-16 préservés).
+function toggleMaterialSectionForfait(checkbox, inputId) {
+    var section = document.getElementById('material-section');
+    if (!section) return;
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    if (checkbox.checked) { input.disabled = true; input.value = '0'; }
+    else { input.disabled = false; }
+}
+
+// Clone de toggleNoBilling pour la section globale (D-08).
+// Cocher "Rien à facturer" => désactive tous les autres champs (counts + forfaits + comment).
+// Décocher => réactive, sauf inputs planchers EU/Std si leur forfait est coché (D-06 préservé).
+function toggleMaterialSectionNoBilling(checkbox) {
+    var section = document.getElementById('material-section');
+    if (!section) return;
+    var disabled = checkbox.checked;
+    var basicIds = [
+        'mat-global-straps', 'mat-global-blocks', 'mat-global-tarps',
+        'mat-global-dividers', 'mat-global-honeycomb', 'mat-global-comment',
+        'mat-global-flooring-eu-forfait', 'mat-global-flooring-std-forfait'
+    ];
+    basicIds.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.disabled = disabled;
+    });
+    // Inputs planchers : combinaison noBilling OU forfait coché
+    var flEu = document.getElementById('mat-global-flooring-eu');
+    var flEuF = document.getElementById('mat-global-flooring-eu-forfait');
+    if (flEu) flEu.disabled = disabled || (flEuF && flEuF.checked);
+    var flStd = document.getElementById('mat-global-flooring-std');
+    var flStdF = document.getElementById('mat-global-flooring-std-forfait');
+    if (flStd) flStd.disabled = disabled || (flStdF && flStdF.checked);
+}
+
+// Reset des champs de la section matériel globale aux defaults (D-37).
+// Appelé par newManifest() et par loadManifest() avant d'écrire les valeurs.
+function resetMaterialSection() {
+    var ids = ['mat-global-straps', 'mat-global-flooring-eu', 'mat-global-flooring-std',
+               'mat-global-blocks', 'mat-global-tarps', 'mat-global-dividers', 'mat-global-honeycomb'];
+    ids.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) { el.value = '0'; el.disabled = false; }
+    });
+    var forfaitIds = ['mat-global-flooring-eu-forfait', 'mat-global-flooring-std-forfait', 'mat-global-no-billing'];
+    forfaitIds.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) { el.checked = false; el.disabled = false; }
+    });
+    var comment = document.getElementById('mat-global-comment');
+    if (comment) { comment.value = ''; comment.disabled = false; }
+}
+
 // Applique les valeurs du modal aux data-attributes du bloc ULD,
 // rafraichit le badge, ferme le modal.
 function applyMaterialToUld(uldIndex) {
@@ -443,6 +501,7 @@ function newManifest() {
     document.getElementById('generateSection').style.display = 'none';
     document.getElementById('manifestStatus').textContent = 'Brouillon';
     document.getElementById('manifestStatus').className = 'status status-draft';
+    resetMaterialSection();
     uldCount = 0;
     // MAT-14 : autoOpen=false a l'init de l'app. Le modal materiel s'ouvre
     // uniquement quand l'utilisateur clique '+ Ajouter ULD' (UX : pas de popup au demarrage).
@@ -978,6 +1037,92 @@ function buildUldMaterialHtml(u) {
     });
     html += '</table>';
     return html;
+}
+
+// ============================================
+// MIGRATION LEGACY MATERIAL (Phase 6, D-12..D-18, D-45)
+// ============================================
+// Fonction pure : fusionne les anciens champs matériel par-ULD (Phase 1)
+// en un seul niveau global data.material (Phase 6).
+//
+// Règles :
+//  - D-13 : counts numériques (straps, blocks, tarps, dividers, honeycomb) → SOMME sur toutes ULDs
+//  - D-14 : planchers EU/Std counts → SOMME en excluant les ULDs VRAC
+//  - D-15 : forfait EU/Std → OR logique sur les ULDs non-VRAC
+//  - D-16 : si forfait true ET count > 0 après fusion → count forcé à 0 (exclusivité)
+//  - D-17 : uldComment → concaténation "ULD N°i : <comment>" séparés par newlines (i = 1-based)
+//  - D-18 : noMaterialToBill → AND logique sur toutes ULDs (true seulement si toutes avaient true)
+//
+// Idempotence (D-19) : si data.material existe déjà, retour direct sans recalcul.
+// Defensive : si data ou data.ulds invalide, retourne defaults sans crash.
+function migrateLegacyMaterial(data) {
+    var defaults = {
+        strapsCount: 0,
+        flooringEuCount: 0,
+        flooringEuForfait: false,
+        flooringStdCount: 0,
+        flooringStdForfait: false,
+        blocksCount: 0,
+        tarpsCount: 0,
+        dividersCount: 0,
+        honeycombCount: 0,
+        manifestComment: '',
+        noMaterialToBill: false
+    };
+    if (!data || typeof data !== 'object') return defaults;
+    // Idempotence : data.material déjà présent => retour direct (manifeste Phase 6 deja sauvegardé)
+    if (data.material && typeof data.material === 'object') return data.material;
+    var ulds = Array.isArray(data.ulds) ? data.ulds : (Array.isArray(data.pmcs) ? data.pmcs : []);
+    if (ulds.length === 0) return defaults;
+
+    var result = {
+        strapsCount: 0,
+        flooringEuCount: 0,
+        flooringEuForfait: false,
+        flooringStdCount: 0,
+        flooringStdForfait: false,
+        blocksCount: 0,
+        tarpsCount: 0,
+        dividersCount: 0,
+        honeycombCount: 0,
+        manifestComment: '',
+        noMaterialToBill: true  // démarre à true pour AND logique (D-18)
+    };
+    var commentParts = [];
+    ulds.forEach(function(u, idx) {
+        if (!u || typeof u !== 'object') {
+            // ULD invalide => équivaut à une ULD sans matériel + noBilling false (AND devient false)
+            result.noMaterialToBill = false;
+            return;
+        }
+        // D-13 : sommes inconditionnelles (incluent VRAC)
+        result.strapsCount += parseInt(u.strapsCount) || 0;
+        result.blocksCount += parseInt(u.blocksCount) || 0;
+        result.tarpsCount += parseInt(u.tarpsCount) || 0;
+        result.dividersCount += parseInt(u.dividersCount) || 0;
+        result.honeycombCount += parseInt(u.honeycombCount) || 0;
+        // D-14 + D-15 : planchers EU/Std → SOMME + OR uniquement pour ULDs non-VRAC
+        var isVrac = u.type === 'VRAC';
+        if (!isVrac) {
+            result.flooringEuCount += parseInt(u.flooringEuCount) || 0;
+            result.flooringStdCount += parseInt(u.flooringStdCount) || 0;
+            if (u.flooringEuForfait === true) result.flooringEuForfait = true;
+            if (u.flooringStdForfait === true) result.flooringStdForfait = true;
+        }
+        // D-17 : concaténation commentaires non-vides avec préfixe "ULD N°i : " (i = 1-based)
+        var comment = String(u.uldComment || '');
+        if (comment.length > 0) {
+            commentParts.push('ULD N°' + (idx + 1) + ' : ' + comment);
+        }
+        // D-18 : AND logique noMaterialToBill (true seulement si TOUTES avaient true)
+        if (u.noMaterialToBill !== true) result.noMaterialToBill = false;
+    });
+    // D-16 : exclusivité forfait/count après fusion (forfait true => count forcé à 0)
+    if (result.flooringEuForfait === true) result.flooringEuCount = 0;
+    if (result.flooringStdForfait === true) result.flooringStdCount = 0;
+    // D-17 : assemblage final newline-separated
+    result.manifestComment = commentParts.join('\n');
+    return result;
 }
 
 // ============================================
