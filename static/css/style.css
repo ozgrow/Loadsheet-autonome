@@ -204,6 +204,71 @@ td input[type="number"] { width: 80px; }
 }
 
 /* ==========================================
+   MATÉRIEL GLOBAL — Phase 6 (D-04)
+   Section inline statique entre #liveRecap et .actions
+   Clone des règles .material-modal-grid (2 cols desktop / 1 col mobile)
+   ========================================== */
+.material-section {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.material-section h3 {
+    margin: 0 0 12px 0;
+    color: #1a3a5c;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 8px;
+}
+.material-section-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 20px;
+}
+.material-section-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-weight: 600;
+    font-size: 0.9em;
+    color: #4a5568;
+}
+.material-section-grid input[type="number"] {
+    padding: 6px 8px;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    font-size: 1em;
+    width: 100%;
+}
+.material-section-grid input:disabled {
+    background: #edf2f7;
+    color: #a0aec0;
+}
+.material-section-grid textarea:disabled {
+    background: #edf2f7;
+    color: #a0aec0;
+    cursor: not-allowed;
+}
+.material-section-grid input[type="checkbox"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.material-section-grid textarea {
+    padding: 6px 8px;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    font-size: 1em;
+    width: 100%;
+    font-family: inherit;
+    resize: vertical;
+}
+.material-section .mat-comment-label {
+    grid-column: 1 / -1;
+}
+
+/* ==========================================
    LISTES DE DISTRIBUTION — Phase 4 (LST-05, LST-06, LST-13)
    Pattern: copie .material-modal-* avec prefixe .lists-modal-*
    ========================================== */
@@ -420,6 +485,8 @@ td input[type="number"] { width: 80px; }
         border-radius: 0; padding: 14px 12px;
     }
     .material-modal-grid { grid-template-columns: 1fr; gap: 10px; }
+    .material-section-grid { grid-template-columns: 1fr; gap: 10px; }
+    .material-section { padding: 12px 14px; }
 
     /* Material recap inline mobile (RECAP-03 — wrap naturel pour eviter overflow horizontal) */
     .material-recap {
