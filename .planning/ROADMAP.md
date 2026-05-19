@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: Matériel ULD & rétro-compat
-**Goal**: L'agent peut saisir des infos matériel sur chaque ULD (sangles, planchers bois EU/standard, bois de calage, bâches, intercalaires, nid d'abeille, commentaire libre), les voir dans le récap écran + PDF, et les anciens manifestes continuent de se charger sans erreur.
+**Goal**: L'agent peut saisir des infos matériel sur chaque ULD (sangles, planchers bois europe, planchers bois standard, bois de calage, bâches, intercalaires, nid d'abeille, commentaire libre), les voir dans le récap écran + PDF, et les anciens manifestes continuent de se charger sans erreur.
 **Depends on**: Nothing (first phase)
 **Requirements**: MAT-01, MAT-02, MAT-03, MAT-04, MAT-05, MAT-06, MAT-07, MAT-08, MAT-09, MAT-10, MAT-11, RECAP-01, RECAP-02, RECAP-03, TEST-02
 **Success Criteria** (what must be TRUE):
@@ -121,10 +121,29 @@ Plans:
 
 ### Phase 6: Materiel global (refactor saisie unique)
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Refactoriser la saisie matériel : passer du modèle "1 jeu de champs par ULD" (Phase 1) à un modèle "1 jeu unique pour tout le manifeste" via une nouvelle section UI inline statique entre #liveRecap et le bouton Generer. Migration runtime auto au loadManifest des anciens manifestes (fusion par-ULD → total global selon règles D-13..D-18). Rendu PDF + email HTML symétriques (section "Matériel" unique page 1, plus de section par-ULD). Validation MAT-13 globalisée. MAT-14 (auto-open modal) supprimé. Suppression du couplage matériel↔ULD.
+
+**Requirements**: MAT-01, MAT-02, MAT-03, MAT-04, MAT-05, MAT-06, MAT-07, MAT-08, MAT-09, MAT-10, MAT-11, MAT-12, MAT-13, RECAP-01, RECAP-02, RECAP-03 (réinterprétés au niveau manifeste — MAT-14 explicitement supprimé par D-36)
 **Depends on:** Phase 5
-**Plans:** 0 plans
+**Plans:** 6 plans
+
+**Success Criteria** (what must be TRUE):
+  1. La section "Matériel" inline statique est visible en permanence entre #liveRecap et le bouton "Generer Loadsheet" ; l'agent y saisit UNE seule fois sangles, planchers EU/Std (count ou forfait), bois calage, bâches, intercalaires, nids d'abeille, commentaire libre, ainsi que la case "Rien à facturer"
+  2. Sur mobile ≤ 768px, la grid passe de 2 colonnes à 1 colonne (RECAP-03 réinterprété)
+  3. collectData() retourne data.material top-level ; les ULDs n'ont plus de champs matériel
+  4. loadManifest() peuple la section globale via migrateLegacyMaterial(data) — un manifeste Phase 1 (champs par-ULD) charge sans erreur et le matériel est fusionné en mémoire selon D-13..D-18 (sommes counts, OR forfaits non-VRAC, AND noBilling, concat commentaires "ULD N°i : ..." newlines) ; pas de réécriture destructive (MAT-10)
+  5. PDF page 1 contient une section "Materiel" alimentée par data.material (incluant manifestComment et cas "Rien à facturer") ; les pages détail ULD n'ont plus de section "Materiel"
+  6. Email HTML contient une section "Matériel" unique alimentée par data.material avec esc(manifestComment) anti-XSS ; les blocs détail ULD n'ont plus de section "Matériel" (MAT-11 réinterprété sur manifestComment)
+  7. La validation MAT-13 est appliquée UNIQUEMENT à generatePdf/sendEmail via manifestHasMaterial() — addUld et showGenerateSection ne bloquent plus (D-34, D-35). MAT-14 (auto-open modal) est supprimé (D-36)
+  8. npm run verify passe avec 0 FAIL après adaptation des suites existantes + ajout de la suite "Matériel global - Migration helper purs" (≥ 7 tests D-45) + suite "Matériel global - Validation MAT-13" (≥ 6 tests) + test rétro-compat localStorage explicit (D-47)
+  9. Release Checklist CLAUDE.md 7 étapes passe : verify OK, dev OK, login OK, E2E manuel OK (manifeste mixte PMC+VRAC + matériel global + save/load + PDF/email symétriques), rétro-compat ancien manifeste OK, push master prêt
+
+**UI hint**: yes (nouvelle section inline statique, pas de modal)
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 6 to break down)
+- [ ] 06-01-PLAN.md — UI section matériel inline (index.html + style.css + handlers JS + reset newManifest) — MAT-01..09, MAT-11, MAT-12, RECAP-01, RECAP-03
+- [ ] 06-02-PLAN.md — Helper pur migrateLegacyMaterial(data) + suite tests Migration (D-45 a-g + idempotence + defensive ≥ 18 tests) — MAT-10
+- [ ] 06-03-PLAN.md — collectData / loadManifest / addUld refactor data.material top-level + suppression data-attributes ULD + suppression bouton/badge matériel — MAT-09, MAT-10, MAT-12
+- [ ] 06-04-PLAN.md — Rendu PDF page 1 + email HTML symétriques depuis data.material + esc(manifestComment) + suppression sections par-ULD — MAT-11, RECAP-02
+- [ ] 06-05-PLAN.md — Helper manifestHasMaterial + validation MAT-13 globalisée (generatePdf/sendEmail) + suppression blocages MAT-13/MAT-14 dans addUld/showGenerateSection — MAT-13
+- [ ] 06-06-PLAN.md — Adaptation tests (suppression suites obsolètes ~40, nouvelles suites Validation MAT-13 + UI handlers + E2E lifecycle adapté + rétro-compat D-47) + Release Checklist — MAT-01..13, RECAP-01..03
