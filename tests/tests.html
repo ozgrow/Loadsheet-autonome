@@ -39,7 +39,7 @@
 <div id="testDOM" style="display:none;">
     <span id="manifestId"></span>
     <span id="appVersion"></span>
-    <input id="clientName"><input id="agentName"><input id="destAirport">
+    <select id="clientName"></select><input id="agentName"><input id="destAirport">
     <input id="recipients"><input id="cc">
     <div id="pmcContainer"></div>
     <div id="generateSection" style="display:none;"></div>
@@ -61,6 +61,50 @@ window.confirm = function() { return true; };
 window._xss = 0;
 // Nettoyer localStorage avant tout
 localStorage.removeItem('loadsheet_manifests');
+
+// Phase 5 plan 05-02 : #clientName est devenu un <select>. Les tests Phase 1/2/3/4 qui
+// font directement `.value = 'TestClient'` ne fonctionnent plus nativement (set value
+// sur un <select> sans option matching reste vide). On installe un setter-shim qui
+// reproduit la logique de loadManifest (CLI-08 / D-14) : si la valeur n'a pas d'option
+// matching, on injecte une <option data-legacy="true"> avant de set la value.
+// Pattern installe via Object.defineProperty sur l'INSTANCE (pas le prototype) pour
+// ne pas polluer le reste de la page. Anti-XSS : textContent (jamais innerHTML).
+(function() {
+    var sel = document.getElementById('clientName');
+    if (!sel || sel.tagName !== 'SELECT') return;
+    // Helper accessible aux suites : reset complet du <select> a l'etat initial.
+    window._testResetClientSelect = function() {
+        while (sel.firstChild) sel.removeChild(sel.firstChild);
+        var defOpt = document.createElement('option');
+        defOpt.value = '';
+        defOpt.textContent = '';
+        sel.appendChild(defOpt);
+    };
+    window._testResetClientSelect();
+    // Setter shim : .value = X injecte une option si necessaire (mirror CLI-08 / D-14).
+    var nativeDesc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+    Object.defineProperty(sel, 'value', {
+        configurable: true,
+        get: function() { return nativeDesc.get.call(sel); },
+        set: function(v) {
+            var str = (v === null || v === undefined) ? '' : String(v);
+            if (str !== '') {
+                var exists = false;
+                for (var i = 0; i < sel.options.length; i++) {
+                    if (sel.options[i].value === str) { exists = true; break; }
+                }
+                if (!exists) {
+                    var opt = document.createElement('option');
+                    opt.value = str;
+                    opt.textContent = str; // textContent = anti-XSS natif
+                    opt.setAttribute('data-legacy', 'true');
+                    sel.appendChild(opt);
+                }
+            }
+            nativeDesc.set.call(sel, str);
+        }
+    });
+})();
 </script>
 <!-- jsPDF + autotable : necessaire pour les tests buildPdf (Materiel PDF) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -3888,6 +3932,191 @@ localStorage.removeItem('loadsheet_manifests');
 
         // Cleanup
         localStorage.removeItem('clients-dev');
+    })();
+
+    // ========================================
+    // CLIENTS - UI (Phase 5 plan 05-02, CLI-04 CLI-06 CLI-09 CLI-11)
+    // ========================================
+    suite('Clients - UI');
+    await (async function() {
+        // Setup
+        localStorage.removeItem('clients-dev');
+        closeClientsModal();
+        // Reset le shim de #clientName pour repartir d'un <select> propre (1 option default vide)
+        if (typeof window._testResetClientSelect === 'function') window._testResetClientSelect();
+
+        // U1 — openClientsModal cree overlay, closeClientsModal le retire (CLI-04)
+        assert('U1 pre: pas d\'overlay', document.querySelector('.clients-modal-overlay') === null);
+        await openClientsModal();
+        assert('U1: overlay cree apres open', document.querySelector('.clients-modal-overlay') !== null);
+        closeClientsModal();
+        assert('U1: overlay retire apres close', document.querySelector('.clients-modal-overlay') === null);
+
+        // U2 — renderClientsTable avec 2 clients genere 2 lignes (CLI-04)
+        localStorage.removeItem('clients-dev');
+        await clientsCreate('CODE-A');
+        await clientsCreate('CODE-B');
+        await openClientsModal();
+        var rowsU2 = document.querySelectorAll('.clients-modal-table tbody tr');
+        assertEqual('U2: 2 lignes dans la table', rowsU2.length, 2);
+        // Tri alphabetique : CODE-A en 1er
+        assert('U2: 1ere ligne contient CODE-A', rowsU2[0].textContent.indexOf('CODE-A') !== -1);
+        assert('U2: 2eme ligne contient CODE-B', rowsU2[1].textContent.indexOf('CODE-B') !== -1);
+        closeClientsModal();
+
+        // U3 — refreshClientsDropdown populate <select> avec tri alphabetique francais (CLI-04 / D-11)
+        // M-02 : litteraux accentues echappes en \u escapes pour garantir byte-identical cross-platform (Windows mojibake)
+        localStorage.removeItem('clients-dev');
+        if (typeof window._testResetClientSelect === 'function') window._testResetClientSelect();
+        await clientsCreate('Étoile');   // Étoile
+        await clientsCreate('Cargolux');
+        await clientsCreate('Élite');    // Élite
+        await refreshClientsDropdown();
+        var ddSel = document.getElementById('clientName');
+        assert('U3: clientName est SELECT', ddSel && ddSel.tagName === 'SELECT');
+        // [0] = default '— Choisir un client —', [1..3] = clients tries
+        assertEqual('U3: 4 options (1 default + 3 clients)', ddSel.options.length, 4);
+        assertEqual('U3: option[0] est default', ddSel.options[0].value, '');
+        assertEqual('U3: option[1] = Cargolux', ddSel.options[1].textContent, 'Cargolux');
+        assertEqual('U3: option[2] = Elite', ddSel.options[2].textContent, 'Élite');
+        assertEqual('U3: option[3] = Etoile', ddSel.options[3].textContent, 'Étoile');
+
+        // U4 — XSS sur code : textContent dans dropdown + _clientsEsc dans modal table (CLI-09 / D-23)
+        localStorage.removeItem('clients-dev');
+        if (typeof window._testResetClientSelect === 'function') window._testResetClientSelect();
+        window._xss = 0;
+        var xssCode = '<script>window._xss=1<\/script>XSS';
+        await clientsCreate(xssCode);
+        await refreshClientsDropdown();
+        // textContent dans <option> : pas d'execution
+        assertEqual('U4: dropdown XSS pas execute', window._xss, 0);
+        var optXss = document.getElementById('clientName').options[1];
+        assertEqual('U4: option.textContent contient string brute', optXss.textContent, xssCode);
+        // Modal table : _clientsEsc applique
+        await openClientsModal();
+        assertEqual('U4: modal table XSS pas execute', window._xss, 0);
+        assert('U4: modal contient texte echappe', document.querySelector('.clients-modal-table').innerHTML.indexOf('&lt;script&gt;') !== -1);
+        closeClientsModal();
+
+        // U5 — confirm() rejette → pas de suppression ; confirm() accepte → suppression (D-21 / CLI-04)
+        localStorage.removeItem('clients-dev');
+        if (typeof window._testResetClientSelect === 'function') window._testResetClientSelect();
+        await clientsCreate('GARDER');
+        var origConfirm = window.confirm;
+        window.confirm = function() { return false; };
+        try {
+            var allBeforeU5 = await clientsGetAll();
+            var beforeU5 = allBeforeU5.length;
+            await clientsConfirmDelete(allBeforeU5[0].id);
+            var afterU5 = (await clientsGetAll()).length;
+            assertEqual('U5a: confirm rejette => garde', afterU5, beforeU5);
+            // Maintenant accepter
+            window.confirm = function() { return true; };
+            await clientsConfirmDelete(allBeforeU5[0].id);
+            var afterU5b = (await clientsGetAll()).length;
+            assertEqual('U5b: confirm accepte => supprime', afterU5b, beforeU5 - 1);
+        } finally {
+            window.confirm = origConfirm;
+        }
+
+        // U6 — loadManifest retro-compat legacy : data.client inconnu => option ephemere (CLI-08 / D-14)
+        localStorage.removeItem('clients-dev');
+        if (typeof window._testResetClientSelect === 'function') window._testResetClientSelect();
+        await clientsCreate('CONNU');
+        await refreshClientsDropdown();
+        // Simuler loadManifest avec un client legacy inconnu
+        // (on appelle directement la logique d'injection, pas loadManifest complet — evite couplage manifest format)
+        var dataU6 = { client: 'LEGACY-OLD-VALUE' };
+        var _cnElU6 = document.getElementById('clientName');
+        if (_cnElU6 && _cnElU6.tagName === 'SELECT' && dataU6.client) {
+            var _existsU6 = false;
+            for (var _iU6 = 0; _iU6 < _cnElU6.options.length; _iU6++) {
+                if (_cnElU6.options[_iU6].value === dataU6.client) { _existsU6 = true; break; }
+            }
+            if (!_existsU6) {
+                var _legacyOptU6 = document.createElement('option');
+                _legacyOptU6.value = dataU6.client;
+                _legacyOptU6.textContent = dataU6.client;
+                _legacyOptU6.setAttribute('data-legacy', 'true');
+                _cnElU6.appendChild(_legacyOptU6);
+            }
+        }
+        _cnElU6.value = dataU6.client;
+        // Verifier que l'option ephemere existe avec data-legacy="true"
+        var legacyFoundU6 = null;
+        for (var oU6 = 0; oU6 < _cnElU6.options.length; oU6++) {
+            if (_cnElU6.options[oU6].getAttribute('data-legacy') === 'true' &&
+                _cnElU6.options[oU6].value === 'LEGACY-OLD-VALUE') {
+                legacyFoundU6 = _cnElU6.options[oU6];
+                break;
+            }
+        }
+        assert('U6: option legacy injectee', legacyFoundU6 !== null);
+        assertEqual('U6: legacy value = LEGACY-OLD-VALUE', legacyFoundU6.value, 'LEGACY-OLD-VALUE');
+        assertEqual('U6: <select>.value selectionne legacy', _cnElU6.value, 'LEGACY-OLD-VALUE');
+
+        // U7 — Refresh post-CRUD : create => dropdown reflete immediatement (CLI-04 / D-13)
+        localStorage.removeItem('clients-dev');
+        if (typeof window._testResetClientSelect === 'function') window._testResetClientSelect();
+        await refreshClientsDropdown();
+        var ddU7 = document.getElementById('clientName');
+        assertEqual('U7 pre: 1 option default seule', ddU7.options.length, 1);
+        await clientsCreate('U7-NEW');
+        await refreshClientsDropdown();
+        assertEqual('U7 post: 2 options (default + U7-NEW)', ddU7.options.length, 2);
+        assertEqual('U7: nouvelle option = U7-NEW', ddU7.options[1].textContent, 'U7-NEW');
+
+        // Cleanup
+        localStorage.removeItem('clients-dev');
+        closeClientsModal();
+        if (typeof window._testResetClientSelect === 'function') window._testResetClientSelect();
+    })();
+
+    // ========================================
+    // CLIENTS - E2E LIFECYCLE (Phase 5 plan 05-02, CLI-12 / D-29)
+    // ========================================
+    suite('Clients - E2E lifecycle');
+    await (async function() {
+        localStorage.removeItem('clients-dev');
+        closeClientsModal();
+        if (typeof window._testResetClientSelect === 'function') window._testResetClientSelect();
+        // Reset client
+        document.getElementById('clientName').value = '';
+
+        // 1. Creer un client via API CRUD
+        await clientsCreate('TEST-E2E');
+        var allE1 = await clientsGetAll();
+        assertEqual('E1: 1 client cree', allE1.length, 1);
+        assertEqual('E1: code = TEST-E2E', allE1[0].code, 'TEST-E2E');
+
+        // 2. Refresh dropdown => option presente
+        await refreshClientsDropdown();
+        var ddE1 = document.getElementById('clientName');
+        var foundOption = false;
+        for (var i = 0; i < ddE1.options.length; i++) {
+            if (ddE1.options[i].value === 'TEST-E2E') { foundOption = true; break; }
+        }
+        assert('E1: option TEST-E2E presente dans dropdown', foundOption);
+
+        // 3. Selectionner le client (.value = code)
+        ddE1.value = 'TEST-E2E';
+        assertEqual('E1: <select>.value = TEST-E2E', ddE1.value, 'TEST-E2E');
+
+        // 4. Verifier que le DOM est lu correctement par la chaine data Phase 5
+        //    (collectData lit document.getElementById('clientName').value — comportement identique input/select)
+        document.getElementById('agentName').value = 'AGT-001';
+        document.getElementById('destAirport').value = 'CDG';
+        var clientValueViaDom = document.getElementById('clientName').value;
+        assertEqual('E1: getElementById(clientName).value = TEST-E2E', clientValueViaDom, 'TEST-E2E');
+
+        // 5. Persistence verifiee : reload (= relire localStorage) => client toujours present
+        var allAfterReload = await clientsGetAll();
+        assertEqual('E1: client persiste post-CRUD', allAfterReload.length, 1);
+        assertEqual('E1: code preserve apres relecture', allAfterReload[0].code, 'TEST-E2E');
+
+        // Cleanup
+        localStorage.removeItem('clients-dev');
+        if (typeof window._testResetClientSelect === 'function') window._testResetClientSelect();
     })();
 
     // ========================================

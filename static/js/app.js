@@ -722,6 +722,21 @@ async function loadManifest(id) {
 
     manifestId = data.manifestId;
     document.getElementById('manifestId').textContent = manifestId;
+    // CLI-08 / D-14 : retro-compat manifestes legacy — injecter option ephemere si data.client inconnu
+    var _cnEl = document.getElementById('clientName');
+    if (_cnEl && _cnEl.tagName === 'SELECT' && data.client) {
+        var _exists = false;
+        for (var _i = 0; _i < _cnEl.options.length; _i++) {
+            if (_cnEl.options[_i].value === data.client) { _exists = true; break; }
+        }
+        if (!_exists) {
+            var _legacyOpt = document.createElement('option');
+            _legacyOpt.value = data.client;
+            _legacyOpt.textContent = data.client; // textContent = anti-XSS natif
+            _legacyOpt.setAttribute('data-legacy', 'true');
+            _cnEl.appendChild(_legacyOpt);
+        }
+    }
     document.getElementById('clientName').value = data.client || '';
     document.getElementById('agentName').value = data.agent || '';
     document.getElementById('destAirport').value = data.destAirport || '';

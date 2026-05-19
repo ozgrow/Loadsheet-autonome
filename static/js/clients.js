@@ -170,9 +170,203 @@ async function _clientsAutoSeed() {
     if (all.length === 0) {
       await clientsSaveAll(INITIAL_CLIENTS);
     }
+    // CLI-04 / CLI-07 : populate dropdown au DOMContentLoaded apres seed
+    if (typeof refreshClientsDropdown === 'function') {
+      await refreshClientsDropdown();
+    }
   } catch (e) {
     // Mode remote au premier load : getJwt() peut etre absent -> log silencieux
     if (typeof console !== 'undefined') console.warn('_clientsAutoSeed:', e.message);
+  }
+}
+
+// ============================================
+// UI HANDLERS — Phase 5 plan 05-02 (CLI-04, CLI-06, CLI-09, CLI-11)
+// ============================================
+// Pattern clone structurel de lists.js section UI HANDLERS Phase 4.
+// esc() defini dans static/js/app.js (charge apres clients.js) — utilise _clientsEsc (defini Phase 5 plan 05-01).
+
+function closeClientsModal() {
+  var ov = document.querySelector('.clients-modal-overlay');
+  if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+}
+
+async function openClientsModal() {
+  closeClientsModal();
+  var overlay = document.createElement('div');
+  overlay.className = 'clients-modal-overlay';
+  overlay.innerHTML =
+    '<div class="clients-modal">' +
+      '<div class="clients-modal-header">' +
+        '<h3>Clients</h3>' +
+        '<button type="button" class="btn btn-secondary btn-sm" onclick="closeClientsModal()">✕</button>' +
+      '</div>' +
+      '<div id="clients-modal-body"></div>' +
+      '<div class="clients-modal-actions">' +
+        '<button type="button" class="btn btn-primary" onclick="clientsOpenCreate()">+ Nouveau client</button>' +
+      '</div>' +
+      '<div id="clients-modal-form-zone"></div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  try {
+    var all = await clientsGetAll();
+    renderClientsTable(all);
+  } catch (e) {
+    var body = document.getElementById('clients-modal-body');
+    // _clientsEsc applique sur message d'erreur affiche en innerHTML (defense-in-depth, CLI-09)
+    if (body) body.innerHTML = '<div class="clients-modal-empty">Erreur chargement: ' + _clientsEsc(e.message) + '</div>';
+  }
+}
+
+function renderClientsTable(clients) {
+  var sorted = clientsSorted(clients);
+  _clientIds = sorted.map(function(c) { return c.id; });
+  var body = document.getElementById('clients-modal-body');
+  if (!body) return;
+  if (sorted.length === 0) {
+    body.innerHTML = '<div class="clients-modal-empty">Aucun client enregistre.</div>';
+    return;
+  }
+  var rowsHtml = sorted.map(function(c, idx) {
+    // _clientsEsc sur code (anti-XSS, innerHTML — CLI-09, D-23) ; _clientIds[idx] dans onclick (D-24)
+    return '<tr>' +
+      '<td>' + _clientsEsc(c.code) + '</td>' +
+      '<td style="text-align:right;white-space:nowrap;">' +
+        '<button type="button" onclick="clientsOpenEdit(_clientIds[' + idx + '])">✎</button>' +
+        '<button type="button" onclick="clientsConfirmDelete(_clientIds[' + idx + '])">🗑</button>' +
+      '</td></tr>';
+  }).join('');
+  body.innerHTML =
+    '<table class="clients-modal-table">' +
+      '<thead><tr><th>Code</th><th></th></tr></thead>' +
+      '<tbody>' + rowsHtml + '</tbody>' +
+    '</table>';
+}
+
+function _renderClientsForm(client) {
+  var zone = document.getElementById('clients-modal-form-zone');
+  if (!zone) return;
+  var titre = client ? 'Modifier le client' : 'Nouveau client';
+  // _clientsEsc applique sur titre dans innerHTML (defense-in-depth meme si string interne — CLI-09)
+  zone.innerHTML =
+    '<div class="clients-modal-form">' +
+      '<input type="hidden" id="clients-form-id">' +
+      '<h4 style="margin:0;color:#1a3a5c;">' + _clientsEsc(titre) + '</h4>' +
+      '<label>Code :<input type="text" id="clients-form-code" maxlength="60"></label>' +
+      '<div class="clients-modal-actions">' +
+        '<button type="button" class="btn btn-secondary" onclick="_clientsCloseForm()">Annuler</button>' +
+        '<button type="button" class="btn btn-success" onclick="clientsSubmitForm()">Enregistrer</button>' +
+      '</div>' +
+    '</div>';
+  // Anti-XSS pattern : .value = data, JAMAIS innerHTML pour les valeurs utilisateur (pattern textarea Phase 1)
+  document.getElementById('clients-form-id').value = client ? client.id : '';
+  document.getElementById('clients-form-code').value = client ? client.code : '';
+}
+
+function _clientsCloseForm() {
+  var zone = document.getElementById('clients-modal-form-zone');
+  if (zone) zone.innerHTML = '';
+}
+
+function clientsOpenCreate() {
+  _renderClientsForm(null);
+}
+
+async function clientsOpenEdit(id) {
+  try {
+    var all = await clientsGetAll();
+    var client = all.find(function(c) { return c && c.id === id; });
+    if (!client) { alert('Client introuvable.'); return; }
+    _renderClientsForm(client);
+  } catch (e) { alert('Erreur: ' + e.message); }
+}
+
+async function clientsSubmitForm() {
+  var idEl = document.getElementById('clients-form-id');
+  var codeEl = document.getElementById('clients-form-code');
+  if (!codeEl) return;
+  var id = idEl ? idEl.value : '';
+  var code = codeEl.value;
+  try {
+    if (id) await clientsUpdate(id, code);
+    else await clientsCreate(code);
+    _clientsCloseForm();
+    await refreshClientsDropdown();
+    var all = await clientsGetAll();
+    renderClientsTable(all);
+  } catch (e) {
+    alert(e.message);
+    if (codeEl && codeEl.focus) codeEl.focus();
+  }
+}
+
+async function clientsConfirmDelete(id) {
+  try {
+    var all = await clientsGetAll();
+    var client = all.find(function(c) { return c && c.id === id; });
+    if (!client) { alert('Client introuvable.'); return; }
+    if (!confirm('Supprimer le client "' + client.code + '" ?')) return;
+    await clientsDelete(id);
+    await refreshClientsDropdown();
+    var fresh = await clientsGetAll();
+    renderClientsTable(fresh);
+  } catch (e) { alert('Erreur: ' + e.message); }
+}
+
+async function refreshClientsDropdown() {
+  var dd = document.getElementById('clientName');
+  // Seulement si #clientName est un <select> (pas un <input> dans les pages legacy ou test setups partiels)
+  if (!dd || !(dd.tagName === 'SELECT')) return;
+  try {
+    var all = await clientsGetAll();
+    var sorted = clientsSorted(all);
+    // Preserver la valeur actuelle si possible
+    var currentValue = dd.value;
+    // Capturer la PREMIERE option legacy actuellement presente (CLI-08 / D-14) pour la re-injecter apres rebuild
+    var hadLegacy = false;
+    var legacyValue = '';
+    for (var i = 0; i < dd.options.length; i++) {
+      if (dd.options[i].getAttribute('data-legacy') === 'true') {
+        hadLegacy = true;
+        legacyValue = dd.options[i].value;
+        break;
+      }
+    }
+    while (dd.firstChild) dd.removeChild(dd.firstChild);
+    // Option default
+    var opt0 = document.createElement('option');
+    opt0.value = '';
+    opt0.textContent = '— Choisir un client —';
+    dd.appendChild(opt0);
+    // Une option par client — textContent gere l'esc nativement (anti-XSS, CLI-09 / D-23)
+    sorted.forEach(function(c) {
+      var opt = document.createElement('option');
+      opt.value = c.code;
+      opt.textContent = c.code;
+      dd.appendChild(opt);
+    });
+    // Re-injecter l'option legacy si elle existait ET que sa valeur n'est PAS deja une option normale
+    if (hadLegacy && legacyValue) {
+      var alreadyPresent = false;
+      for (var j = 0; j < dd.options.length; j++) {
+        if (dd.options[j].value === legacyValue) { alreadyPresent = true; break; }
+      }
+      if (!alreadyPresent) {
+        var legacyOpt = document.createElement('option');
+        legacyOpt.value = legacyValue;
+        legacyOpt.textContent = legacyValue; // textContent = anti-XSS natif
+        legacyOpt.setAttribute('data-legacy', 'true');
+        dd.appendChild(legacyOpt);
+      }
+    }
+    // Restaurer la valeur courante si l'option existe encore
+    var canRestore = false;
+    for (var k = 0; k < dd.options.length; k++) {
+      if (dd.options[k].value === currentValue) { canRestore = true; break; }
+    }
+    dd.value = canRestore ? currentValue : '';
+  } catch (e) {
+    if (typeof console !== 'undefined') console.warn('refreshClientsDropdown:', e.message);
   }
 }
 
