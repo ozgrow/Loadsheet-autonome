@@ -32,12 +32,14 @@ Outil web de création de loadsheets (feuilles de chargement) pour ATH — Air T
 - ✓ Masquage conditionnel des champs planchers bois dans le modal matériel pour les ULD VRAC (override partiel D-09 Phase 1) — Validated in Phase 2
 - ✓ Couverture de tests complète Phase 1 + Phase 2 (suite E2E lifecycle 26 asserts + fix bug session) — Validated in Phase 3
 - ✓ Release gate automatisé `npm run verify` + `npm run dev` + checklist 7 étapes dans CLAUDE.md — Validated in Phase 3
+- ✓ Listes de distribution emails (modal CRUD + dropdown destinataires + persistence Blob Azure partagée) — Validated in Phase 4
+- ✓ Codes client en dropdown maintenable (`<select>` + modal CRUD + JSON Blob `clients.json` partagé entre agents + rétro-compat manifeste legacy via option `data-legacy` éphémère + seed initial 1DAC-CDW + 2SET-CDG) — Validated in Phase 5
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-_Milestone v1.0 complet — tous les requirements livrés. Prochain milestone à définir via `/gsd:new-milestone`._
+- Refactor matériel au niveau manifeste (saisie unique pour tout le manifeste au lieu d'un jeu par ULD) — Phase 6 à planifier
 
 ### Out of Scope
 
