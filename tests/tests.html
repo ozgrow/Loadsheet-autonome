@@ -1381,6 +1381,30 @@ localStorage.removeItem('loadsheet_manifests');
         assert('Alert ne mentionne pas "N°2"', matAlert && matAlert.indexOf('N°2') < 0);
     })();
 
+    // --- Test 10b : showGenerateSection bloque + ouvre modal si ULD incomplete ---
+    suite('Materiel ULD - showGenerateSection bloque + ouvre modal sur 1ere ULD incomplete (MAT-13)');
+    (function() {
+        resetDOM();
+        addUld(false, true); // ULD #1 - vide
+        addUld(false, true); // ULD #2 - on lui met du materiel
+        document.querySelector('#uld-2').setAttribute('data-straps', '1');
+        document.getElementById('agentName').value = 'AGENT';
+        document.getElementById('destAirport').value = 'CDG';
+        closeMaterialModal();
+        _alertLog.length = 0;
+        showGenerateSection();
+        var matAlert = _alertLog.find(function(m) { return m.indexOf('Matériel non saisi') >= 0; });
+        assert('Alert "Matériel non saisi" presente', !!matAlert);
+        assert('Alert mentionne ULD N°1', matAlert && matAlert.indexOf('ULD N°1') >= 0);
+        var modal = document.querySelector('.material-modal');
+        assert('Modal materiel ouvert apres showGenerateSection bloque', !!modal);
+        assertEqual('Modal cible ULD #1', modal && modal.getAttribute('data-uld-index'), '1');
+        // Verifier que generateSection N'a PAS ete rendue visible
+        var sect = document.getElementById('generateSection');
+        assert('generateSection reste cachee', !sect || sect.style.display !== 'block');
+        closeMaterialModal();
+    })();
+
     // --- Test 11 : generatePdf re-ouvre le modal sur la 1ere ULD incomplete ---
     suite('Materiel ULD - generatePdf re-ouvre modal sur 1ere ULD incomplete (MAT-13 + MAT-14)');
     await (async function() {
