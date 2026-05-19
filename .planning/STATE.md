@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 5 context gathered
-last_updated: "2026-05-19T13:08:26.214Z"
-last_activity: 2026-04-29
+status: executing
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-05-19T14:54:51.736Z"
+last_activity: 2026-05-19
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 10
+  completed_plans: 9
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-22)
 
 **Core value:** La saisie d'un manifeste doit aboutir à un PDF correct envoyé aux bons destinataires, sans perte de données.
-**Current focus:** Phase 04 — listes-de-distribution-emails-cosmos-blob-backend-dev-local-d-abord
+**Current focus:** Phase 05 — codes-client-en-dropdown-maintenable-backend-partage
 
 ## Current Position
 
-Phase: 04
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-29
+Phase: 05 (codes-client-en-dropdown-maintenable-backend-partage) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-05-19
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P03 | 4500 | 5 tasks | 3 files |
 | Phase 04 P01 | 289 | 2 tasks | 7 files |
 | Phase 04 P02 | 330 | 2 tasks | 4 files |
+| Phase 05 P01 | 180 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -111,6 +112,11 @@ Recent decisions affecting current work:
 - [Phase 04]: Phase 04 P02: anti-XSS strict — _listIds[idx] dans onclick, esc()/_listsEsc() partout en innerHTML, textarea via .value, dropdown via textContent
 - [Phase 04]: Phase 04 P02: test E2E LST-15 chaine data isolee (PAS sendEmail() complet) — stub fetch direct vers /api/send-email pour eviter couplage invariants Phase 1/2
 - [Phase 04]: Phase 04 P02: _listsEsc() fallback inline si esc() pas charge — module lists.js robuste au load order DOMContentLoaded
+- [Phase 05]: Phase 05 P01: clone structurel direct api/recipients + static/js/lists.js (Phase 4 source of truth) — KISS pattern reuse
+- [Phase 05]: Phase 05 P01: auto-detect mode par hostname (M-01 polarite safe-default 'localStorage' si window.location.hostname undefined) — coherent post-fix Phase 4 edefa95
+- [Phase 05]: Phase 05 P01: D-05 unicite case-sensitive (pas de toLowerCase) — codes ATH peuvent differer en case (ex: '1DAC-CDW' vs '1dac-cdw' = 2 entrees distinctes)
+- [Phase 05]: Phase 05 P01: seed hardcode frontend INITIAL_CLIENTS (D-15) auto-applique au DOMContentLoaded — 1DAC-CDW + 2SET-CDG, evite migration DB
+- [Phase 05]: Phase 05 P01: [Rule 1 - Bug auto-fix] renomme _localGet/_localPut/_remoteGet/_remotePut -> _clientsLocalGet/Put/_clientsRemoteGet/Put pour eviter collision globale avec lists.js (function declarations hoisted dans harness inlined)
 
 ### Roadmap Evolution
 
@@ -130,6 +136,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-19T13:08:26.209Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-codes-client-en-dropdown-maintenable-backend-partage/05-CONTEXT.md
+Last session: 2026-05-19T14:54:33.796Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: None
