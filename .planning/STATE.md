@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-05-19T14:54:51.736Z"
+status: verifying
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-05-19T15:08:24.044Z"
 last_activity: 2026-05-19
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-22)
 
 Phase: 05 (codes-client-en-dropdown-maintenable-backend-partage) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-19
 
 Progress: [░░░░░░░░░░] 0%
@@ -62,6 +62,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04 P01 | 289 | 2 tasks | 7 files |
 | Phase 04 P02 | 330 | 2 tasks | 4 files |
 | Phase 05 P01 | 180 | 2 tasks | 5 files |
+| Phase 05-codes-client-en-dropdown-maintenable-backend-partage P02 | 1200 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,10 @@ Recent decisions affecting current work:
 - [Phase 05]: Phase 05 P01: D-05 unicite case-sensitive (pas de toLowerCase) — codes ATH peuvent differer en case (ex: '1DAC-CDW' vs '1dac-cdw' = 2 entrees distinctes)
 - [Phase 05]: Phase 05 P01: seed hardcode frontend INITIAL_CLIENTS (D-15) auto-applique au DOMContentLoaded — 1DAC-CDW + 2SET-CDG, evite migration DB
 - [Phase 05]: Phase 05 P01: [Rule 1 - Bug auto-fix] renomme _localGet/_localPut/_remoteGet/_remotePut -> _clientsLocalGet/Put/_clientsRemoteGet/Put pour eviter collision globale avec lists.js (function declarations hoisted dans harness inlined)
+- [Phase 05-codes-client-en-dropdown-maintenable-backend-partage]: Phase 05 P02: <select id='clientName'> remplace <input> (D-08) — id preserve pour hooks app.js 437/657/725 intacts
+- [Phase 05-codes-client-en-dropdown-maintenable-backend-partage]: Phase 05 P02: option ephemere data-legacy='true' injectee dans loadManifest si data.client inconnu (CLI-08 / D-14) — modif chirurgicale +15 lignes uniquement
+- [Phase 05-codes-client-en-dropdown-maintenable-backend-partage]: Phase 05 P02: anti-XSS triple defense — _clientIds[idx] dans onclick + _clientsEsc partout en innerHTML + textContent sur options dropdown/legacy (D-23/D-24)
+- [Phase 05-codes-client-en-dropdown-maintenable-backend-partage]: Phase 05 P02: [Rule 1 - Bug auto-fix] shim setter sur l'instance #clientName dans tests.html (Object.defineProperty + auto-inject option data-legacy si .value=X inconnu) — mirror prod CLI-08, preserve anti-regression Phase 1/2/3/4 sans modifier le code production
 
 ### Roadmap Evolution
 
@@ -136,6 +141,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-19T14:54:33.796Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-05-19T15:08:24.039Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None

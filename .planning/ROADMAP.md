@@ -117,7 +117,7 @@ Plans:
 
 Plans:
 - [x] 05-01-PLAN.md — Backend Function /api/clients + frontend module clients.js mode-switchable (auto-détection hostname) + seed INITIAL_CLIENTS + tests CRUD localStorage stub (CLI-01, CLI-02, CLI-03, CLI-05, CLI-07, CLI-09, CLI-10 partiel)
-- [ ] 05-02-PLAN.md — UI integration: remplacement input→select dans index.html + bouton + modal CRUD + CSS clients-modal + hook loadManifest legacy + tests UI + E2E lifecycle (CLI-04, CLI-06, CLI-08, CLI-09, CLI-10 complet, CLI-11, CLI-12)
+- [x] 05-02-PLAN.md — UI integration: remplacement input→select dans index.html + bouton + modal CRUD + CSS clients-modal + hook loadManifest legacy + tests UI + E2E lifecycle (CLI-04, CLI-06, CLI-08, CLI-09, CLI-10 complet, CLI-11, CLI-12)
 
 ### Phase 6: Materiel global (refactor saisie unique)
 
