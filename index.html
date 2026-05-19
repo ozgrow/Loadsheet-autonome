@@ -72,7 +72,12 @@
             </div>
             <div class="field-group">
                 <label class="field-label">Client :</label>
-                <input type="text" id="clientName" class="field-input" placeholder="Nom du client">
+                <div class="client-row">
+                    <select id="clientName" class="field-input">
+                        <option value="">— Choisir un client —</option>
+                    </select>
+                    <button type="button" id="clients-btn" class="btn btn-secondary btn-sm" onclick="openClientsModal()">≡ Clients</button>
+                </div>
             </div>
             <div class="field-group field-agent">
                 <label class="field-label">Agent * :</label>
@@ -131,6 +136,7 @@
 <div style="text-align:center;padding:10px 0 4px;"><a href="/tests/tests.html" style="font-size:0.7em;color:#a0aec0;text-decoration:none;">Tests</a></div>
 <script src="/static/js/logo.js"></script>
 <script src="/static/js/lists.js"></script>
+<script src="/static/js/clients.js"></script>
 <script src="/static/js/app.js"></script>
 <script src="/static/js/auth.js"></script>
 </body>

@@ -276,6 +276,60 @@ td input[type="number"] { width: 80px; }
     display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;
 }
 
+/* ==========================================
+   CODES CLIENT EN DROPDOWN — Phase 5 (CLI-04, CLI-06, CLI-11)
+   Pattern: copie .lists-modal-* avec prefixe .clients-modal-*
+   ========================================== */
+.client-row {
+    display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap;
+}
+.client-row #clientName { flex: 1 1 200px; min-width: 160px; }
+.client-row #clients-btn { white-space: nowrap; }
+
+/* Option legacy (CLI-08, D-14) — distinct visuellement */
+#clientName option[data-legacy="true"] {
+    font-style: italic; color: #a0aec0;
+}
+
+.clients-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 2000;
+}
+.clients-modal {
+    background: #fff; border-radius: 8px; padding: 20px 24px;
+    width: 600px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+.clients-modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;
+}
+.clients-modal-header h3 { margin: 0; color: #1a3a5c; }
+.clients-modal-table {
+    width: 100%; border-collapse: collapse; font-size: 0.92em; margin-bottom: 12px;
+}
+.clients-modal-table th {
+    text-align: left; padding: 8px 6px; background: #f7fafc;
+    color: #1a3a5c; border-bottom: 2px solid #cbd5e0;
+}
+.clients-modal-table td { padding: 6px; border-bottom: 1px solid #edf2f7; vertical-align: middle; }
+.clients-modal-table button { padding: 4px 8px; font-size: 0.85em; margin-left: 4px; }
+.clients-modal-empty { padding: 20px; text-align: center; color: #a0aec0; font-style: italic; }
+.clients-modal-form {
+    display: flex; flex-direction: column; gap: 10px;
+    background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 6px;
+    padding: 14px; margin-top: 10px;
+}
+.clients-modal-form label { font-weight: 600; font-size: 0.9em; color: #4a5568; }
+.clients-modal-form input[type="text"] {
+    padding: 6px 8px; border: 1px solid #cbd5e0; border-radius: 4px;
+    font-size: 1em; width: 100%; font-family: inherit;
+}
+.clients-modal-actions {
+    display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;
+}
+
 /* Material badge (RECAP-01) — ancienne classe conservee pour retro-compat visuelle, plus emise par refreshMaterialBadge */
 .material-badge-wrapper { margin-top: 4px; margin-bottom: 4px; }
 .material-badge {
@@ -396,4 +450,15 @@ td input[type="number"] { width: 80px; }
     .recipients-row #recipients,
     .recipients-row #lists-dropdown,
     .recipients-row #lists-btn { width: 100%; min-width: 0; }
+
+    /* Codes client mobile (CLI-11, D-30) — full-screen modal + client-row stacked */
+    .clients-modal-overlay { align-items: stretch; }
+    .clients-modal {
+        width: 100%; max-width: 100%; max-height: 100vh;
+        border-radius: 0; padding: 16px;
+    }
+    .clients-modal-table { font-size: 0.88em; }
+    .client-row { flex-direction: column; align-items: stretch; }
+    .client-row #clientName,
+    .client-row #clients-btn { width: 100%; min-width: 0; }
 }
