@@ -105,6 +105,51 @@
     <!-- Recap live -->
     <div id="liveRecap" class="live-recap"></div>
 
+    <!-- Matériel global (Phase 6 - D-01) -->
+    <section id="material-section" class="material-section">
+        <h3>Matériel</h3>
+        <div class="mat-no-billing-row">
+            <label class="mat-no-billing-label">
+                <input type="checkbox" id="mat-global-no-billing" onchange="toggleMaterialSectionNoBilling(this)">
+                Rien à facturer pour ce manifeste
+            </label>
+        </div>
+        <div class="material-section-grid">
+            <label>Sangles
+                <input type="number" id="mat-global-straps" min="0" value="0">
+            </label>
+            <label class="mat-flooring-label">Planchers bois EU
+                <input type="number" id="mat-global-flooring-eu" min="0" value="0">
+                <span class="mat-forfait-label">
+                    <input type="checkbox" id="mat-global-flooring-eu-forfait" onchange="toggleMaterialSectionForfait(this, 'mat-global-flooring-eu')">
+                    Forfait négocié
+                </span>
+            </label>
+            <label class="mat-flooring-label">Planchers bois Standard
+                <input type="number" id="mat-global-flooring-std" min="0" value="0">
+                <span class="mat-forfait-label">
+                    <input type="checkbox" id="mat-global-flooring-std-forfait" onchange="toggleMaterialSectionForfait(this, 'mat-global-flooring-std')">
+                    Forfait négocié
+                </span>
+            </label>
+            <label>Bois de calage
+                <input type="number" id="mat-global-blocks" min="0" value="0">
+            </label>
+            <label>Bâches
+                <input type="number" id="mat-global-tarps" min="0" value="0">
+            </label>
+            <label>Intercalaires
+                <input type="number" id="mat-global-dividers" min="0" value="0">
+            </label>
+            <label>Nids d'abeille
+                <input type="number" id="mat-global-honeycomb" min="0" value="0">
+            </label>
+            <label class="mat-comment-label">Commentaire matériel
+                <textarea id="mat-global-comment" rows="3" placeholder="Commentaire libre niveau manifeste"></textarea>
+            </label>
+        </div>
+    </section>
+
     <!-- Actions -->
     <div class="actions">
         <button class="btn btn-primary" onclick="addUld()">+ Ajouter une ULD</button>
