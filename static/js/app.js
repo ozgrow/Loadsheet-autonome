@@ -702,25 +702,50 @@ function collectData() {
         var totalColis = rows.reduce(function(s, r) { return s + r.colis; }, 0);
         var uldEntry = { uldNumber: uldNumber, rows: rows, totalColis: totalColis };
         if (!isNaN(uldWeightVal) && uldWeightVal > 0) uldEntry.weight = uldWeightVal;
-        // Materiel ULD (MAT-01..08) : lecture des data-attributes
-        uldEntry.strapsCount = parseInt(block.dataset.straps) || 0;
-        uldEntry.flooringEuCount = parseInt(block.dataset.flooringEu) || 0;
-        uldEntry.flooringEuForfait = block.dataset.flooringEuForfait === 'true';
-        uldEntry.flooringStdCount = parseInt(block.dataset.flooringStd) || 0;
-        uldEntry.flooringStdForfait = block.dataset.flooringStdForfait === 'true';
-        uldEntry.blocksCount = parseInt(block.dataset.blocks) || 0;
-        uldEntry.tarpsCount = parseInt(block.dataset.tarps) || 0;
-        uldEntry.dividersCount = parseInt(block.dataset.dividers) || 0;
-        uldEntry.honeycombCount = parseInt(block.dataset.honeycomb) || 0;
-        uldEntry.uldComment = block.dataset.uldComment || '';
-        // MAT-12 : flag noMaterialToBill (raccourci facturation, boolean strict)
-        uldEntry.noMaterialToBill = block.dataset.noBilling === 'true';
+        // Phase 6 / D-10 : suppression des champs materiel par-ULD (strapsCount, flooring*, blocks*, tarps*, dividers*, honeycomb*, uldComment, noMaterialToBill).
+        // Le materiel est desormais top-level data.material (lu depuis #material-section ci-dessous).
         // Type ULD (VRAC-01, D-05, D-06 : source de verite live = valeur du <select>, fallback PMC)
         var typeSelect = block.querySelector('.uld-type');
         var typeValue = typeSelect ? typeSelect.value : ULD_TYPE_DEFAULT;
         uldEntry.type = (ULD_TYPES.indexOf(typeValue) >= 0) ? typeValue : ULD_TYPE_DEFAULT;
         ulds.push(uldEntry);
     });
+    // Phase 6 / D-09 : construction du niveau top-level data.material depuis #material-section
+    var noBillingEl = document.getElementById('mat-global-no-billing');
+    var noBilling = !!(noBillingEl && noBillingEl.checked);
+    var material;
+    if (noBilling) {
+        // D-08 / D-16 coherent : si "Rien a facturer", tous les autres champs sont forces a 0/false/''
+        material = {
+            strapsCount: 0,
+            flooringEuCount: 0, flooringEuForfait: false,
+            flooringStdCount: 0, flooringStdForfait: false,
+            blocksCount: 0, tarpsCount: 0, dividersCount: 0, honeycombCount: 0,
+            manifestComment: '',
+            noMaterialToBill: true
+        };
+    } else {
+        var flEuFEl = document.getElementById('mat-global-flooring-eu-forfait');
+        var flStdFEl = document.getElementById('mat-global-flooring-std-forfait');
+        var flEuF = !!(flEuFEl && flEuFEl.checked);
+        var flStdF = !!(flStdFEl && flStdFEl.checked);
+        function _matNum(id) { var el = document.getElementById(id); return el ? (parseInt(el.value) || 0) : 0; }
+        var commentEl = document.getElementById('mat-global-comment');
+        material = {
+            strapsCount: _matNum('mat-global-straps'),
+            // D-16 defense en profondeur : forfait true => count force a 0
+            flooringEuCount: flEuF ? 0 : _matNum('mat-global-flooring-eu'),
+            flooringEuForfait: flEuF,
+            flooringStdCount: flStdF ? 0 : _matNum('mat-global-flooring-std'),
+            flooringStdForfait: flStdF,
+            blocksCount: _matNum('mat-global-blocks'),
+            tarpsCount: _matNum('mat-global-tarps'),
+            dividersCount: _matNum('mat-global-dividers'),
+            honeycombCount: _matNum('mat-global-honeycomb'),
+            manifestComment: commentEl ? String(commentEl.value || '') : '',
+            noMaterialToBill: false
+        };
+    }
     return {
         manifestId: manifestId,
         client: document.getElementById('clientName').value || '',
@@ -730,7 +755,8 @@ function collectData() {
         timestamp: new Date().toISOString(),
         recipients: document.getElementById('recipients').value,
         cc: document.getElementById('cc').value,
-        ulds: ulds
+        ulds: ulds,
+        material: material   // <-- nouveau champ top-level (D-09)
     };
 }
 
