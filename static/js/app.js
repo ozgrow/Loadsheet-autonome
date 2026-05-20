@@ -344,6 +344,39 @@ function findIncompleteUlds() {
     return incomplete;
 }
 
+// ============================================
+// MAT-13 globalisé (Phase 6, D-32, D-33) : validation matériel au niveau manifeste
+// ============================================
+// Retourne true si la section #material-section a au moins une saisie significative :
+//  - checkbox "Rien à facturer" cochée, OU
+//  - au moins un input number > 0 (sangles, planchers EU/Std, blocks, tarps, dividers, honeycomb), OU
+//  - au moins une checkbox forfait cochée (EU ou Std), OU
+//  - textarea commentaire non-vide après trim()
+// Defensive : si la section n'existe pas, retourne false (cas test/init edge).
+function manifestHasMaterial() {
+    var section = document.getElementById('material-section');
+    if (!section) return false;
+    // Rien à facturer = saisie explicite
+    var noBilling = document.getElementById('mat-global-no-billing');
+    if (noBilling && noBilling.checked) return true;
+    // Inputs number > 0
+    var numIds = ['mat-global-straps', 'mat-global-flooring-eu', 'mat-global-flooring-std',
+                  'mat-global-blocks', 'mat-global-tarps', 'mat-global-dividers', 'mat-global-honeycomb'];
+    for (var i = 0; i < numIds.length; i++) {
+        var el = document.getElementById(numIds[i]);
+        if (el && (parseInt(el.value) || 0) > 0) return true;
+    }
+    // Checkbox forfait cochée
+    var feF = document.getElementById('mat-global-flooring-eu-forfait');
+    if (feF && feF.checked) return true;
+    var fsF = document.getElementById('mat-global-flooring-std-forfait');
+    if (fsF && fsF.checked) return true;
+    // Commentaire non-vide
+    var comment = document.getElementById('mat-global-comment');
+    if (comment && String(comment.value || '').trim().length > 0) return true;
+    return false;
+}
+
 // Affiche/masque le recap condense inline sous le header ULD.
 // Remplace le badge neutre 'Materiel saisi' (D-14 OVERRIDDEN par 01-VERIFICATION.md Option A).
 // Note : la fonction garde son nom historique 'refreshMaterialBadge' pour ne pas casser
