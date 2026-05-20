@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-05-19T18:56:46.619Z"
-last_activity: 2026-05-19
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-05-20T10:39:51.673Z"
+last_activity: 2026-05-20
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 16
-  completed_plans: 11
+  completed_plans: 12
   percent: 0
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-22)
 ## Current Position
 
 Phase: 06 (materiel-global-refactor-saisie-unique) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
-Last activity: 2026-05-19
+Last activity: 2026-05-20
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05 P01 | 180 | 2 tasks | 5 files |
 | Phase 05-codes-client-en-dropdown-maintenable-backend-partage P02 | 1200 | 2 tasks | 5 files |
 | Phase 06 P02 | 510 | 2 tasks | 2 files |
+| Phase 06 P01 | 2100 | 4 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,10 @@ Recent decisions affecting current work:
 - [Phase 06]: Phase 06 P02: migrateLegacyMaterial pure helper isole (no DOM, no side effects) AVANT cablage loadManifest (Plan 03) — testable directement, decouple integration
 - [Phase 06]: Phase 06 P02: [Rule 1 - Bug auto-fix] plan code utilisait test()/assertEq() API inexistante — adapte au pattern existant suite()+IIFE+assertEqual(desc,actual,expected), 18 scenarios devenus 34 asserts
 - [Phase 06]: Phase 06 P02: D-13 sommes inconditionnelles (incl. VRAC) pour sangles/blocks/tarps/dividers/honeycomb — coherent avec buildMaterialSummary existant (D-20 strict Phase 2)
+- [Phase 06]: Phase 06 P01: UI section materiel inline statique entre #liveRecap et .actions (D-01) — section toujours visible, IDs prefixes mat-global-*, handlers cloned scope #material-section depuis Phase 1 modal
+- [Phase 06]: Phase 06 P01: resetMaterialSection() helper extracted (D-37) — reutilise par newManifest et futur loadManifest Plan 03 (pattern reset-then-write)
+- [Phase 06]: Phase 06 P01: [Rule 3 - doc deviation] Task 3 commit (ff6f585) accidentellement squashe avec Task 1 du Plan 06-02 (commit message annonce 06-02 mais diff inclut handlers Task 3 de 06-01) — contenu fonctionnel correct, documente post-hoc
+- [Phase 06]: Phase 06 P01: Task 4 checkpoint approuve user 2026-05-20 en single-ULD only — multi-ULD bloque par garde MAT-13 Phase 1 residuelle, suppression scheduled Plans 06-03 + 06-05 (D-34/D-35/D-36)
 
 ### Roadmap Evolution
 
@@ -145,6 +150,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-19T18:56:46.616Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-05-20T10:39:51.670Z
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None
