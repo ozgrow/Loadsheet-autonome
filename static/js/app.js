@@ -852,19 +852,8 @@ async function loadManifest(id) {
         var div = document.createElement('div');
         div.className = 'uld-block';
         div.id = 'uld-' + i;
-        // Materiel ULD (MAT-01..08, MAT-10 retro-compat) : lecture defensive des data-attributes
-        div.setAttribute('data-straps', String(parseInt(uldData.strapsCount) || 0));
-        div.setAttribute('data-flooring-eu', String(parseInt(uldData.flooringEuCount) || 0));
-        div.setAttribute('data-flooring-eu-forfait', String(uldData.flooringEuForfait === true));
-        div.setAttribute('data-flooring-std', String(parseInt(uldData.flooringStdCount) || 0));
-        div.setAttribute('data-flooring-std-forfait', String(uldData.flooringStdForfait === true));
-        div.setAttribute('data-blocks', String(parseInt(uldData.blocksCount) || 0));
-        div.setAttribute('data-tarps', String(parseInt(uldData.tarpsCount) || 0));
-        div.setAttribute('data-dividers', String(parseInt(uldData.dividersCount) || 0));
-        div.setAttribute('data-honeycomb', String(parseInt(uldData.honeycombCount) || 0));
-        div.setAttribute('data-uld-comment', String(uldData.uldComment || ''));
-        // MAT-12 / MAT-10 retro-compat : noMaterialToBill absent => false (defense en profondeur)
-        div.setAttribute('data-no-billing', String(uldData.noMaterialToBill === true));
+        // Phase 6 / D-11 : suppression des data-attributes materiel par-ULD.
+        // Le materiel est desormais lu/ecrit dans #material-section (peuple en fin de fonction via migrateLegacyMaterial).
         // Type ULD (VRAC-01, D-05, D-15 retro-compat : type absent => PMC ; defense en profondeur vs valeurs corrompues)
         var uldType = (uldData.type && ULD_TYPES.indexOf(uldData.type) >= 0) ? uldData.type : ULD_TYPE_DEFAULT;
         div.setAttribute('data-uld-type', uldType);
@@ -878,9 +867,7 @@ async function loadManifest(id) {
             '<input type="text" class="uld-number" placeholder="Num\u00e9ro ULD" style="width:180px" value="' + esc(uldData.uldNumber || uldData.pmcNumber || '') + '">' +
             '<label style="margin-left:16px;">Poids (kg) :</label>' +
             '<input type="number" class="uld-weight" placeholder="Optionnel" style="width:100px" min="0" step="0.1" oninput="updateRecap()" value="' + esc(uldData.weight || '') + '">' +
-            '<button class="btn btn-secondary btn-sm btn-material" onclick="openMaterialModal(' + i + ')">Matériel</button>' +
             '<button class="btn btn-danger" onclick="removeUld(' + i + ')">Supprimer ULD</button></div>' +
-            '<div class="material-badge-wrapper" id="material-badge-' + i + '"></div>' +
             '<table><thead><tr><th style="width:140px">LTA</th><th>Dossier</th><th style="width:100px">Nb Colis</th><th style="width:80px">DGR</th><th>Commentaire</th><th style="width:50px"></th></tr></thead><tbody class="uld-rows"></tbody></table>' +
             '<div class="uld-totals">Total colis : <span class="total-colis">0</span></div>' +
             '<div style="margin-top:8px"><button class="btn btn-secondary" onclick="addRow(' + i + ')">+ Ajouter ligne</button></div>';
@@ -898,8 +885,42 @@ async function loadManifest(id) {
             tbody.appendChild(tr);
         });
         updateTotals(i);
-        refreshMaterialBadge(i);
     });
+    // Phase 6 / D-12..D-19 : migration runtime + ecriture #material-section
+    // - Si data.material present (manifeste Phase 6) => migrate retourne directement (D-19 idempotence)
+    // - Si data.material absent (manifeste Phase 1/2/3+legacy) => fusion via regles D-13..D-18
+    // - Si aucun materiel => defaults
+    var loadedMaterial = migrateLegacyMaterial(data);
+    resetMaterialSection();
+    // Ecriture des inputs depuis loadedMaterial. ANTI-XSS : textarea via .value (D-19/D-42 Phase 1 pattern)
+    var noBillingEl = document.getElementById('mat-global-no-billing');
+    if (noBillingEl) noBillingEl.checked = loadedMaterial.noMaterialToBill === true;
+    function _setMatVal(id, val) { var el = document.getElementById(id); if (el) el.value = String(val); }
+    _setMatVal('mat-global-straps', parseInt(loadedMaterial.strapsCount) || 0);
+    _setMatVal('mat-global-flooring-eu', parseInt(loadedMaterial.flooringEuCount) || 0);
+    _setMatVal('mat-global-flooring-std', parseInt(loadedMaterial.flooringStdCount) || 0);
+    _setMatVal('mat-global-blocks', parseInt(loadedMaterial.blocksCount) || 0);
+    _setMatVal('mat-global-tarps', parseInt(loadedMaterial.tarpsCount) || 0);
+    _setMatVal('mat-global-dividers', parseInt(loadedMaterial.dividersCount) || 0);
+    _setMatVal('mat-global-honeycomb', parseInt(loadedMaterial.honeycombCount) || 0);
+    var feF = document.getElementById('mat-global-flooring-eu-forfait');
+    if (feF) feF.checked = loadedMaterial.flooringEuForfait === true;
+    var fsF = document.getElementById('mat-global-flooring-std-forfait');
+    if (fsF) fsF.checked = loadedMaterial.flooringStdForfait === true;
+    var commentEl = document.getElementById('mat-global-comment');
+    // ANTI-XSS : assignment via .value (manifestComment peut contenir du HTML — pattern Phase 1 D-19)
+    if (commentEl) commentEl.value = String(loadedMaterial.manifestComment || '');
+    // Si noBilling charge, declencher la desactivation visuelle (coherent avec toggleMaterialSectionNoBilling)
+    if (noBillingEl && noBillingEl.checked && typeof toggleMaterialSectionNoBilling === 'function') {
+        toggleMaterialSectionNoBilling(noBillingEl);
+    }
+    // Si forfaits charges, declencher la desactivation des inputs count (coherent avec toggleMaterialSectionForfait)
+    if (feF && feF.checked && typeof toggleMaterialSectionForfait === 'function') {
+        toggleMaterialSectionForfait(feF, 'mat-global-flooring-eu');
+    }
+    if (fsF && fsF.checked && typeof toggleMaterialSectionForfait === 'function') {
+        toggleMaterialSectionForfait(fsF, 'mat-global-flooring-std');
+    }
     updateRecap();
     // Si le manifeste avait des destinataires, afficher la section envoi
     if (data.recipients || data.cc) {
