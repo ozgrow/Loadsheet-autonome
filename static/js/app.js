@@ -1332,32 +1332,58 @@ function buildPdf(data) {
         });
     }
 
-    // Totaux materiel (RECAP-02, D-15 page 1) : inseres sous la table recap si au moins un total non nul
-    var matSummary = buildMaterialSummary(data.ulds);
-    var hasAnyMat = matSummary.straps > 0 ||
-                    matSummary.flooringEu.count > 0 || matSummary.flooringEu.forfaits > 0 ||
-                    matSummary.flooringStd.count > 0 || matSummary.flooringStd.forfaits > 0 ||
-                    matSummary.blocks > 0 || matSummary.tarps > 0 || matSummary.dividers > 0 || matSummary.honeycomb > 0;
+    // Phase 6 / D-20..D-23, D-25 : section "Materiel" page 1 alimentée par data.material (top-level).
+    // Renommée depuis "Totaux materiel" (plus une agrégation calculée, valeurs saisies par l'agent).
+    var mat = data.material || {};
+    var hasMatComment = String(mat.manifestComment || '').length > 0;
+    var hasAnyMat = mat.noMaterialToBill === true ||
+                    (parseInt(mat.strapsCount) || 0) > 0 ||
+                    (parseInt(mat.flooringEuCount) || 0) > 0 || mat.flooringEuForfait === true ||
+                    (parseInt(mat.flooringStdCount) || 0) > 0 || mat.flooringStdForfait === true ||
+                    (parseInt(mat.blocksCount) || 0) > 0 ||
+                    (parseInt(mat.tarpsCount) || 0) > 0 ||
+                    (parseInt(mat.dividersCount) || 0) > 0 ||
+                    (parseInt(mat.honeycombCount) || 0) > 0 ||
+                    hasMatComment;
     if (hasAnyMat) {
         var matY = doc.lastAutoTable.finalY + 8;
         doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(26, 58, 92);
-        doc.text('Totaux materiel', margin, matY);
+        doc.text('Materiel', margin, matY);  // D-20 : libellé sans accent (ASCII-safe jsPDF)
         var matRows = [];
-        if (matSummary.straps > 0) matRows.push(['Sangles', String(matSummary.straps)]);
-        var feStr = formatFlooringDisplay(matSummary.flooringEu);
-        if (feStr !== '—') matRows.push(['Planchers bois EU', feStr]);
-        var fsStr = formatFlooringDisplay(matSummary.flooringStd);
-        if (fsStr !== '—') matRows.push(['Planchers bois Standard', fsStr]);
-        if (matSummary.blocks > 0) matRows.push(['Bois de calage', String(matSummary.blocks)]);
-        if (matSummary.tarps > 0) matRows.push(['Baches', String(matSummary.tarps)]);
-        if (matSummary.dividers > 0) matRows.push(['Intercalaires', String(matSummary.dividers)]);
-        if (matSummary.honeycomb > 0) matRows.push(['Nids d\'abeille', String(matSummary.honeycomb)]);
+        if (mat.noMaterialToBill === true) {
+            // D-23 : cas "Rien à facturer" => 1 seule ligne
+            matRows.push(['', 'Rien à facturer']);
+        } else {
+            var straps = parseInt(mat.strapsCount) || 0;
+            if (straps > 0) matRows.push(['Sangles', String(straps)]);
+            // D-25 : forfait littéral "forfait" prime sur count
+            if (mat.flooringEuForfait === true) matRows.push(['Planchers bois EU', 'forfait']);
+            else { var fe = parseInt(mat.flooringEuCount) || 0; if (fe > 0) matRows.push(['Planchers bois EU', String(fe)]); }
+            if (mat.flooringStdForfait === true) matRows.push(['Planchers bois Standard', 'forfait']);
+            else { var fs = parseInt(mat.flooringStdCount) || 0; if (fs > 0) matRows.push(['Planchers bois Standard', String(fs)]); }
+            var blocks = parseInt(mat.blocksCount) || 0;
+            if (blocks > 0) matRows.push(['Bois de calage', String(blocks)]);
+            var tarps = parseInt(mat.tarpsCount) || 0;
+            if (tarps > 0) matRows.push(['Baches', String(tarps)]);  // ASCII-safe PDF (D-26 — email garde 'Bâches' UTF-8)
+            var dividers = parseInt(mat.dividersCount) || 0;
+            if (dividers > 0) matRows.push(['Intercalaires', String(dividers)]);
+            var honeycomb = parseInt(mat.honeycombCount) || 0;
+            if (honeycomb > 0) matRows.push(['Nids d\'abeille', String(honeycomb)]);
+            // D-22 : commentaire matériel global (sans troncature, destiné au destinataire)
+            if (hasMatComment) matRows.push(['Commentaire', String(mat.manifestComment)]);
+        }
         doc.autoTable({
             startY: matY + 2,
             body: matRows,
             margin: { left: margin, right: margin },
             styles: { fontSize: 9, cellPadding: 3, lineColor: [200, 210, 220], lineWidth: 0.3 },
-            columnStyles: { 0: { fontStyle: 'bold', fillColor: [240, 244, 248], cellWidth: 60 } }
+            // D-22 + warning checker #2 : la cellule valeur (col 1) doit gérer les newlines
+            // du manifestComment migré (D-17 format "ULD N°1 : x\nULD N°2 : y"). Sans
+            // overflow: 'linebreak', jspdf-autotable n'auto-wrap PAS les '\n' et coupe le texte.
+            columnStyles: {
+                0: { fontStyle: 'bold', fillColor: [240, 244, 248], cellWidth: 60 },
+                1: { cellWidth: 'auto', overflow: 'linebreak' }
+            }
         });
     }
 
@@ -1423,26 +1449,7 @@ function buildPdf(data) {
             }
         });
 
-        // Section Materiel pour cette ULD (RECAP-02, D-15 page detail) : omet les zeros
-        var uldMatRows = buildUldMaterialRows(u);
-        if (uldMatRows.length > 0) {
-            // Remplace les labels accentues par leur version ASCII-safe pour le rendu jsPDF default font
-            var pdfMatRows = uldMatRows.map(function(r) {
-                var label = r[0];
-                if (label === 'Bâches') label = 'Baches';
-                return [label, r[1]];
-            });
-            var uldMatY = doc.lastAutoTable.finalY + 6;
-            doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(26, 58, 92);
-            doc.text('Materiel', margin, uldMatY);
-            doc.autoTable({
-                startY: uldMatY + 2,
-                body: pdfMatRows,
-                margin: { left: margin, right: margin },
-                styles: { fontSize: 9, cellPadding: 3, lineColor: [200, 210, 220], lineWidth: 0.3 },
-                columnStyles: { 0: { fontStyle: 'bold', fillColor: [240, 244, 248], cellWidth: 50 } }
-            });
-        }
+        // Phase 6 / D-24 : section "Materiel" par-ULD SUPPRIMÉE (matériel est global au manifeste).
 
         drawFooter(idx + 2);
     });
@@ -1451,14 +1458,15 @@ function buildPdf(data) {
 }
 
 async function generatePdf() {
-    // MAT-13 : Bloquer la generation PDF si une ULD n'a pas de materiel saisi.
+    // Phase 6 / D-32, D-33 : MAT-13 globalisé — blocage si AUCUN champ matériel saisi au niveau manifeste.
     // Place EN TETE (avant validateRequired et saveManifest) pour eviter pollution _alertLog en test.
-    var incompletePdf = findIncompleteUlds();
-    if (incompletePdf.length > 0) {
-        var listPdf = incompletePdf.map(function(n) { return 'ULD N°' + n; }).join(', ');
-        alert('Matériel non saisi pour : ' + listPdf + '. Veuillez remplir le matériel ou cocher "Rien à facturer" pour ces ULD.');
-        // Re-ouvrir le modal materiel sur la 1ere ULD incomplete pour faciliter la saisie
-        openMaterialModal(parseInt(incompletePdf[0]) || 1);
+    if (!manifestHasMaterial()) {
+        alert('Saisie matériel obligatoire : veuillez remplir au moins un champ de la section Matériel, ou cocher "Rien à facturer pour ce manifeste".');
+        // D-33 : auto-scroll vers la section + focus sur le premier input pour faciliter la saisie
+        var section = document.getElementById('material-section');
+        if (section) section.scrollIntoView({ behavior: 'smooth' });
+        var firstInput = document.getElementById('mat-global-straps');
+        if (firstInput) firstInput.focus();
         return;
     }
     if (!validateRequired()) return;
@@ -1479,14 +1487,13 @@ async function generatePdf() {
 // EMAIL SENDING
 // ============================================
 async function sendEmail() {
-    // MAT-13 : Bloquer l'envoi email si une ULD n'a pas de materiel saisi
-    // (verifie EN TETE, AVANT validateRequired/saveManifest/JWT/fetch).
-    var incompleteEmail = findIncompleteUlds();
-    if (incompleteEmail.length > 0) {
-        var listEmail = incompleteEmail.map(function(n) { return 'ULD N°' + n; }).join(', ');
-        alert('Matériel non saisi pour : ' + listEmail + '. Veuillez remplir le matériel ou cocher "Rien à facturer" pour ces ULD.');
-        // Re-ouvrir le modal materiel sur la 1ere ULD incomplete pour faciliter la saisie
-        openMaterialModal(parseInt(incompleteEmail[0]) || 1);
+    // Phase 6 / D-32, D-33 : MAT-13 globalisé — blocage si AUCUN champ matériel saisi.
+    if (!manifestHasMaterial()) {
+        alert('Saisie matériel obligatoire : veuillez remplir au moins un champ de la section Matériel, ou cocher "Rien à facturer pour ce manifeste".');
+        var section = document.getElementById('material-section');
+        if (section) section.scrollIntoView({ behavior: 'smooth' });
+        var firstInput = document.getElementById('mat-global-straps');
+        if (firstInput) firstInput.focus();
         return;
     }
     if (!validateRequired()) return;
