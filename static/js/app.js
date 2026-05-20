@@ -1558,9 +1558,51 @@ async function sendEmail() {
         html += '</table>';
     }
 
-    // Totaux materiel (RECAP-02 mirror D-17) — retourne '' si aucun materiel.
-    // NB: buildMaterialSummaryHtml utilise buildMaterialSummary qui exclut deja les planchers VRAC (D-20 Task 1).
-    html += buildMaterialSummaryHtml(data.ulds);
+    // Phase 6 / D-26 : section "Matériel" email HTML alimentée par data.material (symétrique PDF).
+    // SECU MAT-11 / D-28 / D-42 : manifestComment user-supplied => esc() obligatoire.
+    var matE = data.material || {};
+    var hasMatCommentE = String(matE.manifestComment || '').length > 0;
+    var hasAnyMatE = matE.noMaterialToBill === true ||
+                     (parseInt(matE.strapsCount) || 0) > 0 ||
+                     (parseInt(matE.flooringEuCount) || 0) > 0 || matE.flooringEuForfait === true ||
+                     (parseInt(matE.flooringStdCount) || 0) > 0 || matE.flooringStdForfait === true ||
+                     (parseInt(matE.blocksCount) || 0) > 0 ||
+                     (parseInt(matE.tarpsCount) || 0) > 0 ||
+                     (parseInt(matE.dividersCount) || 0) > 0 ||
+                     (parseInt(matE.honeycombCount) || 0) > 0 ||
+                     hasMatCommentE;
+    if (hasAnyMatE) {
+        var emailMatRows = [];
+        if (matE.noMaterialToBill === true) {
+            emailMatRows.push(['', 'Rien à facturer']);
+        } else {
+            var strapsE = parseInt(matE.strapsCount) || 0;
+            if (strapsE > 0) emailMatRows.push(['Sangles', String(strapsE)]);
+            if (matE.flooringEuForfait === true) emailMatRows.push(['Planchers bois EU', 'forfait']);
+            else { var feE = parseInt(matE.flooringEuCount) || 0; if (feE > 0) emailMatRows.push(['Planchers bois EU', String(feE)]); }
+            if (matE.flooringStdForfait === true) emailMatRows.push(['Planchers bois Standard', 'forfait']);
+            else { var fsE = parseInt(matE.flooringStdCount) || 0; if (fsE > 0) emailMatRows.push(['Planchers bois Standard', String(fsE)]); }
+            var blocksE = parseInt(matE.blocksCount) || 0;
+            if (blocksE > 0) emailMatRows.push(['Bois de calage', String(blocksE)]);
+            var tarpsE = parseInt(matE.tarpsCount) || 0;
+            if (tarpsE > 0) emailMatRows.push(['Bâches', String(tarpsE)]);  // D-26 : label UTF-8 PRÉSERVÉ en email (vs PDF ASCII 'Baches')
+            var dividersE = parseInt(matE.dividersCount) || 0;
+            if (dividersE > 0) emailMatRows.push(['Intercalaires', String(dividersE)]);
+            var honeycombE = parseInt(matE.honeycombCount) || 0;
+            if (honeycombE > 0) emailMatRows.push(['Nids d\'abeille', String(honeycombE)]);
+            // D-22 / D-42 : manifestComment esc() obligatoire (anti-XSS MAT-11)
+            if (hasMatCommentE) emailMatRows.push(['Commentaire', String(matE.manifestComment)]);
+        }
+        html += '<h3 style="color:#1a3a5c;margin-top:16px;">Matériel</h3>';
+        html += '<table style="border-collapse:collapse;font-size:13px;">';
+        emailMatRows.forEach(function(r) {
+            // SECU MAT-11 / D-28 / D-42 : esc() sur LABEL ET VALEUR. Le label est statique mais
+            // esc() défense en profondeur ; la valeur peut contenir manifestComment user-supplied.
+            html += '<tr><td style="padding:4px 10px;background:#f0f4f8;font-weight:600;">' + esc(r[0]) + '</td>';
+            html += '<td style="padding:4px 10px;white-space:pre-wrap;">' + esc(r[1]) + '</td></tr>';
+        });
+        html += '</table>';
+    }
 
     // Detail per ULD
     data.ulds.forEach(function(u) {
@@ -1579,8 +1621,7 @@ async function sendEmail() {
         html += '<tr style="background:#e2e8f0;font-weight:bold;"><td></td><td>TOTAL</td><td style="text-align:center;">' + u.totalColis + '</td><td></td><td></td></tr>';
         html += '</table>';
 
-        // Section Materiel par ULD (RECAP-02 mirror D-17, MAT-11 esc uldComment D-18)
-        html += buildUldMaterialHtml(u);
+        // Phase 6 / D-27 : section "Matériel" par-ULD SUPPRIMÉE (matériel est global au manifeste, rendu dans la section unique en haut).
     });
 
     html += '<hr style="border-color:#1a3a5c;margin-top:20px;"><p style="font-size:11px;color:#718096;">ATH - Air Terminal Handling - Paris Roissy | v' + APP_VERSION + '</p></div>';
