@@ -660,14 +660,8 @@ function updateRecap() {
 }
 
 function showGenerateSection() {
-    // MAT-13 : bloquer si une ULD n'a pas de materiel saisi + ouvrir le modal sur la 1ere incomplete
-    var incompleteGen = findIncompleteUlds();
-    if (incompleteGen.length > 0) {
-        var listGen = incompleteGen.map(function(n) { return 'ULD N°' + n; }).join(', ');
-        alert('Matériel non saisi pour : ' + listGen + '. Veuillez remplir le matériel ou cocher "Rien à facturer" pour ces ULD.');
-        openMaterialModal(parseInt(incompleteGen[0]) || 1);
-        return;
-    }
+    // Phase 6 / D-35 : plus de blocage MAT-13 ici — la section générer s'affiche librement.
+    // Le blocage matériel obligatoire est appliqué uniquement à generatePdf() et sendEmail().
     if (!validateRequired()) return;
     document.getElementById('generateSection').style.display = 'block';
     document.getElementById('generateSection').scrollIntoView({ behavior: 'smooth' });
