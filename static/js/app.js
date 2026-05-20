@@ -503,51 +503,22 @@ function newManifest() {
     document.getElementById('manifestStatus').className = 'status status-draft';
     resetMaterialSection();
     uldCount = 0;
-    // MAT-14 : autoOpen=false a l'init de l'app. Le modal materiel s'ouvre
-    // uniquement quand l'utilisateur clique '+ Ajouter ULD' (UX : pas de popup au demarrage).
-    addUld(false);
+    addUld();
 }
 
 // --- ULD ---
-// MAT-14 : autoOpen (default true) ouvre automatiquement le modal materiel en fin de fonction.
-// MAT-13 / BLOCKER #1 : skipValidation (default false) court-circuite la validation MAT-13
-//   (usage interne / tests uniquement - les boutons utilisateur appellent addUld() sans args).
-function addUld(autoOpen, skipValidation) {
-    // Defaut autoOpen=true (clic utilisateur). loadManifest n'utilise PAS addUld
-    // donc le modal ne s'ouvre PAS au rechargement (par construction MAT-14).
-    if (autoOpen === undefined) autoOpen = true;
-    // MAT-13 / BLOCKER #1 : Bloquer l'ajout d'une nouvelle ULD si une ULD existante
-    // n'a PAS de materiel saisi. Premiere ULD du manifeste : pas de blocage.
-    // skipValidation=true bypass MAT-13 (usage interne / tests uniquement)
-    if (!skipValidation) {
-        var incomplete = findIncompleteUlds();
-        if (incomplete.length > 0) {
-            var firstIncomplete = incomplete[0];
-            alert('ULD N°' + firstIncomplete + ' : matériel non saisi. Cochez "Rien à facturer" ou remplissez au moins un champ avant d\'ajouter une nouvelle ULD.');
-            // Reouvrir le modal de l'ULD incomplete pour faciliter la correction
-            openMaterialModal(parseInt(firstIncomplete) || 1);
-            return;
-        }
-    }
+// Phase 6 / D-02, D-11, D-34, D-36 :
+//  - Plus de parametre autoOpen / skipValidation (materiel decouple de l'ULD)
+//  - Plus de validation MAT-13 ici (D-34) — la validation est uniquement a generatePdf/sendEmail (Plan 05)
+//  - Plus de bouton "Materiel" ni de wrapper badge (materiel saisi dans #material-section)
+//  - Plus de data-attributes materiel (uniquement data-uld-type Phase 2 D-06 conserve)
+function addUld() {
     uldCount++;
     var i = uldCount;
     var div = document.createElement('div');
     div.className = 'uld-block';
     div.id = 'uld-' + i;
-    // Materiel ULD (MAT-01..08) : data-attributes sur le bloc, defaults
-    div.setAttribute('data-straps', '0');
-    div.setAttribute('data-flooring-eu', '0');
-    div.setAttribute('data-flooring-eu-forfait', 'false');
-    div.setAttribute('data-flooring-std', '0');
-    div.setAttribute('data-flooring-std-forfait', 'false');
-    div.setAttribute('data-blocks', '0');
-    div.setAttribute('data-tarps', '0');
-    div.setAttribute('data-dividers', '0');
-    div.setAttribute('data-honeycomb', '0');
-    div.setAttribute('data-uld-comment', '');
-    // MAT-12 : flag "Rien a facturer" - default false (raccourci facturation)
-    div.setAttribute('data-no-billing', 'false');
-    // Type ULD (VRAC-01, D-05, D-06) - defaut PMC
+    // Type ULD (VRAC-01, D-05, D-06) - defaut PMC. Source de verite Phase 2 D-06.
     div.setAttribute('data-uld-type', ULD_TYPE_DEFAULT);
     div.innerHTML =
         '<div class="uld-header">' +
@@ -563,10 +534,8 @@ function addUld(autoOpen, skipValidation) {
             '<input type="text" class="uld-number" placeholder="Num\u00e9ro ULD" style="width:180px">' +
             '<label style="margin-left:16px;">Poids (kg) :</label>' +
             '<input type="number" class="uld-weight" placeholder="Optionnel" style="width:100px" min="0" step="0.1" oninput="updateRecap()">' +
-            '<button class="btn btn-secondary btn-sm btn-material" onclick="openMaterialModal(' + i + ')">Matériel</button>' +
             '<button class="btn btn-danger" onclick="removeUld(' + i + ')">Supprimer ULD</button>' +
         '</div>' +
-        '<div class="material-badge-wrapper" id="material-badge-' + i + '"></div>' +
         '<table><thead><tr>' +
             '<th style="width:140px">LTA</th><th>Dossier</th><th style="width:100px">Nb Colis</th>' +
             '<th style="width:80px">DGR</th><th>Commentaire</th><th style="width:50px"></th>' +
@@ -575,10 +544,7 @@ function addUld(autoOpen, skipValidation) {
         '<div style="margin-top:8px"><button class="btn btn-secondary" onclick="addRow(' + i + ')">+ Ajouter ligne</button></div>';
     document.getElementById('pmcContainer').appendChild(div);
     addRow(i);
-    // MAT-14 : ouvrir le modal materiel pour saisie immediate (UX)
-    if (autoOpen) {
-        openMaterialModal(i);
-    }
+    updateRecap();
 }
 
 function addRow(uldIndex) {
