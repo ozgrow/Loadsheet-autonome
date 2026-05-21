@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-05-20T10:39:51.673Z"
-last_activity: 2026-05-20
+stopped_at: Plan 06-05 complete (5/6) — ready to execute 06-06 (tests + cleanup)
+last_updated: "2026-05-21T00:00:00.000Z"
+last_activity: 2026-05-21
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 16
-  completed_plans: 12
-  percent: 0
+  completed_plans: 15
+  percent: 94
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-04-22)
 ## Current Position
 
 Phase: 06 (materiel-global-refactor-saisie-unique) — EXECUTING
-Plan: 3 of 6
-Status: Ready to execute
-Last activity: 2026-05-20
+Plan: 5 of 6 (3 plans finalisés en parallèle wave 2+3 via UAT intégrée 2026-05-21)
+Status: Ready to execute Plan 06-06 (tests + cleanup)
+Last activity: 2026-05-21
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -65,6 +65,9 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05-codes-client-en-dropdown-maintenable-backend-partage P02 | 1200 | 2 tasks | 5 files |
 | Phase 06 P02 | 510 | 2 tasks | 2 files |
 | Phase 06 P01 | 2100 | 4 tasks | 3 files |
+| Phase 06 P03 | 2280 | 4 tasks | 1 files |
+| Phase 06 P04 | 1500 | 3 tasks | 1 files |
+| Phase 06 P05 | 1320 | 4 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -131,6 +134,11 @@ Recent decisions affecting current work:
 - [Phase 06]: Phase 06 P01: resetMaterialSection() helper extracted (D-37) — reutilise par newManifest et futur loadManifest Plan 03 (pattern reset-then-write)
 - [Phase 06]: Phase 06 P01: [Rule 3 - doc deviation] Task 3 commit (ff6f585) accidentellement squashe avec Task 1 du Plan 06-02 (commit message annonce 06-02 mais diff inclut handlers Task 3 de 06-01) — contenu fonctionnel correct, documente post-hoc
 - [Phase 06]: Phase 06 P01: Task 4 checkpoint approuve user 2026-05-20 en single-ULD only — multi-ULD bloque par garde MAT-13 Phase 1 residuelle, suppression scheduled Plans 06-03 + 06-05 (D-34/D-35/D-36)
+- [Phase 06]: Phase 06 P03/04/05: UAT intégrée approuvée 2026-05-21 — 3 plans (06-03 data layer, 06-04 rendu PDF/email, 06-05 validation MAT-13 globale) validés ensemble en single round-trip user verification couvrant round-trip Phase 6, rétro-compat Phase 1 (injection legacy avec sommes D-13/14/15/17/18 vérifiées), MAT-13 globalisé, PDF/email rendering, XSS, no popup vestige
+- [Phase 06]: Phase 06 P04/P05: [Rule 3 - doc deviation] Wave 3 parallel-execution squash collision — D-35 cleanup (suppression blocage MAT-13 dans showGenerateSection, scope Plan 06-05 Task 3) commité dans c710ee0 (libellé 06-04 sendEmail refactor) au lieu d'un commit dédié 06-05. File end-state correct, comportement vérifié UAT, déviation purement post-hoc documentaire. Future référence : forcer sync-point explicit entre exécuteurs Wave parallèle.
+- [Phase 06]: Phase 06 P03: collectData()/loadManifest()/addUld() refactorés au modèle data.material top-level — pattern reset-then-write dans loadManifest (resetMaterialSection puis écriture loadedMaterial), addUld() signature sans paramètre (MAT-14 supprimé D-36), 14 fonctions Phase 1 désormais orphelines (scheduled cleanup Plan 06-06)
+- [Phase 06]: Phase 06 P04: rendu PDF/email symétrique partiel — 'Baches' ASCII en PDF (jsPDF font constraint) / 'Bâches' UTF-8 en email ; manifestComment intégré comme ligne 'Commentaire' avec autoTable overflow:'linebreak' (D-22) + white-space:pre-wrap CSS (D-17 newlines), esc() défense en profondeur sur label ET valeur (D-42)
+- [Phase 06]: Phase 06 P05: manifestHasMaterial() helper lit DOM directement (pattern uldHasMaterial), alert générique 'Saisie matériel obligatoire' + scroll smooth vers #material-section + focus #mat-global-straps remplace le re-open auto modal Phase 1 (anti-popup vestige), blocage uniquement à generatePdf/sendEmail (D-35 showGenerateSection libre)
 
 ### Roadmap Evolution
 
@@ -150,6 +158,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-20T10:39:51.670Z
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-05-21T00:00:00.000Z
+Stopped at: Plan 06-05 complete (5/6) — UAT intégrée 3-plans 06-03/06-04/06-05 approuvée 2026-05-21, ready to execute Plan 06-06 (tests + cleanup)
 Resume file: None
