@@ -504,205 +504,231 @@ localStorage.removeItem('loadsheet_manifests');
     })();
 
     // ========================================
-    // MATERIEL ULD (Phase 1 - Plan 01)
+    // MATERIEL GLOBAL (Phase 6 - Plan 06)
+    // Modele top-level data.material lu/ecrit via #material-section
     // ========================================
 
-    // --- collectData: nouveaux champs materiel ---
-    suite('Materiel ULD - collectData nouveaux champs');
+    // Helper local : reset #material-section a l'etat initial avant chaque test materiel
+    function _resetMatSection() {
+        ['mat-global-straps','mat-global-flooring-eu','mat-global-flooring-std',
+         'mat-global-blocks','mat-global-tarps','mat-global-dividers','mat-global-honeycomb']
+        .forEach(function(id){ var el=document.getElementById(id); if(el){el.value='0'; el.disabled=false;} });
+        ['mat-global-flooring-eu-forfait','mat-global-flooring-std-forfait','mat-global-no-billing']
+        .forEach(function(id){ var el=document.getElementById(id); if(el){el.checked=false; el.disabled=false;} });
+        var c=document.getElementById('mat-global-comment'); if(c){c.value=''; c.disabled=false;}
+    }
+
+    // --- collectData: lit data.material top-level depuis #material-section (D-09, D-10) ---
+    suite('Materiel global - collectData lit #material-section dans data.material');
     (function() {
         resetDOM();
+        _resetMatSection();
         manifestId = 'MAN-MAT-001';
         document.getElementById('agentName').value = 'Ag';
         document.getElementById('destAirport').value = 'CDG';
         addUld();
-        var block = document.querySelector('.uld-block');
-        // Ecrire directement les data-attributes (simulant applyMaterialToUld)
-        block.setAttribute('data-straps', '5');
-        block.setAttribute('data-flooring-eu', '0');
-        block.setAttribute('data-flooring-eu-forfait', 'true');
-        block.setAttribute('data-flooring-std', '3');
-        block.setAttribute('data-flooring-std-forfait', 'false');
-        block.setAttribute('data-blocks', '2');
-        block.setAttribute('data-tarps', '1');
-        block.setAttribute('data-dividers', '4');
-        block.setAttribute('data-honeycomb', '7');
-        block.setAttribute('data-uld-comment', 'Fragile');
+        // Saisie via la section globale (plus de data-attributes par-ULD)
+        document.getElementById('mat-global-straps').value = '5';
+        document.getElementById('mat-global-flooring-eu').value = '0';
+        document.getElementById('mat-global-flooring-eu-forfait').checked = true;
+        document.getElementById('mat-global-flooring-std').value = '3';
+        document.getElementById('mat-global-flooring-std-forfait').checked = false;
+        document.getElementById('mat-global-blocks').value = '2';
+        document.getElementById('mat-global-tarps').value = '1';
+        document.getElementById('mat-global-dividers').value = '4';
+        document.getElementById('mat-global-honeycomb').value = '7';
+        document.getElementById('mat-global-comment').value = 'Test commentaire global';
 
         var data = collectData();
+        var m = data.material;
+        assert('data.material existe (top-level)', !!m);
+        assertEqual('strapsCount number', m.strapsCount, 5);
+        assertEqual('flooringEuCount number (0 car forfait)', m.flooringEuCount, 0);
+        assertEqual('flooringEuForfait boolean true', m.flooringEuForfait, true);
+        assertEqual('flooringStdCount number', m.flooringStdCount, 3);
+        assertEqual('flooringStdForfait boolean false', m.flooringStdForfait, false);
+        assertEqual('blocksCount number', m.blocksCount, 2);
+        assertEqual('tarpsCount number', m.tarpsCount, 1);
+        assertEqual('dividersCount number', m.dividersCount, 4);
+        assertEqual('honeycombCount number', m.honeycombCount, 7);
+        assertEqual('manifestComment string', m.manifestComment, 'Test commentaire global');
+        assertEqual('noMaterialToBill default false', m.noMaterialToBill, false);
+        assert('strapsCount is number type', typeof m.strapsCount === 'number');
+        assert('flooringEuForfait is boolean type', typeof m.flooringEuForfait === 'boolean');
+        assert('manifestComment is string type', typeof m.manifestComment === 'string');
+        // D-10 : les ULDs ne portent plus les champs materiel
         var u = data.ulds[0];
-        assertEqual('strapsCount number', u.strapsCount, 5);
-        assertEqual('flooringEuCount number', u.flooringEuCount, 0);
-        assertEqual('flooringEuForfait boolean true', u.flooringEuForfait, true);
-        assertEqual('flooringStdCount number', u.flooringStdCount, 3);
-        assertEqual('flooringStdForfait boolean false', u.flooringStdForfait, false);
-        assertEqual('blocksCount number', u.blocksCount, 2);
-        assertEqual('tarpsCount number', u.tarpsCount, 1);
-        assertEqual('dividersCount number', u.dividersCount, 4);
-        assertEqual('honeycombCount number', u.honeycombCount, 7);
-        assertEqual('uldComment string', u.uldComment, 'Fragile');
-        assert('strapsCount is number type', typeof u.strapsCount === 'number');
-        assert('flooringEuForfait is boolean type', typeof u.flooringEuForfait === 'boolean');
-        assert('uldComment is string type', typeof u.uldComment === 'string');
+        assertEqual('data.ulds[0].strapsCount === undefined (D-10)', u.strapsCount, undefined);
+        assertEqual('data.ulds[0].uldComment === undefined (D-10)', u.uldComment, undefined);
+        assertEqual('data.ulds[0].flooringEuForfait === undefined (D-10)', u.flooringEuForfait, undefined);
     })();
 
-    // --- collectData: valeurs par defaut (addUld sans saisie) ---
-    suite('Materiel ULD - collectData defaults');
+    // --- collectData: defaults #material-section vide ---
+    suite('Materiel global - collectData defaults section vide');
     (function() {
         resetDOM();
+        _resetMatSection();
         manifestId = 'MAN-MAT-002';
         document.getElementById('agentName').value = 'Ag';
         document.getElementById('destAirport').value = 'CDG';
         addUld();
         var data = collectData();
-        var u = data.ulds[0];
-        assertEqual('strapsCount default 0', u.strapsCount, 0);
-        assertEqual('flooringEuCount default 0', u.flooringEuCount, 0);
-        assertEqual('flooringEuForfait default false', u.flooringEuForfait, false);
-        assertEqual('flooringStdCount default 0', u.flooringStdCount, 0);
-        assertEqual('flooringStdForfait default false', u.flooringStdForfait, false);
-        assertEqual('blocksCount default 0', u.blocksCount, 0);
-        assertEqual('tarpsCount default 0', u.tarpsCount, 0);
-        assertEqual('dividersCount default 0', u.dividersCount, 0);
-        assertEqual('honeycombCount default 0', u.honeycombCount, 0);
-        assertEqual('uldComment default empty string', u.uldComment, '');
+        var m = data.material;
+        assert('data.material existe (defaults)', !!m);
+        assertEqual('strapsCount default 0', m.strapsCount, 0);
+        assertEqual('flooringEuCount default 0', m.flooringEuCount, 0);
+        assertEqual('flooringEuForfait default false', m.flooringEuForfait, false);
+        assertEqual('flooringStdCount default 0', m.flooringStdCount, 0);
+        assertEqual('flooringStdForfait default false', m.flooringStdForfait, false);
+        assertEqual('blocksCount default 0', m.blocksCount, 0);
+        assertEqual('tarpsCount default 0', m.tarpsCount, 0);
+        assertEqual('dividersCount default 0', m.dividersCount, 0);
+        assertEqual('honeycombCount default 0', m.honeycombCount, 0);
+        assertEqual('manifestComment default empty string', m.manifestComment, '');
+        assertEqual('noMaterialToBill default false', m.noMaterialToBill, false);
     })();
 
-    // --- loadManifest: retro-compat MAT-10 / TEST-02 ---
-    suite('Materiel ULD - loadManifest retro-compat (TEST-02)');
+    // --- loadManifest retro-compat Phase 1 (D-47 + MAT-10) ---
+    suite('Materiel global - loadManifest retro-compat Phase 1 (D-47 + MAT-10)');
     await (async function() {
         resetDOM();
+        _resetMatSection();
         _alertLog = [];
 
-        // Ancien manifeste SANS aucun champ materiel
-        var oldData = {
-            manifestId: 'MAN-MAT-OLD',
-            client: 'OldC',
-            agent: 'OldA',
-            destAirport: 'CDG',
+        // Manifeste au format Phase 1 (champs materiel par-ULD)
+        var legacy = {
+            manifestId: 'MAN-LEGACY-TEST',
+            client: '', agent: 'A', destAirport: 'CDG',
             date: '01/01/2025',
             timestamp: '2025-01-01T00:00:00.000Z',
-            recipients: '',
-            cc: '',
-            ulds: [{
-                uldNumber: 'ULD-OLD',
-                rows: [{ lta: 'LTA-OLD', dossier: 'D', colis: 2, dgr: 'N', comment: 'C' }],
-                totalColis: 2
-            }]
+            recipients: '', cc: '',
+            ulds: [
+                { uldNumber: '1', type: 'PMC', rows: [{ lta: 'L', dossier: 'D', colis: 1, dgr: 'N', comment: '' }], totalColis: 1,
+                  strapsCount: 3, flooringEuCount: 2, flooringEuForfait: false,
+                  flooringStdCount: 0, flooringStdForfait: true,
+                  blocksCount: 0, tarpsCount: 0, dividersCount: 0, honeycombCount: 0,
+                  uldComment: 'fragile', noMaterialToBill: false },
+                { uldNumber: '2', type: 'VRAC', rows: [{ lta: 'L', dossier: 'D', colis: 1, dgr: 'N', comment: '' }], totalColis: 1,
+                  strapsCount: 1, flooringEuCount: 99, flooringEuForfait: false,
+                  flooringStdCount: 0, flooringStdForfait: false,
+                  blocksCount: 1, tarpsCount: 0, dividersCount: 0, honeycombCount: 0,
+                  uldComment: 'haut', noMaterialToBill: false }
+            ]
         };
-        await writeSavedManifests([oldData]);
+        await writeSavedManifests([legacy]);
+
+        // === D-47 (warning checker #3) — Assertion explicite couche chiffrement ===
+        // writeSavedManifests doit encrypter le payload. Verifier que le manifestId
+        // n'apparait PAS en clair dans localStorage (preuve AES-256-GCM actif).
+        var rawLocal = localStorage.getItem('loadsheet_manifests') || '';
+        assertEqual('D-47: localStorage chiffré (manifestId pas en clair)',
+            rawLocal.indexOf('MAN-LEGACY-TEST') < 0, true);
 
         var noError = true;
-        try { await loadManifest('MAN-MAT-OLD'); } catch(e) { noError = false; }
-        assert('loadManifest ne crash pas sur ancien format sans materiel', noError);
+        try { await loadManifest('MAN-LEGACY-TEST'); } catch(e) { noError = false; }
+        assert('loadManifest ne crash pas sur format Phase 1', noError);
 
-        var block = document.querySelector('.uld-block');
-        assert('Bloc ULD charge', !!block);
-        assertEqual('data-straps default 0', block.getAttribute('data-straps'), '0');
-        assertEqual('data-flooring-eu default 0', block.getAttribute('data-flooring-eu'), '0');
-        assertEqual('data-flooring-eu-forfait default false', block.getAttribute('data-flooring-eu-forfait'), 'false');
-        assertEqual('data-flooring-std default 0', block.getAttribute('data-flooring-std'), '0');
-        assertEqual('data-flooring-std-forfait default false', block.getAttribute('data-flooring-std-forfait'), 'false');
-        assertEqual('data-blocks default 0', block.getAttribute('data-blocks'), '0');
-        assertEqual('data-tarps default 0', block.getAttribute('data-tarps'), '0');
-        assertEqual('data-dividers default 0', block.getAttribute('data-dividers'), '0');
-        assertEqual('data-honeycomb default 0', block.getAttribute('data-honeycomb'), '0');
-        assertEqual('data-uld-comment default empty', block.getAttribute('data-uld-comment'), '');
+        // Migration runtime via migrateLegacyMaterial : verifier que #material-section est peuplee
+        assertEqual('sangles : 3 + 1 = 4 (D-13 somme inconditionnelle incl. VRAC)',
+            document.getElementById('mat-global-straps').value, '4');
+        assertEqual('planchers EU : 2 (D-14 VRAC exclue, valeur 99 ignoree)',
+            document.getElementById('mat-global-flooring-eu').value, '2');
+        assertEqual('forfait Std coché (D-15 OR non-VRAC)',
+            document.getElementById('mat-global-flooring-std-forfait').checked, true);
+        assertEqual('bois calage : 0 + 1 = 1',
+            document.getElementById('mat-global-blocks').value, '1');
+        assertEqual('commentaire concaténé "ULD N°1 : fragile\\nULD N°2 : haut" (D-17)',
+            document.getElementById('mat-global-comment').value, 'ULD N°1 : fragile\nULD N°2 : haut');
+        assertEqual('noBilling false (D-18 AND — l\'un avait false)',
+            document.getElementById('mat-global-no-billing').checked, false);
 
-        // collectData apres load doit retourner les defaults
+        // collectData apres load doit retourner data.material peuple
         var data = collectData();
-        assertEqual('collectData apres load: strapsCount 0', data.ulds[0].strapsCount, 0);
-        assertEqual('collectData apres load: uldComment vide', data.ulds[0].uldComment, '');
-        assertEqual('collectData apres load: flooringEuForfait false', data.ulds[0].flooringEuForfait, false);
+        assertEqual('data.material.strapsCount = 4 apres load Phase 1', data.material.strapsCount, 4);
+        assertEqual('data.material.manifestComment contient ULD N°1', data.material.manifestComment.indexOf('ULD N°1 : fragile') >= 0, true);
     })();
 
-    // --- loadManifest: nouveau format ---
-    suite('Materiel ULD - loadManifest nouveau format');
+    // --- loadManifest Phase 6 format idempotent (D-19) ---
+    suite('Materiel global - loadManifest Phase 6 format idempotent (D-19)');
     await (async function() {
         resetDOM();
+        _resetMatSection();
         _alertLog = [];
 
-        var newData = {
-            manifestId: 'MAN-MAT-NEW',
-            client: 'NewC',
-            agent: 'NewA',
-            destAirport: 'CDG',
-            date: '01/01/2025',
-            timestamp: '2025-01-01T00:00:00.000Z',
-            recipients: '',
-            cc: '',
-            ulds: [{
-                uldNumber: 'ULD-NEW',
-                rows: [{ lta: 'LTA-NEW', dossier: 'D', colis: 3, dgr: 'N', comment: 'C' }],
-                totalColis: 3,
-                strapsCount: 8,
-                flooringEuCount: 0,
-                flooringEuForfait: true,
-                flooringStdCount: 2,
-                flooringStdForfait: false,
-                blocksCount: 1,
-                tarpsCount: 0,
-                dividersCount: 5,
-                honeycombCount: 3,
-                uldComment: 'Attention'
-            }]
+        var phase6Data = {
+            manifestId: 'MAN-PHASE6-IDEMPOTENT',
+            client: '', agent: 'A', destAirport: 'CDG',
+            date: '01/01/2025', timestamp: '2025-01-01T00:00:00.000Z',
+            recipients: '', cc: '',
+            ulds: [{ uldNumber: 'U1', type: 'PMC',
+                rows: [{ lta: 'L', dossier: 'D', colis: 1, dgr: 'N', comment: '' }],
+                totalColis: 1 }],
+            material: {
+                strapsCount: 7,
+                flooringEuCount: 0, flooringEuForfait: false,
+                flooringStdCount: 0, flooringStdForfait: false,
+                blocksCount: 0, tarpsCount: 0, dividersCount: 0, honeycombCount: 0,
+                manifestComment: 'déjà migré',
+                noMaterialToBill: false
+            }
         };
-        await writeSavedManifests([newData]);
-        await loadManifest('MAN-MAT-NEW');
+        await writeSavedManifests([phase6Data]);
+        await loadManifest('MAN-PHASE6-IDEMPOTENT');
 
-        var block = document.querySelector('.uld-block');
-        assertEqual('data-straps restaure', block.getAttribute('data-straps'), '8');
-        assertEqual('data-flooring-eu restaure', block.getAttribute('data-flooring-eu'), '0');
-        assertEqual('data-flooring-eu-forfait restaure true', block.getAttribute('data-flooring-eu-forfait'), 'true');
-        assertEqual('data-flooring-std restaure', block.getAttribute('data-flooring-std'), '2');
-        assertEqual('data-flooring-std-forfait restaure false', block.getAttribute('data-flooring-std-forfait'), 'false');
-        assertEqual('data-blocks restaure', block.getAttribute('data-blocks'), '1');
-        assertEqual('data-tarps restaure', block.getAttribute('data-tarps'), '0');
-        assertEqual('data-dividers restaure', block.getAttribute('data-dividers'), '5');
-        assertEqual('data-honeycomb restaure', block.getAttribute('data-honeycomb'), '3');
-        assertEqual('data-uld-comment restaure', block.getAttribute('data-uld-comment'), 'Attention');
-
-        var data = collectData();
-        assertEqual('collectData round-trip strapsCount', data.ulds[0].strapsCount, 8);
-        assertEqual('collectData round-trip uldComment', data.ulds[0].uldComment, 'Attention');
-        assertEqual('collectData round-trip flooringEuForfait', data.ulds[0].flooringEuForfait, true);
+        // D-19 idempotence : data.material existe deja, migrateLegacyMaterial le retourne tel quel
+        assertEqual('strapsCount restaure = 7', document.getElementById('mat-global-straps').value, '7');
+        assertEqual('comment restaure = "déjà migré"', document.getElementById('mat-global-comment').value, 'déjà migré');
+        assertEqual('noBilling reste false', document.getElementById('mat-global-no-billing').checked, false);
     })();
 
-    // --- Save/load round-trip ancien manifeste (TEST-02 D-11) ---
-    suite('Materiel ULD - save/load round-trip ancien manifeste');
+    // --- round-trip Phase 6 save/load preserve data.material ---
+    suite('Materiel global - round-trip Phase 6 save/load preserve data.material');
     await (async function() {
         resetDOM();
+        _resetMatSection();
         _alertLog = [];
 
-        var oldData = {
-            manifestId: 'MAN-MAT-ROUND',
-            client: 'RC',
-            agent: 'RA',
-            destAirport: 'CDG',
-            date: '01/01/2025',
-            timestamp: '2025-01-01T00:00:00.000Z',
-            recipients: '',
-            cc: '',
-            ulds: [{
-                uldNumber: 'ULD-R',
-                rows: [{ lta: 'LTA-R', dossier: 'D', colis: 1, dgr: 'N', comment: '' }],
-                totalColis: 1
-            }]
-        };
-        await writeSavedManifests([oldData]);
+        manifestId = 'MAN-MAT-ROUND-P6';
+        document.getElementById('clientName').value = 'RoundClient';
+        document.getElementById('agentName').value = 'RA';
+        document.getElementById('destAirport').value = 'CDG';
+        addUld();
+        var u = document.querySelector('.uld-block');
+        u.querySelector('.uld-number').value = 'ULD-R';
+        var row = u.querySelector('.uld-rows tr');
+        if (row) {
+            row.querySelector('.lta-input').value = 'LTA-R';
+            row.querySelector('.colis-input').value = '1';
+        }
+        // Saisie materiel via section globale
+        document.getElementById('mat-global-straps').value = '6';
+        document.getElementById('mat-global-flooring-std-forfait').checked = true;
+        document.getElementById('mat-global-tarps').value = '2';
+        document.getElementById('mat-global-comment').value = 'Round-trip Phase 6';
 
-        await loadManifest('MAN-MAT-ROUND');
-        // Re-save: le manifeste acquiert les champs materiel avec defaults (D-11)
         await saveManifest();
+        // Reset DOM + section materiel
+        document.getElementById('pmcContainer').innerHTML = '';
+        _resetMatSection();
+        uldCount = 0;
 
+        await loadManifest('MAN-MAT-ROUND-P6');
+        // Verifier section materiel restauree
+        assertEqual('strapsCount restaure = 6', document.getElementById('mat-global-straps').value, '6');
+        assertEqual('forfait Std restaure = true', document.getElementById('mat-global-flooring-std-forfait').checked, true);
+        assertEqual('tarpsCount restaure = 2', document.getElementById('mat-global-tarps').value, '2');
+        assertEqual('comment restaure', document.getElementById('mat-global-comment').value, 'Round-trip Phase 6');
+
+        // Verifier que les ULDs ne portent plus les champs materiel (D-10)
         var saved = await getSavedManifests();
-        var found = saved.find(function(m) { return m.manifestId === 'MAN-MAT-ROUND'; });
-        assert('Manifeste present apres resave', !!found);
-        assertEqual('Apres resave: strapsCount = 0', found.ulds[0].strapsCount, 0);
-        assertEqual('Apres resave: flooringEuForfait = false', found.ulds[0].flooringEuForfait, false);
-        assertEqual('Apres resave: uldComment = vide', found.ulds[0].uldComment, '');
-        // Les donnees existantes preservees
-        assertEqual('Apres resave: uldNumber preserve', found.ulds[0].uldNumber, 'ULD-R');
-        assertEqual('Apres resave: totalColis preserve', found.ulds[0].totalColis, 1);
+        var found = saved.find(function(m) { return m.manifestId === 'MAN-MAT-ROUND-P6'; });
+        assert('Manifeste present apres round-trip', !!found);
+        assert('found.material existe (top-level Phase 6)', !!found.material);
+        assertEqual('found.material.strapsCount = 6', found.material.strapsCount, 6);
+        assertEqual('found.material.flooringStdForfait = true', found.material.flooringStdForfait, true);
+        assertEqual('found.material.manifestComment preserve', found.material.manifestComment, 'Round-trip Phase 6');
+        // ULDs preservent leur structure non-materiel
+        assertEqual('found.ulds[0].uldNumber preserve', found.ulds[0].uldNumber, 'ULD-R');
     })();
 
 
