@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: "Plan 06-06 complete (tests adapted + D-48 assertions) — Phase 06 ready for /gsd:verify-phase. Task 6 Release Checklist humaine en attente."
-last_updated: "2026-05-21T12:46:19.699Z"
+last_updated: "2026-05-21T13:05:54.441Z"
 last_activity: 2026-05-21
 progress:
   total_phases: 6
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-04-22)
 
 ## Current Position
 
-Phase: 06 (materiel-global-refactor-saisie-unique) — EXECUTING
-Plan: 6 of 6 (3 plans finalisés en parallèle wave 2+3 via UAT intégrée 2026-05-21)
+Phase: 06
+Plan: Not started
 Status: Ready to execute
 Last activity: 2026-05-21
 
