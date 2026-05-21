@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Plan 06-05 complete (5/6) — ready to execute 06-06 (tests + cleanup)
-last_updated: "2026-05-21T00:00:00.000Z"
+stopped_at: "Plan 06-06 complete (tests adapted + D-48 assertions) — Phase 06 ready for /gsd:verify-phase. Task 6 Release Checklist humaine en attente."
+last_updated: "2026-05-21T12:46:19.699Z"
 last_activity: 2026-05-21
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 16
-  completed_plans: 15
+  completed_plans: 16
   percent: 94
 ---
 
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-04-22)
 ## Current Position
 
 Phase: 06 (materiel-global-refactor-saisie-unique) — EXECUTING
-Plan: 5 of 6 (3 plans finalisés en parallèle wave 2+3 via UAT intégrée 2026-05-21)
-Status: Ready to execute Plan 06-06 (tests + cleanup)
+Plan: 6 of 6 (3 plans finalisés en parallèle wave 2+3 via UAT intégrée 2026-05-21)
+Status: Ready to execute
 Last activity: 2026-05-21
 
 Progress: [█████████░] 94%
@@ -68,6 +68,7 @@ Progress: [█████████░] 94%
 | Phase 06 P03 | 2280 | 4 tasks | 1 files |
 | Phase 06 P04 | 1500 | 3 tasks | 1 files |
 | Phase 06 P05 | 1320 | 4 tasks | 1 files |
+| Phase 06 P06 | 4500 | 6 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,11 @@ Recent decisions affecting current work:
 - [Phase 06]: Phase 06 P03: collectData()/loadManifest()/addUld() refactorés au modèle data.material top-level — pattern reset-then-write dans loadManifest (resetMaterialSection puis écriture loadedMaterial), addUld() signature sans paramètre (MAT-14 supprimé D-36), 14 fonctions Phase 1 désormais orphelines (scheduled cleanup Plan 06-06)
 - [Phase 06]: Phase 06 P04: rendu PDF/email symétrique partiel — 'Baches' ASCII en PDF (jsPDF font constraint) / 'Bâches' UTF-8 en email ; manifestComment intégré comme ligne 'Commentaire' avec autoTable overflow:'linebreak' (D-22) + white-space:pre-wrap CSS (D-17 newlines), esc() défense en profondeur sur label ET valeur (D-42)
 - [Phase 06]: Phase 06 P05: manifestHasMaterial() helper lit DOM directement (pattern uldHasMaterial), alert générique 'Saisie matériel obligatoire' + scroll smooth vers #material-section + focus #mat-global-straps remplace le re-open auto modal Phase 1 (anti-popup vestige), blocage uniquement à generatePdf/sendEmail (D-35 showGenerateSection libre)
+- [Phase 06]: Phase 06 P06: tests.html entierement adaptee au modele data.material global — 40 suites supprimees (modal/MAT-13 par-ULD/MAT-14/recap inline/helpers PDF+email deprecated), 5 suites adaptees (collectData/loadManifest/round-trip), 13 nouvelles suites Phase 6 (UI handlers + MAT-13 globalise + XSS), E2E lifecycle adapte + 3 assertions D-48 saisie unique (BLOCKER #1)
+- [Phase 06]: Phase 06 P06: testDOM augmente avec #material-section inline + polyfill scrollIntoView dans run-harness.cjs pour permettre aux tests Phase 6 de fonctionner en JSDOM
+- [Phase 06]: Phase 06 P06: D-47 assertion couche chiffrement testee explicitement (localStorage AES-256-GCM ne fuit pas le manifestId en clair) + D-48 3 assertions multi-vecteur (email count=1, sendEmail.toString() static check, PDF mock jsPDF count=1) garantissent la saisie unique cote rendu
+- [Phase 06]: Phase 06 P06: 14 fonctions Phase 1 orphelines DELIBÉRÉMENT NON SUPPRIMEES de app.js (openMaterialModal, applyMaterialToUld, buildMaterialSummary, etc.) — risque regression silencieuse via helper buildEmailHtmlForTest dans tests, defere a une eventuelle Phase 7 pruning
+- [Phase 06]: Phase 06 P06: addUld(false, true) -> addUld() bulk replace 19 occurrences (modification cosmetique, addUld() est sans parametre depuis Plan 06-03 D-36, JS ignore args supplementaires)
 
 ### Roadmap Evolution
 
@@ -158,6 +164,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-21T00:00:00.000Z
-Stopped at: Plan 06-05 complete (5/6) — UAT intégrée 3-plans 06-03/06-04/06-05 approuvée 2026-05-21, ready to execute Plan 06-06 (tests + cleanup)
+Last session: 2026-05-21T12:46:19.695Z
+Stopped at: Plan 06-06 complete (tests adapted + D-48 assertions) — Phase 06 ready for /gsd:verify-phase. Task 6 Release Checklist humaine en attente.
 Resume file: None

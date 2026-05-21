@@ -146,4 +146,4 @@ Plans:
 - [x] 06-03-PLAN.md — collectData / loadManifest / addUld refactor data.material top-level + suppression data-attributes ULD + suppression bouton/badge matériel — MAT-09, MAT-10, MAT-12
 - [x] 06-04-PLAN.md — Rendu PDF page 1 + email HTML symétriques depuis data.material + esc(manifestComment) + suppression sections par-ULD — MAT-11, RECAP-02
 - [x] 06-05-PLAN.md — Helper manifestHasMaterial + validation MAT-13 globalisée (generatePdf/sendEmail) + suppression blocages MAT-13/MAT-14 dans addUld/showGenerateSection — MAT-13
-- [ ] 06-06-PLAN.md — Adaptation tests (suppression suites obsolètes ~40, nouvelles suites Validation MAT-13 + UI handlers + E2E lifecycle adapté + rétro-compat D-47) + Release Checklist — MAT-01..13, RECAP-01..03
+- [x] 06-06-PLAN.md — Adaptation tests (suppression suites obsolètes ~40, nouvelles suites Validation MAT-13 + UI handlers + E2E lifecycle adapté + rétro-compat D-47) + Release Checklist — MAT-01..13, RECAP-01..03
