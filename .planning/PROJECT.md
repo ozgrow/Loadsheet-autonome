@@ -34,12 +34,13 @@ Outil web de création de loadsheets (feuilles de chargement) pour ATH — Air T
 - ✓ Release gate automatisé `npm run verify` + `npm run dev` + checklist 7 étapes dans CLAUDE.md — Validated in Phase 3
 - ✓ Listes de distribution emails (modal CRUD + dropdown destinataires + persistence Blob Azure partagée) — Validated in Phase 4
 - ✓ Codes client en dropdown maintenable (`<select>` + modal CRUD + JSON Blob `clients.json` partagé entre agents + rétro-compat manifeste legacy via option `data-legacy` éphémère + seed initial 1DAC-CDW + 2SET-CDG) — Validated in Phase 5
+- ✓ Refactor matériel au niveau manifeste (section globale `#material-section` + `data.material` top-level + helper pur `migrateLegacyMaterial` pour rétro-compat Phase 1 + MAT-13 globalisé via `manifestHasMaterial()` + saisie unique D-48 + suppression MAT-14 par D-36) — Validated in Phase 6
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- Refactor matériel au niveau manifeste (saisie unique pour tout le manifeste au lieu d'un jeu par ULD) — Phase 6 à planifier
+_(none — Milestone v1.0 complete, awaiting next milestone)_
 
 ### Out of Scope
 
@@ -86,7 +87,7 @@ L'app est en prod. Les deux features (infos matériel + fix VRAC) touchent à la
 |----------|-----------|---------|
 | Infos matériel appliquées à **tous types d'ULD** (palettes + conteneurs) | Simplicité de modèle : pas de logique conditionnelle par type. L'utilisateur laisse les champs vides si non pertinent. | — Pending |
 | VRAC = **type ULD officiel** (ajout au sélecteur) | Détection fiable sans faux positifs vs convention de nommage `"VRAC"` dans le nom. Plus robuste. | — Pending |
-| Saisie via **modal d'édition ULD existant** | Réutilise l'UX existante, pas de nouveau flux à apprendre pour les agents. | — Pending |
+| Saisie via **modal d'édition ULD existant** | Réutilise l'UX existante, pas de nouveau flux à apprendre pour les agents. | Superseded by Phase 6 — remplacé par section inline globale `#material-section` (saisie unique manifeste) suite au retour terrain D-48 (redondance saisie par-ULD) |
 | VRAC apparaît en **ligne séparée "Vrac"** dans le récapitulatif | Visibilité du fret vrac (poids, colis) sans fausser le compteur palette. | — Pending |
 | Tests en local via `npx serve` **sans Azure Functions Core Tools** | Les features touchent uniquement au frontend (UI, PDF, récapitulatif). Pas besoin de tester les API locales pour ce cycle. | — Pending |
 | Planchers bois : **nombre OU "forfait négocié"** | Deux modes de facturation réels côté ATH — la saisie doit refléter les deux cas. | — Pending |
@@ -109,4 +110,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-24 after Phase 3 completion — Milestone v1.0 complete (20/20 requirements validated)*
+*Last updated: 2026-05-21 after Phase 6 completion — matériel global manifeste, saisie unique (D-48), 559 tests OK*
