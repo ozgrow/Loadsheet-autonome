@@ -52,6 +52,11 @@ let html = testsHtml
       // logout stub (referenced by sendEmail when session expires)
       window.logout = function() {};
       window.getJwt = function() { return 'test-jwt-token'; };
+      // Phase 6 : JSDOM doesn't implement Element.prototype.scrollIntoView ; sendEmail/generatePdf
+      // call it on the #material-section element when MAT-13 blocks. Stub as no-op for tests.
+      if (window.Element && !window.Element.prototype.scrollIntoView) {
+        window.Element.prototype.scrollIntoView = function() {};
+      }
     },
   });
 
