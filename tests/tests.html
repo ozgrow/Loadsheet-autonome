@@ -1455,10 +1455,11 @@ localStorage.removeItem('loadsheet_manifests');
         blocks[1].querySelector('.uld-number').value = 'V1';
         blocks[1].querySelector('.lta-input').value = 'LTA2';
         blocks[1].querySelector('.colis-input').value = '12';
-        // MAT-13 : satisfaire la validation materiel obligatoire (le test verifie l'integration
-        // sendEmail HTML, pas la validation MAT-13 elle-meme)
-        blocks[0].setAttribute('data-no-billing', 'true');
-        blocks[1].setAttribute('data-no-billing', 'true');
+        // MAT-13 Phase 6 globalise : satisfaire la validation materiel obligatoire via la section globale
+        // (cocher noBilling debloque manifestHasMaterial). Le test verifie l'integration sendEmail HTML,
+        // pas la validation MAT-13 elle-meme.
+        _resetMatSection();
+        document.getElementById('mat-global-no-billing').checked = true;
         // Changer le type du 2e bloc en VRAC via le select (source de verite live)
         var typeSelect = blocks[1].querySelector('.uld-type');
         typeSelect.value = 'VRAC';
@@ -2123,6 +2124,7 @@ localStorage.removeItem('loadsheet_manifests');
         // --- Etape 1 : Setup ---
         window._xss = 0;
         resetDOM();
+        _resetMatSection();
         manifestId = 'MAN-E2E-LIFECYCLE';
 
         // --- Etape 2 : Metadonnees ---
@@ -2131,19 +2133,17 @@ localStorage.removeItem('loadsheet_manifests');
         document.getElementById('destAirport').value = 'CDG';
         document.getElementById('recipients').value = 'ops@acme.fr';
 
-        // --- Etape 3 : ULD 1 PMC avec materiel complet (sangles + forfait EU + baches + commentaire) ---
+        // --- Etape 3 : ULD 1 PMC (plus de bouton Materiel par-ULD, D-02 Phase 6) ---
         addUld();
         var uld1 = document.querySelectorAll('.uld-block')[0];
         uld1.querySelector('.uld-type').value = 'PMC';
         uld1.querySelector('.uld-number').value = 'PMC12345LH';
         uld1.querySelector('.uld-weight').value = '850';
-        uld1.setAttribute('data-straps', '8');
-        uld1.setAttribute('data-flooring-eu', '0');
-        uld1.setAttribute('data-flooring-eu-forfait', 'true');
-        uld1.setAttribute('data-tarps', '2');
-        uld1.setAttribute('data-uld-comment', 'Fragile - ne pas gerber');
+        // Phase 6 D-02 : addUld ne cree plus de bouton "Materiel" sur l'ULD
+        assertEqual('addUld ne cree plus de bouton .btn-material (D-02)',
+            uld1.querySelector('.btn-material'), null);
 
-        // --- Etape 4 : ULD 2 VRAC avec materiel partiel + payload XSS dans commentaire ---
+        // --- Etape 4 : ULD 2 VRAC + payload XSS dans le commentaire global plus tard ---
         addUld();
         var uld2 = document.querySelectorAll('.uld-block')[1];
         var sel2 = uld2.querySelector('.uld-type');
@@ -2151,12 +2151,14 @@ localStorage.removeItem('loadsheet_manifests');
         sel2.dispatchEvent(new Event('change'));  // synchronise data-uld-type via changeUldType
         uld2.querySelector('.uld-number').value = 'VRAC-BULK-001';
         uld2.querySelector('.uld-weight').value = '320';
-        uld2.setAttribute('data-straps', '4');
-        uld2.setAttribute('data-dividers', '6');
-        uld2.setAttribute('data-uld-comment', '<script>window._xss++<\/script>');
 
-        // --- Etape 5 : ligne LTA sur ULD 1 (addUld ajoute deja 1 ligne par defaut, on ne rajoute pas) ---
-        // ULD 1 a deja 1 row par defaut (addUld appelle addRow) ; on remplit cette row.
+        // --- Etape 5 : Saisie materiel UNE SEULE FOIS au niveau manifeste (D-46 + D-48 Phase 6) ---
+        // Remplace les anciens setAttribute par-ULD (data-straps, data-uld-comment, etc.)
+        document.getElementById('mat-global-straps').value = '12';
+        document.getElementById('mat-global-flooring-eu-forfait').checked = true;
+        document.getElementById('mat-global-tarps').value = '2';
+        document.getElementById('mat-global-dividers').value = '6';
+        document.getElementById('mat-global-comment').value = '<script>window._xss++<\/script>Fragile - ne pas gerber';
 
         // --- Etape 6 : remplir LTA + colis + DGR sur ULD 1 row 0 ---
         var row1 = uld1.querySelector('.uld-rows tr');
@@ -2168,14 +2170,16 @@ localStorage.removeItem('loadsheet_manifests');
         // --- Etape 7 : saveManifest (round-trip localStorage chiffre) ---
         await saveManifest();
 
-        // --- Etape 8 : reset DOM + verifier que le DOM est vide ---
+        // --- Etape 8 : reset DOM + section materiel ---
         document.getElementById('pmcContainer').innerHTML = '';
         document.getElementById('clientName').value = '';
         document.getElementById('agentName').value = '';
         document.getElementById('destAirport').value = '';
         document.getElementById('recipients').value = '';
+        _resetMatSection();
         uldCount = 0;
         assertEqual('DOM vide apres reset', document.querySelectorAll('.uld-block').length, 0);
+        assertEqual('Section materiel reset apres reset', document.getElementById('mat-global-straps').value, '0');
 
         // --- Etape 9 : loadManifest (recharge depuis localStorage chiffre) ---
         await loadManifest('MAN-E2E-LIFECYCLE');
@@ -2191,35 +2195,47 @@ localStorage.removeItem('loadsheet_manifests');
         assertEqual('Type ULD 1 = PMC', blocks[0].querySelector('.uld-type').value, 'PMC');
         assertEqual('Type ULD 2 = VRAC', blocks[1].querySelector('.uld-type').value, 'VRAC');
 
-        assertEqual('Sangles ULD 1 restaurees', blocks[0].dataset.straps, '8');
-        assertEqual('Forfait EU ULD 1 restaure', blocks[0].dataset.flooringEuForfait, 'true');
-        assertEqual('Baches ULD 1 restaurees', blocks[0].dataset.tarps, '2');
-        assertEqual('Commentaire ULD 1 restaure', blocks[0].dataset.uldComment, 'Fragile - ne pas gerber');
-
-        assertEqual('Sangles ULD 2 VRAC', blocks[1].dataset.straps, '4');
-        assertEqual('Intercalaires ULD 2 VRAC', blocks[1].dataset.dividers, '6');
+        // Phase 6 : materiel restaure dans #material-section (pas dans data-attributes ULD)
+        assertEqual('Section materiel restauree : straps = 12', document.getElementById('mat-global-straps').value, '12');
+        assertEqual('Section materiel restauree : forfait EU coché', document.getElementById('mat-global-flooring-eu-forfait').checked, true);
+        assertEqual('Section materiel restauree : tarps = 2', document.getElementById('mat-global-tarps').value, '2');
+        assertEqual('Section materiel restauree : dividers = 6', document.getElementById('mat-global-dividers').value, '6');
+        assertEqual('Section materiel restauree : comment',
+            document.getElementById('mat-global-comment').value,
+            '<script>window._xss++<\/script>Fragile - ne pas gerber');
 
         // Assertion securite critique (MAT-11 + Phase 3 smoke) :
-        assertEqual('XSS uldComment NON execute (window._xss reste a 0)', window._xss, 0);
-        assert('Commentaire XSS stocke brut dans dataset (defense est au rendu, pas au stockage)',
-               blocks[1].dataset.uldComment.indexOf('<script>') >= 0);
+        // Le commentaire est stocke brut dans la textarea via .value (jamais innerHTML)
+        // => pas d'execution XSS au stockage. Defense au rendu via esc() (Plan 06-04).
+        assertEqual('XSS manifestComment NON execute (window._xss reste a 0)', window._xss, 0);
+        assert('Commentaire XSS stocke brut dans textarea (.value, jamais innerHTML)',
+            document.getElementById('mat-global-comment').value.indexOf('<script>') >= 0);
 
         // Recap ecran contient "dont Vrac : 1"
         updateRecap();
         var recapTxt = document.getElementById('liveRecap').textContent;
         assert('Recap contient "dont Vrac : 1"', recapTxt.indexOf('dont Vrac : 1') >= 0);
 
-        // --- Etape 11 : buildPdf (3 pages attendues = 1 recap + 2 ULDs) ---
+        // --- Etape 11 : collectData lit data.material top-level (D-09) ---
         var data = collectData();
+        assert('data.material existe (top-level Phase 6)', !!data.material);
+        assertEqual('data.material.strapsCount = 12', data.material.strapsCount, 12);
+        assertEqual('data.material.flooringEuForfait = true', data.material.flooringEuForfait, true);
+        assertEqual('data.material.manifestComment restaure', data.material.manifestComment,
+            '<script>window._xss++<\/script>Fragile - ne pas gerber');
+        // D-10 : les ULDs ne portent plus les champs materiel
+        assertEqual('data.ulds[0].strapsCount === undefined (D-10)', data.ulds[0].strapsCount, undefined);
+
+        // --- Etape 12 : buildPdf (3 pages attendues = 1 recap + 2 ULDs) ---
         var doc = null;
         var noError = true;
-        try { doc = buildPdf(data); } catch(e) { noError = false; }
+        try { doc = buildPdf(data); } catch(e) { console.error('buildPdf error:', e); noError = false; }
         assert('buildPdf ne crash pas', noError);
         assert('buildPdf retourne un doc', !!doc);
-        assertEqual('PDF a 3 pages (recap + 2 ULDs)', doc.getNumberOfPages(), 3);
+        if (doc) assertEqual('PDF a 3 pages (recap + 2 ULDs)', doc.getNumberOfPages(), 3);
         assertEqual('XSS toujours a 0 apres buildPdf', window._xss, 0);
 
-        // --- Etape 12 : buildPalettesVracSplit ---
+        // --- Etape 13 : buildPalettesVracSplit ---
         var split = buildPalettesVracSplit(data.ulds);
         assertEqual('split.hasVrac === true', split.hasVrac, true);
         assertEqual('split.palettes.count === 1', split.palettes.count, 1);
@@ -2227,8 +2243,85 @@ localStorage.removeItem('loadsheet_manifests');
         assertEqual('split.palettes.colis === 12 (PMC a 12 colis)', split.palettes.colis, 12);
         assertEqual('split.vrac.colis === 0 (VRAC sans ligne LTA)', split.vrac.colis, 0);
 
+        // ============================================================
+        // D-48 — Assertions saisie unique (warning checker BLOCKER #1)
+        // ============================================================
+        // Garantit que la section Materiel est rendue UNE FOIS dans le recap (page 1 PDF +
+        // haut email) et ABSENTE des sections detail ULD du PDF et des blocs detail email.
+
+        // --- D-48 (a) : email HTML — la section Matériel doit apparaître EXACTEMENT 1 FOIS ---
+        // Stub fetch pour capturer le htmlBody envoye a /api/send-email.
+        var captured = null;
+        var origFetch = window.fetch;
+        window.fetch = function(url, opts) {
+            if (url === '/api/send-email') {
+                captured = JSON.parse(opts.body);
+                return Promise.resolve({ ok: true, json: function() { return Promise.resolve({ success: true }); } });
+            }
+            return Promise.reject(new Error('Unexpected fetch URL: ' + url));
+        };
+        try {
+            await sendEmail();
+        } catch (e) {
+            console.error('sendEmail error:', e);
+        } finally {
+            window.fetch = origFetch;
+        }
+        assertEqual('D-48 (a): fetch /api/send-email appele', captured !== null, true);
+        if (captured) {
+            var h3MaterielMatches = captured.htmlBody.match(/<h3[^>]*>Matériel<\/h3>/g) || [];
+            assertEqual("D-48 (a): <h3>Matériel</h3> apparaît EXACTEMENT 1 fois dans htmlBody email (saisie unique)",
+                h3MaterielMatches.length, 1);
+            // Verifier que le manifestComment XSS est echappe (esc()) — pas de <script> litteral dans htmlBody
+            assert('D-48 (a) bonus: manifestComment XSS echappe via esc() dans htmlBody',
+                captured.htmlBody.indexOf('<script>window._xss++') < 0);
+            assert('D-48 (a) bonus: entite &lt;script&gt; presente (esc actif)',
+                captured.htmlBody.indexOf('&lt;script&gt;') >= 0);
+        }
+
+        // --- D-48 (b) : email HTML — buildUldMaterialHtml ne doit PLUS être référencé en sendEmail ---
+        // Verification statique : la string source de sendEmail ne contient plus d'appel buildUldMaterialHtml(u).
+        assertEqual('D-48 (b): sendEmail global accessible', typeof sendEmail === 'function', true);
+        assertEqual("D-48 (b): sendEmail ne contient PLUS d'appel buildUldMaterialHtml(u) (materiel par-ULD supprime du rendu email)",
+            sendEmail.toString().indexOf('buildUldMaterialHtml(u)') === -1, true);
+
+        // --- D-48 (c) : PDF — la section 'Materiel' doit être rendue 1 fois (mock doc.text) ---
+        var materielTextCalls = 0;
+        var originalJspdfRef = window.jspdf;
+        if (originalJspdfRef && originalJspdfRef.jsPDF) {
+            var OriginalPDF = originalJspdfRef.jsPDF;
+            window.jspdf.jsPDF = function() {
+                var instance = new OriginalPDF(...arguments);
+                var origText = instance.text.bind(instance);
+                instance.text = function(str) {
+                    if (str === 'Materiel') materielTextCalls++;
+                    return origText.apply(instance, arguments);
+                };
+                return instance;
+            };
+            try {
+                buildPdf(data);
+            } catch (e) {
+                console.error('buildPdf D-48 mock error:', e);
+            } finally {
+                window.jspdf.jsPDF = OriginalPDF;
+            }
+            assertEqual("D-48 (c): doc.text('Materiel', ...) appele EXACTEMENT 1 fois (section page 1, pas N+1 fois sur pages detail ULD)",
+                materielTextCalls, 1);
+        } else {
+            // Fallback statique si jspdf non instrumentable : verifier le code source de buildPdf
+            var srcToCheck = (typeof buildPdf === 'function' ? buildPdf.toString() : '');
+            var pdfMaterielMatches = srcToCheck.match(/doc\.text\(['"]Materiel['"]/g) || [];
+            assertEqual("D-48 (c, fallback statique): doc.text('Materiel') apparaît 1 fois dans le code source de buildPdf",
+                pdfMaterielMatches.length, 1);
+        }
+        // ============================================================
+        // Fin assertions D-48
+        // ============================================================
+
         // --- Cleanup ---
         document.getElementById('pmcContainer').innerHTML = '';
+        _resetMatSection();
         uldCount = 0;
         localStorage.removeItem(STORAGE_KEY);
     })();
