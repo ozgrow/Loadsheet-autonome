@@ -862,6 +862,233 @@ localStorage.removeItem('loadsheet_manifests');
     })();
 
     // ============================================
+    // PLAN 06-06 Task 3 : Materiel global - UI handlers + Validation MAT-13 + XSS
+    // ============================================
+
+    // --- UI handler : toggleMaterialSectionForfait (D-06 cloned scope #material-section) ---
+    suite('Materiel global - UI handlers section (toggleMaterialSectionForfait)');
+    (function() {
+        resetDOM();
+        _resetMatSection();
+        // Setup : remplir le count puis cocher le forfait
+        document.getElementById('mat-global-flooring-eu').value = '5';
+        var checkbox = document.getElementById('mat-global-flooring-eu-forfait');
+        checkbox.checked = true;
+        toggleMaterialSectionForfait(checkbox, 'mat-global-flooring-eu');
+        assertEqual('input EU disabled apres cocher forfait', document.getElementById('mat-global-flooring-eu').disabled, true);
+        assertEqual('input EU value force a 0 (D-07)', document.getElementById('mat-global-flooring-eu').value, '0');
+        // Decocher
+        checkbox.checked = false;
+        toggleMaterialSectionForfait(checkbox, 'mat-global-flooring-eu');
+        assertEqual('input EU reactive apres decocher forfait', document.getElementById('mat-global-flooring-eu').disabled, false);
+    })();
+
+    // --- UI handler : toggleMaterialSectionNoBilling (D-08 cloned scope #material-section) ---
+    suite('Materiel global - UI handlers section (toggleMaterialSectionNoBilling)');
+    (function() {
+        resetDOM();
+        _resetMatSection();
+        var noBilling = document.getElementById('mat-global-no-billing');
+        noBilling.checked = true;
+        toggleMaterialSectionNoBilling(noBilling);
+        assertEqual('sangles disabled', document.getElementById('mat-global-straps').disabled, true);
+        assertEqual('blocks disabled', document.getElementById('mat-global-blocks').disabled, true);
+        assertEqual('comment disabled', document.getElementById('mat-global-comment').disabled, true);
+        assertEqual('forfait EU checkbox disabled', document.getElementById('mat-global-flooring-eu-forfait').disabled, true);
+    })();
+
+    // --- UI handler : decocher noBilling preserve forfait actif (D-06) ---
+    suite('Materiel global - UI handlers section (noBilling decoche preserve forfait D-06)');
+    (function() {
+        resetDOM();
+        _resetMatSection();
+        // Setup : forfait EU coche AVANT noBilling
+        document.getElementById('mat-global-flooring-eu-forfait').checked = true;
+        toggleMaterialSectionForfait(document.getElementById('mat-global-flooring-eu-forfait'), 'mat-global-flooring-eu');
+        var noBilling = document.getElementById('mat-global-no-billing');
+        noBilling.checked = true;
+        toggleMaterialSectionNoBilling(noBilling);
+        noBilling.checked = false;
+        toggleMaterialSectionNoBilling(noBilling);
+        assertEqual('sangles reactive', document.getElementById('mat-global-straps').disabled, false);
+        // L'input count EU reste disabled car forfait toujours coche (D-06)
+        assertEqual('input count EU reste disabled (forfait actif)', document.getElementById('mat-global-flooring-eu').disabled, true);
+        assertEqual('checkbox forfait EU reactivee', document.getElementById('mat-global-flooring-eu-forfait').disabled, false);
+    })();
+
+    // --- resetMaterialSection (D-37 helper reset propre) ---
+    suite('Materiel global - resetMaterialSection (D-37)');
+    (function() {
+        resetDOM();
+        // Setup : saisir des valeurs partout
+        document.getElementById('mat-global-straps').value = '7';
+        document.getElementById('mat-global-flooring-eu-forfait').checked = true;
+        document.getElementById('mat-global-flooring-eu').disabled = true;
+        document.getElementById('mat-global-no-billing').checked = true;
+        document.getElementById('mat-global-comment').value = 'test';
+        resetMaterialSection();
+        assertEqual('sangles reset', document.getElementById('mat-global-straps').value, '0');
+        assertEqual('forfait reset', document.getElementById('mat-global-flooring-eu-forfait').checked, false);
+        assertEqual('input EU reactive', document.getElementById('mat-global-flooring-eu').disabled, false);
+        assertEqual('noBilling reset', document.getElementById('mat-global-no-billing').checked, false);
+        assertEqual('comment reset', document.getElementById('mat-global-comment').value, '');
+    })();
+
+    // --- newManifest reset la section materielle (D-37) ---
+    suite('Materiel global - newManifest reset la section (D-37)');
+    (function() {
+        document.getElementById('mat-global-straps').value = '9';
+        document.getElementById('mat-global-comment').value = 'avant new';
+        newManifest();
+        assertEqual('sangles reset par newManifest', document.getElementById('mat-global-straps').value, '0');
+        assertEqual('comment reset par newManifest', document.getElementById('mat-global-comment').value, '');
+    })();
+
+    // --- manifestHasMaterial : section vide => false ---
+    suite('Materiel global - Validation MAT-13 manifestHasMaterial (D-32, D-33)');
+    (function() {
+        resetDOM();
+        _resetMatSection();
+        assertEqual('section vide => manifestHasMaterial false', manifestHasMaterial(), false);
+    })();
+
+    // --- manifestHasMaterial : noBilling coche => true ---
+    suite('Materiel global - manifestHasMaterial noBilling => true');
+    (function() {
+        resetDOM();
+        _resetMatSection();
+        document.getElementById('mat-global-no-billing').checked = true;
+        assertEqual('noBilling coche debloque', manifestHasMaterial(), true);
+    })();
+
+    // --- manifestHasMaterial : count > 0 => true ---
+    suite('Materiel global - manifestHasMaterial count > 0 => true');
+    (function() {
+        resetDOM();
+        _resetMatSection();
+        document.getElementById('mat-global-straps').value = '3';
+        assertEqual('sangles > 0 debloque', manifestHasMaterial(), true);
+    })();
+
+    // --- manifestHasMaterial : forfait coche => true ---
+    suite('Materiel global - manifestHasMaterial forfait coche => true');
+    (function() {
+        resetDOM();
+        _resetMatSection();
+        document.getElementById('mat-global-flooring-eu-forfait').checked = true;
+        assertEqual('forfait EU coche debloque', manifestHasMaterial(), true);
+    })();
+
+    // --- manifestHasMaterial : comment non-vide => true ---
+    suite('Materiel global - manifestHasMaterial comment non-vide => true');
+    (function() {
+        resetDOM();
+        _resetMatSection();
+        document.getElementById('mat-global-comment').value = 'attention fragile';
+        assertEqual('comment non-vide debloque', manifestHasMaterial(), true);
+    })();
+
+    // --- manifestHasMaterial : comment blanc (spaces only) => false ---
+    suite('Materiel global - manifestHasMaterial comment whitespace => false');
+    (function() {
+        resetDOM();
+        _resetMatSection();
+        document.getElementById('mat-global-comment').value = '   ';
+        assertEqual('comment whitespace seul = false (trim)', manifestHasMaterial(), false);
+    })();
+
+    // --- generatePdf bloque si section vide (MAT-13 globalise) ---
+    suite('Materiel global - generatePdf bloque si section vide (MAT-13 globalise)');
+    await (async function() {
+        resetDOM();
+        _resetMatSection();
+        addUld();
+        document.getElementById('agentName').value = 'A';
+        document.getElementById('destAirport').value = 'CDG';
+        var uld = document.querySelector('.uld-block');
+        uld.querySelector('.uld-number').value = 'U1';
+        uld.querySelector('.lta-input').value = '123-45';
+        uld.querySelector('.colis-input').value = '1';
+        // Intercepter alert
+        _alertLog = [];
+        await generatePdf();
+        var matAlert = _alertLog.find(function(m) { return m.indexOf('Saisie matériel obligatoire') >= 0; });
+        assertEqual('alert MAT-13 globalise', !!matAlert, true);
+    })();
+
+    // --- sendEmail bloque si section vide (MAT-13 globalise) ---
+    suite('Materiel global - sendEmail bloque si section vide (MAT-13 globalise)');
+    await (async function() {
+        resetDOM();
+        _resetMatSection();
+        addUld();
+        document.getElementById('agentName').value = 'A';
+        document.getElementById('destAirport').value = 'CDG';
+        document.getElementById('recipients').value = 'test@example.com';
+        var uld = document.querySelector('.uld-block');
+        uld.querySelector('.uld-number').value = 'U1';
+        uld.querySelector('.lta-input').value = '123-45';
+        uld.querySelector('.colis-input').value = '1';
+        // Spy fetch pour verifier qu'il N'est PAS appele
+        var fetchCalled = false;
+        var origFetch = window.fetch;
+        window.fetch = function() { fetchCalled = true; return Promise.resolve({ ok: false, json: function() { return Promise.resolve({}); } }); };
+        _alertLog = [];
+        try { await sendEmail(); } finally { window.fetch = origFetch; }
+        var matAlert = _alertLog.find(function(m) { return m.indexOf('Saisie matériel obligatoire') >= 0; });
+        assertEqual('alert MAT-13 sendEmail', !!matAlert, true);
+        assertEqual('fetch NON appele (blocage avant envoi)', fetchCalled, false);
+    })();
+
+    // --- XSS manifestComment via section UI (anti-XSS par construction .value) ---
+    suite('Materiel global - XSS manifestComment via section UI (MAT-11 / D-42)');
+    (function() {
+        resetDOM();
+        _resetMatSection();
+        var malicious = '<script>alert("XSS")<\/script><b>HTML</b>';
+        document.getElementById('mat-global-comment').value = malicious;
+        // La textarea conserve le texte brut (HTML literal, pas execute)
+        assertEqual('value brute conservee', document.getElementById('mat-global-comment').value, malicious);
+        // collectData renvoie la chaine brute (pas escape — escape se fait au rendu seulement)
+        var data = collectData();
+        assertEqual('collectData chaine brute (pas pre-escape)', data.material.manifestComment, malicious);
+    })();
+
+    // --- sendEmail HTML esc(manifestComment) — defense anti-XSS au rendu (MAT-11 + D-28 + D-42) ---
+    suite('Materiel global - sendEmail HTML esc(manifestComment) (MAT-11 / D-28 / D-42)');
+    await (async function() {
+        resetDOM();
+        _resetMatSection();
+        addUld();
+        document.getElementById('agentName').value = 'A';
+        document.getElementById('destAirport').value = 'CDG';
+        document.getElementById('recipients').value = 'test@example.com';
+        var uld = document.querySelector('.uld-block');
+        uld.querySelector('.uld-number').value = 'U1';
+        uld.querySelector('.lta-input').value = '123-45';
+        uld.querySelector('.colis-input').value = '1';
+        document.getElementById('mat-global-comment').value = '<script>alert(1)<\/script>';
+        // Stub fetch pour capturer le htmlBody
+        var captured = null;
+        var origFetch = window.fetch;
+        window.fetch = function(url, opts) {
+            if (url === '/api/send-email') {
+                captured = JSON.parse(opts.body);
+                return Promise.resolve({ ok: true, json: function() { return Promise.resolve({}); } });
+            }
+            return Promise.reject(new Error('Unexpected fetch URL'));
+        };
+        try { await sendEmail(); } finally { window.fetch = origFetch; }
+        assertEqual('fetch /api/send-email appele', captured !== null, true);
+        if (captured) {
+            assertEqual('PAS de <script>alert(1)<\/script> litteral (XSS echappe)',
+                captured.htmlBody.indexOf('<script>alert(1)<\/script>') >= 0, false);
+            assertEqual('esc() applique (&lt;script&gt;...&lt;/script&gt; present)',
+                captured.htmlBody.indexOf('&lt;script&gt;alert(1)&lt;/script&gt;') >= 0, true);
+        }
+    })();
+
+    // ============================================
     // PLAN 02-01 Task 1 : Type ULD VRAC - selecteur + data model + retro-compat (VRAC-01, D-01..D-06, D-15..D-17)
     // ============================================
 
