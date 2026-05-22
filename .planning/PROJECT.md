@@ -54,23 +54,27 @@ _(none — Milestone v1.0 complete, awaiting next milestone)_
 
 ## Context
 
+**Current state (v1.0 shipped 2026-05-22) :**
+- 6 phases livrées en 48 jours (3 avril → 21 mai 2026), 16 plans, 37 tasks
+- ~28.8k LOC (94 fichiers), JS vanilla pur (~3 modules : `app.js`, `clients.js`, `lists.js` côté frontend ; 4 Azure Functions backend : `login`, `send-email`, `recipients`, `clients`)
+- Suite de tests 559 asserts / 99 suites — gate `npm run verify` avec harness Node+JSDOM (0 FAIL en release)
+- Production active : https://nice-smoke-0ca8eb110.6.azurestaticapps.net — déploiement auto sur push master via GitHub Actions
+- Azure Blob Storage `loadsheet-data` héberge `recipients-lists.json` + `clients.json` partagés entre agents (JWT-protected GET/PUT)
+
 **Environnement technique :**
 - Frontend HTML/CSS/JS vanilla (pas de framework), livré par Azure Static Web App
 - PDF via jsPDF + jspdf-autotable (CDN)
-- Backend Azure Functions Node.js dans `api/` (login, send-email)
+- Backend Azure Functions Node.js dans `api/` (login, send-email, recipients, clients)
 - Déploiement auto sur push `master` via GitHub Actions
 
 **Utilisateurs :**
 - Agents ATH à Roissy CDG, souvent en mobilité (d'où le responsive mobile)
 - Usage quotidien en production — toute régression a un impact opérationnel direct
 
-**Historique récent :**
+**Historique pré-v1.0 :**
 - v1.7.4 : fix validation email (séparateur `;` + format angle brackets)
 - v1.7.3 : fix tests XSS et échappement `</script>` dans les chaînes JS
 - v1.7.x : durcissement sécurité (chiffrement localStorage, CSP, anti-XSS)
-
-**Préoccupation majeure pour ce cycle :**
-L'app est en prod. Les deux features (infos matériel + fix VRAC) touchent à la saisie ULD et au récapitulatif — zones utilisées intensivement. Test local obligatoire avant push master.
 
 ## Constraints
 
@@ -85,12 +89,16 @@ L'app est en prod. Les deux features (infos matériel + fix VRAC) touchent à la
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Infos matériel appliquées à **tous types d'ULD** (palettes + conteneurs) | Simplicité de modèle : pas de logique conditionnelle par type. L'utilisateur laisse les champs vides si non pertinent. | — Pending |
-| VRAC = **type ULD officiel** (ajout au sélecteur) | Détection fiable sans faux positifs vs convention de nommage `"VRAC"` dans le nom. Plus robuste. | — Pending |
-| Saisie via **modal d'édition ULD existant** | Réutilise l'UX existante, pas de nouveau flux à apprendre pour les agents. | Superseded by Phase 6 — remplacé par section inline globale `#material-section` (saisie unique manifeste) suite au retour terrain D-48 (redondance saisie par-ULD) |
-| VRAC apparaît en **ligne séparée "Vrac"** dans le récapitulatif | Visibilité du fret vrac (poids, colis) sans fausser le compteur palette. | — Pending |
-| Tests en local via `npx serve` **sans Azure Functions Core Tools** | Les features touchent uniquement au frontend (UI, PDF, récapitulatif). Pas besoin de tester les API locales pour ce cycle. | — Pending |
-| Planchers bois : **nombre OU "forfait négocié"** | Deux modes de facturation réels côté ATH — la saisie doit refléter les deux cas. | — Pending |
+| Infos matériel appliquées à **tous types d'ULD** (palettes + conteneurs) | Simplicité de modèle : pas de logique conditionnelle par type. L'utilisateur laisse les champs vides si non pertinent. | ✓ Good — confirmé en prod Phase 1 puis recentré au niveau manifeste Phase 6 |
+| VRAC = **type ULD officiel** (ajout au sélecteur) | Détection fiable sans faux positifs vs convention de nommage `"VRAC"` dans le nom. Plus robuste. | ✓ Good — VRAC-01/02/03 livrés Phase 2, tests E2E couvrent l'exclusion compteur |
+| Saisie via **modal d'édition ULD existant** | Réutilise l'UX existante, pas de nouveau flux à apprendre pour les agents. | ⚠ Superseded by Phase 6 — remplacé par section inline globale `#material-section` (saisie unique manifeste) suite au retour terrain D-48 (redondance saisie par-ULD) |
+| VRAC apparaît en **ligne séparée "Vrac"** dans le récapitulatif | Visibilité du fret vrac (poids, colis) sans fausser le compteur palette. | ✓ Good — format canonique W-1 aligné #liveRecap/PDF/email |
+| Tests en local via `npx serve` **sans Azure Functions Core Tools** | Les features touchent uniquement au frontend (UI, PDF, récapitulatif). Pas besoin de tester les API locales pour ce cycle. | ⚠ Revisit — bonne décision pour Phases 1-3 (frontend pur), mais Phase 4/5 ont ajouté des Azure Functions ; tests E2E API restent absents (deferred OOS) |
+| Planchers bois : **nombre OU "forfait négocié"** | Deux modes de facturation réels côté ATH — la saisie doit refléter les deux cas. | ✓ Good — toggleForfait UX claire, conservé Phase 6 sur section globale |
+| **Backend partagé via Azure Blob JSON** (recipients-lists.json, clients.json) | Persistance simple sans base de données, sources de vérité partagées entre tous les agents ATH. JWT pour sécuriser. | ✓ Good — pattern réutilisé Phase 4 → Phase 5 sans friction. 404 BlobNotFound → `[]` propre |
+| **Mode-switchable dev/prod** dans les modules frontend (`lists.js`, `clients.js`) | Permet de tester en local sans Azure Functions Core Tools (stub localStorage) puis switch vers vrai endpoint en prod. | ✓ Good — auto-détection hostname élimine la variable d'env |
+| **Matériel au niveau manifeste** (Phase 6 refactor, supersede Phase 1) | Retour terrain D-48 : la saisie répétée par-ULD était redondante (le matériel est mutualisé pour tout le vol, pas par-ULD). | ✓ Good — UAT user-approved 2026-05-21, 559 tests OK, déployé prod |
+| **MAT-14 supprimé** (D-36 Phase 6) | Auto-open modal devient non-pertinent puisque la section est inline et toujours visible. | ✓ Good — éliminé en même temps que le modal Phase 1 (orphan préservé pour rétro-compat code) |
 
 ## Evolution
 
@@ -110,4 +118,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-21 after Phase 6 completion — matériel global manifeste, saisie unique (D-48), 559 tests OK*
+*Last updated: 2026-05-22 after v1.0 milestone complete — Phases 1-6 shipped, 559 tests OK, prod deployed*
