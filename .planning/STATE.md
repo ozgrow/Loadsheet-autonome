@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: "Plan 06-06 complete (tests adapted + D-48 assertions) — Phase 06 ready for /gsd:verify-phase. Task 6 Release Checklist humaine en attente."
-last_updated: "2026-05-22T13:13:34.335Z"
-last_activity: 2026-05-22
+last_updated: "2026-07-03T00:00:00.000Z"
+last_activity: 2026-07-03 - Completed quick task 260703-n0k: gestion expiration session JWT 401
 progress:
   total_phases: 6
   completed_phases: 6
@@ -161,6 +161,12 @@ None yet.
 - App en production : toute régression a un impact opérationnel immédiat sur les agents ATH. Validation locale obligatoire (TEST-03) avant tout push master.
 - Rétro-compat localStorage chiffré (MAT-10) : les anciens objets ULD sans champs matériel ne doivent pas casser `loadManifest`.
 - XSS commentaire libre (MAT-11) : nouveau vecteur, doit passer par `esc()` partout.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260703-n0k | Gestion propre de l'expiration de session (JWT 401) — interceptor apiFetch, auto-save avant redirection, message login clair, avertissement ~10 min | 2026-07-03 | 44279e6 | [260703-n0k-session-expiry-401-redirect](./quick/260703-n0k-session-expiry-401-redirect/) |
 
 ## Session Continuity
 
