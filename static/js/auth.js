@@ -89,6 +89,9 @@ function setSession(jwtToken) {
   var data = { expiry: Date.now() + SESSION_DURATION_MS };
   if (jwtToken) data.jwt = jwtToken;
   sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(data));
+  // Reinitialise le garde d'expiration cote app pour permettre une nouvelle
+  // detection apres reconnexion (defini dans app.js, guard typeof = pas de crash si absent).
+  if (typeof resetSessionGuard === 'function') resetSessionGuard();
 }
 
 function getJwt() {
@@ -98,15 +101,32 @@ function getJwt() {
   } catch (e) { return null; }
 }
 
-function logout() {
+// Accesseur d'expiry pour le timer d'avertissement (meme garde defensive que isLoggedIn, D-03).
+function getSessionExpiry() {
+  try {
+    var data = JSON.parse(sessionStorage.getItem(AUTH_SESSION_KEY));
+    if (data && typeof data.expiry === 'number' && isFinite(data.expiry)) return data.expiry;
+    return null;
+  } catch (e) { return null; }
+}
+
+function logout(message) {
   sessionStorage.removeItem(AUTH_SESSION_KEY);
-  showLogin();
+  // Nettoyer le timer d'avertissement s'il existe (defini dans app.js).
+  if (typeof clearExpiryWarning === 'function') clearExpiryWarning();
+  showLogin(message);
 }
 
 // --- UI toggle ---
-function showLogin() {
-  document.getElementById("loginScreen").style.display = "flex";
-  document.getElementById("appScreen").style.display = "none";
+function showLogin(message) {
+  var loginEl = document.getElementById("loginScreen");
+  if (loginEl) loginEl.style.display = "flex";
+  var appEl = document.getElementById("appScreen");
+  if (appEl) appEl.style.display = "none";
+  if (message) {
+    var errEl = document.getElementById("loginError");
+    if (errEl) errEl.textContent = message; // textContent = anti-XSS natif (jamais innerHTML)
+  }
 }
 
 function showApp() {
