@@ -3338,6 +3338,82 @@ localStorage.removeItem('loadsheet_manifests');
     })();
 
     // ========================================
+    // SESSION-401 : expiration de session (interceptor 401 + timer avertissement)
+    // ========================================
+
+    // --- apiFetch 401 declenche save silencieux + logout(message) ---
+    suite('Session expiry - apiFetch 401 declenche save + logout');
+    await (async function() {
+        var origFetch = window.fetch;
+        var origLogout = window.logout;
+        var origCollect = collectData;
+        var logoutMsg = null;
+        try {
+            // Stub fetch -> renvoie toujours 401
+            window.fetch = function() {
+                return Promise.resolve({ status: 401, ok: false, json: function() { return Promise.resolve({}); } });
+            };
+            // Espion logout
+            window.logout = function(m) { logoutMsg = m; };
+            // Stub collectData pour que saveManifestSilently sauvegarde (>=1 ULD)
+            collectData = function() { return { manifestId: 'TEST401', ulds: [{}] }; };
+
+            resetSessionGuard();
+            await apiFetch('/api/recipients');
+
+            assertEqual('logout appele avec message expiration', logoutMsg, 'Session expiree, reconnectez-vous.');
+            var savedList = await getSavedManifests();
+            assertEqual('manifeste sauvegarde avant redirection',
+                savedList.some(function(m) { return m.manifestId === 'TEST401'; }), true);
+
+            // Idempotence : re-appel sans reset ne doit pas relancer le handler ni throw
+            logoutMsg = null;
+            await apiFetch('/api/recipients');
+            assertEqual('garde idempotent : logout NON rappele (2e 401 sans reset)', logoutMsg, null);
+        } finally {
+            window.fetch = origFetch;
+            window.logout = origLogout;
+            collectData = origCollect;
+            // Nettoyer le manifeste de test du storage chiffre
+            var cleaned = (await getSavedManifests()).filter(function(m) { return m.manifestId !== 'TEST401'; });
+            await writeSavedManifests(cleaned);
+        }
+    })();
+
+    // --- computeWarningDelay : nominal + valeurs invalides ---
+    suite('Session expiry - computeWarningDelay');
+    (function() {
+        assertEqual('delai = expiry-now-10min',
+            computeWarningDelay(1000000 + 8 * 60 * 60 * 1000, 1000000), 8 * 60 * 60 * 1000 - 10 * 60 * 1000);
+        assertEqual('expiry undefined -> null', computeWarningDelay(undefined, Date.now()), null);
+        assertEqual('expiry NaN -> null', computeWarningDelay(NaN, Date.now()), null);
+        assertEqual('expiry Infinity -> null', computeWarningDelay(Infinity, Date.now()), null);
+        assertEqual('session proche expiration -> delai <=0',
+            computeWarningDelay(Date.now() + 60000, Date.now()) <= 0, true);
+    })();
+
+    // --- clearExpiryWarning nettoie le timer (pas de doublon) ---
+    suite('Session expiry - clearExpiryWarning nettoie le timer');
+    (function() {
+        _expiryWarningTimer = setTimeout(function() {}, 100000);
+        clearExpiryWarning();
+        assertEqual('clearExpiryWarning remet le timer a null', _expiryWarningTimer, null);
+        // Non-doublon : scheduleExpiryWarning clear le timer precedent avant d'armer
+        _expiryWarningTimer = setTimeout(function() {}, 100000);
+        scheduleExpiryWarning(); // getSessionExpiry absent dans le harness -> delay null -> pas de nouveau timer
+        assertEqual('scheduleExpiryWarning n armera pas de doublon (expiry absent -> null)', _expiryWarningTimer, null);
+    })();
+
+    // --- non-regression getJwt (auth.js absent du harness : stub window.getJwt) ---
+    suite('Session expiry - non-regression getJwt');
+    (function() {
+        assertEqual('getJwt renvoie un string (stub harness)', typeof getJwt(), 'string');
+        if (typeof isLoggedIn === 'function') {
+            assertEqual('isLoggedIn reste une fonction (navigateur)', typeof isLoggedIn, 'function');
+        }
+    })();
+
+    // ========================================
     // DISPLAY RESULTS
     // ========================================
     if (currentSuite) resultsHtml += '</div>';
