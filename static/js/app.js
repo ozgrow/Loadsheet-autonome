@@ -1,5 +1,5 @@
 // --- Version ---
-var APP_VERSION = "1.9.0";
+var APP_VERSION = "1.10.0";
 
 // --- Storage ---
 var STORAGE_KEY = "loadsheet_manifests";
@@ -22,6 +22,87 @@ var ULD_TYPE_DEFAULT = 'PMC';
 function esc(str) {
     if (str === null || str === undefined) return '';
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ============================================
+// SESSION EXPIRY (SESSION-401)
+// Intercepteur 401 centralise + auto-save silencieux + timer d'avertissement.
+// Vit dans app.js (charge par le harness de test, contrairement a auth.js).
+// ============================================
+var WARN_BEFORE_MS = 10 * 60 * 1000; // avertir ~10 min avant expiration
+var _expiryWarningTimer = null;
+var _sessionExpiredHandled = false; // garde idempotent contre double-trigger
+
+// Reinitialise le garde d'expiration (appele par auth.setSession apres reconnexion).
+function resetSessionGuard() {
+    _sessionExpiredHandled = false;
+}
+
+// Wrapper fetch centralise : intercepte les 401 pour tous les appels /api/*.
+// Appelle le `fetch` global (non capture) pour que les stubs window.fetch des tests interceptent.
+async function apiFetch(url, options) {
+    var res = await fetch(url, options);
+    if (res && res.status === 401) {
+        await handleSessionExpired();
+    } else if (res && res.ok) {
+        _sessionExpiredHandled = false; // reset garde sur reponse 2xx
+    }
+    return res;
+}
+
+// Sauvegarde le manifeste en cours (zero perte) PUIS redirige vers le login.
+// Une seule fois grace au garde idempotent.
+async function handleSessionExpired() {
+    if (_sessionExpiredHandled) return;
+    _sessionExpiredHandled = true;
+    clearExpiryWarning();
+    try {
+        await saveManifestSilently();
+    } catch (e) { /* ne jamais bloquer la redirection sur une erreur de save */ }
+    if (typeof logout === 'function') logout('Session expiree, reconnectez-vous.');
+    else if (typeof showLogin === 'function') showLogin('Session expiree, reconnectez-vous.');
+}
+
+// Sauvegarde silencieuse (aucun alert) — miroir de saveManifest, reutilise le storage chiffre existant.
+async function saveManifestSilently() {
+    var data = collectData();
+    if (!data || !data.ulds || data.ulds.length === 0) return false;
+    var saved = await getSavedManifests();
+    var idx = saved.findIndex(function(m) { return m.manifestId === data.manifestId; });
+    if (idx >= 0) { saved[idx] = data; } else { saved.unshift(data); if (saved.length > MAX_SAVED) saved.pop(); }
+    await writeSavedManifests(saved);
+    if (typeof refreshSavedList === 'function') { try { await refreshSavedList(); } catch (e) {} }
+    return true;
+}
+
+// Delai avant avertissement = temps restant - 10 min. null si expiry invalide.
+function computeWarningDelay(expiry, now) {
+    if (typeof expiry !== 'number' || !isFinite(expiry)) return null;
+    return expiry - now - WARN_BEFORE_MS;
+}
+
+function clearExpiryWarning() {
+    if (_expiryWarningTimer) {
+        clearTimeout(_expiryWarningTimer);
+        _expiryWarningTimer = null;
+    }
+}
+
+// Arme le timer d'avertissement (sans doublon) uniquement si le delai calcule > 0.
+function scheduleExpiryWarning() {
+    clearExpiryWarning();
+    var expiry = (typeof getSessionExpiry === 'function') ? getSessionExpiry() : null;
+    var delay = computeWarningDelay(expiry, Date.now());
+    if (delay === null || delay <= 0) return;
+    _expiryWarningTimer = setTimeout(showExpiryWarning, delay);
+}
+
+// Affiche la banniere non-bloquante (message statique via textContent, anti-XSS).
+function showExpiryWarning() {
+    var b = document.getElementById('sessionWarningBanner');
+    if (!b) return;
+    b.textContent = 'Votre session va bientot expirer. Enregistrez votre travail et reconnectez-vous.';
+    b.style.display = 'block';
 }
 
 // ============================================
@@ -519,6 +600,7 @@ async function initApp() {
     newManifest();
     await refreshSavedList();
     await refreshListsDropdown();
+    scheduleExpiryWarning();
 }
 
 function newManifest() {
@@ -1629,7 +1711,7 @@ async function sendEmail() {
     var pdfFilename = 'Loadsheet_' + data.manifestId + '_' + data.destAirport + '.pdf';
 
     try {
-        var res = await fetch('/api/send-email', {
+        var res = await apiFetch('/api/send-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-auth-token': jwt },
             body: JSON.stringify({ recipients: data.recipients, cc: data.cc, subject: subject, htmlBody: html, pdfBase64: pdfBase64, pdfFilename: pdfFilename })

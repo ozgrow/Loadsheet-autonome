@@ -71,7 +71,7 @@ function _clientsLocalPut(clients) {
 async function _clientsRemoteGet() {
   var jwt = typeof getJwt === 'function' ? getJwt() : null;
   if (!jwt) throw new Error('Session expiree.');
-  var res = await fetch(CLIENTS_API_URL, {
+  var res = await (typeof apiFetch === 'function' ? apiFetch : fetch)(CLIENTS_API_URL, {
     method: 'GET',
     headers: { 'x-auth-token': jwt }
   });
@@ -83,7 +83,7 @@ async function _clientsRemoteGet() {
 async function _clientsRemotePut(clients) {
   var jwt = typeof getJwt === 'function' ? getJwt() : null;
   if (!jwt) throw new Error('Session expiree.');
-  var res = await fetch(CLIENTS_API_URL, {
+  var res = await (typeof apiFetch === 'function' ? apiFetch : fetch)(CLIENTS_API_URL, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
