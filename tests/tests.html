@@ -1101,12 +1101,13 @@ localStorage.removeItem('loadsheet_manifests');
         var sel = block.querySelector('.uld-type');
         assert('Select .uld-type present dans le header', !!sel);
         var opts = sel.querySelectorAll('option');
-        assertEqual('Nombre d\'options = 5', opts.length, 5);
+        assertEqual('Nombre d\'options = 6', opts.length, 6);
         assertEqual('Option 0 = PMC', opts[0].value, 'PMC');
         assertEqual('Option 1 = AKE', opts[1].value, 'AKE');
         assertEqual('Option 2 = AKN', opts[2].value, 'AKN');
         assertEqual('Option 3 = PAG', opts[3].value, 'PAG');
-        assertEqual('Option 4 = VRAC', opts[4].value, 'VRAC');
+        assertEqual('Option 4 = PAJ', opts[4].value, 'PAJ');
+        assertEqual('Option 5 = VRAC', opts[5].value, 'VRAC');
         assertEqual('Valeur par defaut = PMC', sel.value, 'PMC');
     })();
 
@@ -1218,6 +1219,37 @@ localStorage.removeItem('loadsheet_manifests');
         var sel = block.querySelector('.uld-type');
         assertEqual('Select value = VRAC', sel.value, 'VRAC');
         assertEqual('data-uld-type = VRAC', block.dataset.uldType, 'VRAC');
+    })();
+
+    // --- Test 7b : type PAJ selectionnable, collecte et restaure ---
+    suite('Type ULD - PAJ selectionnable + round-trip loadManifest');
+    await (async function() {
+        resetDOM();
+        await deriveAndStoreKey('test-password-for-unit-tests');
+        addUld();
+        var sel = document.querySelector('.uld-block .uld-type');
+        sel.value = 'PAJ';
+        assertEqual('Option PAJ selectionnable', sel.value, 'PAJ');
+        var data = collectData();
+        assertEqual('collectData type = PAJ', data.ulds[0].type, 'PAJ');
+        resetDOM();
+        await writeSavedManifests([{
+            manifestId: 'TEST-PAJ', date: '2026-10-06', client: '', agent: 'A', destAirport: 'CDG',
+            ulds: [{
+                uldNumber: 'P1',
+                rows: [{ lta: 'L', dossier: 'D', colis: 3, dgr: 'N', comment: '' }],
+                totalColis: 3,
+                type: 'PAJ',
+                strapsCount: 0, flooringEuCount: 0, flooringEuForfait: false,
+                flooringStdCount: 0, flooringStdForfait: false,
+                blocksCount: 0, tarpsCount: 0, dividersCount: 0, honeycombCount: 0,
+                uldComment: ''
+            }]
+        }]);
+        await loadManifest('TEST-PAJ');
+        var block = document.querySelector('.uld-block');
+        assertEqual('Select restaure = PAJ', block.querySelector('.uld-type').value, 'PAJ');
+        assertEqual('data-uld-type = PAJ', block.dataset.uldType, 'PAJ');
     })();
 
     // --- Test 8 : loadManifest rejette type corrompu (XSS defense en profondeur) ---
@@ -1560,7 +1592,7 @@ localStorage.removeItem('loadsheet_manifests');
         // L'integration sendEmail materiel global est testee dans 'Materiel global - sendEmail HTML esc(manifestComment)'.
         data.ulds.forEach(function(u) {
             // D-14 mirror D-11 : titre du bloc inclut type + esc() defense en profondeur
-            var validUldType = (u.type && ['PMC','AKE','AKN','PAG','VRAC'].indexOf(u.type) >= 0) ? u.type : 'PMC';
+            var validUldType = (u.type && ['PMC','AKE','AKN','PAG','PAJ','VRAC'].indexOf(u.type) >= 0) ? u.type : 'PMC';
             var uldTitle = 'ULD : ' + esc(u.uldNumber) + ' [' + esc(validUldType) + ']';
             if (u.weight > 0) uldTitle += ' — ' + u.weight + ' kg';
             html += '<h3 style="color:#1a3a5c;margin-top:20px;">' + uldTitle + '</h3>';

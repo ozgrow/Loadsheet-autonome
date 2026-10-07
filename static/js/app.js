@@ -1,5 +1,5 @@
 // --- Version ---
-var APP_VERSION = "1.10.0";
+var APP_VERSION = "1.10.1";
 
 // --- Storage ---
 var STORAGE_KEY = "loadsheet_manifests";
@@ -15,7 +15,7 @@ var _savedIds = []; // tableau d'IDs pour onclick (anti-XSS)
 // --- Types ULD (VRAC-01, D-01, D-02) ---
 // Liste figee des types officiels. VRAC est le seul avec comportement special
 // (exclusion compteur palettes, masquage planchers modal, exclusion planchers recap/PDF/email).
-var ULD_TYPES = ['PMC', 'AKE', 'AKN', 'PAG', 'VRAC'];
+var ULD_TYPES = ['PMC', 'AKE', 'AKN', 'PAG', 'PAJ', 'VRAC'];
 var ULD_TYPE_DEFAULT = 'PMC';
 
 // --- HTML escape (anti-XSS) ---
@@ -639,11 +639,9 @@ function addUld() {
         '<div class="uld-header">' +
             '<label>Type :</label>' +
             '<select class="uld-type" onchange="changeUldType(this, ' + i + ')">' +
-                '<option value="PMC" selected>PMC</option>' +
-                '<option value="AKE">AKE</option>' +
-                '<option value="AKN">AKN</option>' +
-                '<option value="PAG">PAG</option>' +
-                '<option value="VRAC">VRAC</option>' +
+                ULD_TYPES.map(function(t) {
+                    return '<option value="' + t + '"' + (t === ULD_TYPE_DEFAULT ? ' selected' : '') + '>' + t + '</option>';
+                }).join('') +
             '</select>' +
             '<label>ULD N\u00b0 :</label>' +
             '<input type="text" class="uld-number" placeholder="Num\u00e9ro ULD" style="width:180px">' +
@@ -1270,7 +1268,7 @@ function buildPalettesVracSplit(ulds) {
             split.vrac.colis += colis;
             if (weight > 0) split.vrac.weight += weight;
         } else {
-            // Palettes = tout sauf VRAC (PMC, AKE, AKN, PAG, undefined — retro-compat)
+            // Palettes = tout sauf VRAC (PMC, AKE, AKN, PAG, PAJ, undefined — retro-compat)
             split.palettes.count++;
             split.palettes.colis += colis;
             if (weight > 0) split.palettes.weight += weight;
@@ -1472,7 +1470,7 @@ function buildPdf(data) {
 
         var ltaSet = {};
         u.rows.forEach(function(r) { if (r.lta) ltaSet[r.lta] = true; });
-        // VRAC-03 / D-11 : afficher Type (VRAC/PMC/AKE/AKN/PAG) dans l'infoBox de chaque page ULD.
+        // VRAC-03 / D-11 : afficher Type (VRAC/PMC/AKE/AKN/PAG/PAJ) dans l'infoBox de chaque page ULD.
         // Type affiche litteralement (D-13), fallback PMC si absent ou corrompu (retro-compat D-15 + defense en profondeur).
         // ULD_TYPES est declare en tete du fichier (constante figee).
         var uldType = (u.type && ULD_TYPES.indexOf(u.type) >= 0) ? u.type : ULD_TYPE_DEFAULT;
@@ -1488,7 +1486,7 @@ function buildPdf(data) {
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(51, 51, 51);
         doc.text(Object.keys(ltaSet).join(', ') || 'N/A', margin + 42, y + 7);
-        // Ligne 2 : Type (D-11) — ASCII-safe (PMC/AKE/AKN/PAG/VRAC), pas de probleme glyphe jsPDF
+        // Ligne 2 : Type (D-11) — ASCII-safe (PMC/AKE/AKN/PAG/PAJ/VRAC), pas de probleme glyphe jsPDF
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(26, 58, 92);
         doc.text('Type :', margin + 4, y + 13);

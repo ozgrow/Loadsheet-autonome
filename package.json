@@ -1,6 +1,6 @@
 {
   "name": "loadsheet-autonome",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "private": true,
   "description": "Outil web de creation de loadsheets pour ATH - Air Terminal Handling",
   "scripts": {
